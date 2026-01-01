@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.16",
+    "@walletconnect/ethereum-provider": "^2.15.0",
     "axios": "^1.13.2",
     "ethers": "^6.16.0",
     "next": "16.1.1",
