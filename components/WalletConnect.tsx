@@ -394,10 +394,10 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             }
           }
           
-          // Try direct requestAccounts method
+          // Try direct requestAccounts method - this shows popup and waits for user approval
           if (typeof win.btc.requestAccounts === 'function') {
             try {
-              console.log('[Xverse Detection] Trying btc.requestAccounts()...')
+              console.log('[Xverse Detection] Trying btc.requestAccounts() - popup should appear, please click Connect...')
               const accounts = await win.btc.requestAccounts()
               console.log('[Xverse Detection] ✅ btc.requestAccounts() result:', accounts)
               if (accounts && accounts.length > 0) {
@@ -410,7 +410,12 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                 }
               }
             } catch (err: any) {
-              console.log('[Xverse Detection] ❌ btc.requestAccounts() failed:', err.message)
+              console.log('[Xverse Detection] ❌ btc.requestAccounts() failed:', err.message, err)
+              if (err.message?.includes('reject') || err.message?.includes('cancel') || err.code === 4001) {
+                setConnecting(false)
+                alert('Connection cancelled. Please try again and click "Connect" in the Xverse popup.')
+                return
+              }
             }
           }
         } catch (err: any) {
