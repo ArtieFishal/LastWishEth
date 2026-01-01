@@ -652,29 +652,69 @@ export default function Home() {
  const isActive = step === s.id
  const isCompleted = currentIndex > index
  
+ // Determine if step has content and can be navigated to
+ const hasContent = (() => {
+   switch(s.id) {
+     case 'connect': return connectedEVMAddresses.size > 0 || btcAddress || assets.length > 0
+     case 'assets': return assets.length > 0
+     case 'allocate': return beneficiaries.length > 0 || allocations.length > 0 || selectedAssetIds.length > 0
+     case 'details': return ownerFullName || ownerName || beneficiaries.length > 0
+     case 'payment': return invoiceId !== null || discountApplied
+     case 'download': return paymentVerified || discountApplied
+     default: return false
+   }
+ })()
+ 
+ // Allow navigation if: current step, completed step, or step has content
+ const canNavigate = isActive || isCompleted || hasContent || index === 0
+ 
  return (
  <div key={s.id} className="flex items-center flex-1">
  <div className="flex flex-col items-center flex-1">
- <div
+ <button
+ onClick={() => {
+   if (canNavigate) {
+     setStep(s.id)
+   }
+ }}
+ disabled={!canNavigate}
  className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${
- isActive
- ? 'bg-blue-600 text-white shadow-lg scale-110'
- : isCompleted
- ? 'bg-green-500 text-white'
- : 'bg-gray-200 text-gray-500'
+   isActive
+     ? 'bg-blue-600 text-white shadow-lg scale-110 cursor-default'
+     : isCompleted
+     ? 'bg-green-500 text-white hover:bg-green-600 cursor-pointer'
+     : canNavigate
+     ? 'bg-gray-300 text-gray-600 hover:bg-gray-400 cursor-pointer'
+     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
  }`}
+ title={canNavigate ? `Go to ${s.label}` : 'Complete previous steps first'}
  >
  {isCompleted ? '✓' : s.number}
- </div>
- <span className={`text-xs mt-2 font-medium ${
- isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-400'
- }`}>
+ </button>
+ <button
+ onClick={() => {
+   if (canNavigate) {
+     setStep(s.id)
+   }
+ }}
+ disabled={!canNavigate}
+ className={`text-xs mt-2 font-medium transition-colors ${
+   isActive
+     ? 'text-blue-600 cursor-default'
+     : isCompleted
+     ? 'text-green-600 hover:text-green-700 cursor-pointer'
+     : canNavigate
+     ? 'text-gray-600 hover:text-gray-800 cursor-pointer'
+     : 'text-gray-400 cursor-not-allowed'
+ }`}
+ title={canNavigate ? `Go to ${s.label}` : 'Complete previous steps first'}
+ >
  {s.label}
- </span>
+ </button>
  </div>
  {index < steps.length - 1 && (
  <div className={`h-1 flex-1 mx-2 rounded ${
- isCompleted ? 'bg-green-500' : 'bg-gray-200'
+   isCompleted ? 'bg-green-500' : 'bg-gray-200'
  }`} />
  )}
  </div>
@@ -1085,6 +1125,26 @@ export default function Home() {
  <p className="mt-4 text-gray-600 font-semibold">Loading assets, be patient...</p>
  <p className="mt-2 text-sm text-gray-500">This may take a few seconds as we fetch data from the blockchain</p>
  </div>
+ ) : assets.length === 0 ? (
+ <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+   <div className="max-w-md mx-auto">
+     <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+       <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+       </svg>
+     </div>
+     <h3 className="text-xl font-bold text-gray-900 mb-2">No Assets Loaded Yet</h3>
+     <p className="text-gray-600 mb-6">
+       Connect your wallets and load assets to get started. You can connect multiple wallets and load assets from each one.
+     </p>
+     <button
+       onClick={() => setStep('connect')}
+       className="inline-flex items-center px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-lg"
+     >
+       ← Go to Connect Wallets
+     </button>
+   </div>
+ </div>
  ) : (
  <>
  <AssetSelector
@@ -1137,38 +1197,76 @@ export default function Home() {
  Assign your assets to beneficiaries. You can allocate by percentage or specific amounts.
  </p>
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
- <div className="lg:col-span-1">
- <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-4">
-                    <h3 className="font-bold text-lg mb-3 text-gray-900">Assets ({selectedAssetIds.length} selected)</h3>
- <div className="max-h-96 overflow-y-auto">
- <AssetSelector
- assets={assets}
- selectedAssetIds={selectedAssetIds}
- onSelectionChange={setSelectedAssetIds}
- />
- </div>
- </div>
- </div>
- <div className="lg:col-span-1">
- <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-4">
-                    <h3 className="font-bold text-lg mb-3">Beneficiaries</h3>
-                    <BeneficiaryForm
- beneficiaries={beneficiaries}
- onBeneficiariesChange={setBeneficiaries}
- />
- </div>
- </div>
- <div className="lg:col-span-1">
- <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-4">
-                    <h3 className="font-bold text-lg mb-3">Allocations</h3>
-                    <AllocationPanel
- assets={assets.filter(a => selectedAssetIds.includes(a.id))}
- beneficiaries={beneficiaries}
- allocations={allocations}
- onAllocationChange={setAllocations}
- />
- </div>
- </div>
+ {selectedAssetIds.length === 0 ? (
+   <div className="lg:col-span-3 text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+     <div className="max-w-md mx-auto">
+       <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+         <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+         </svg>
+       </div>
+       <h3 className="text-xl font-bold text-gray-900 mb-2">No Assets Selected</h3>
+       <p className="text-gray-600 mb-6">
+         Go back to the Assets step to select which assets you want to allocate to beneficiaries.
+       </p>
+       <button
+         onClick={() => setStep('assets')}
+         className="inline-flex items-center px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-lg"
+       >
+         ← Go to Assets
+       </button>
+     </div>
+   </div>
+ ) : beneficiaries.length === 0 ? (
+   <div className="lg:col-span-3 text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+     <div className="max-w-md mx-auto">
+       <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+         <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+         </svg>
+       </div>
+       <h3 className="text-xl font-bold text-gray-900 mb-2">No Beneficiaries Added Yet</h3>
+       <p className="text-gray-600 mb-6">
+         Add beneficiaries to allocate your selected assets to. You can add multiple beneficiaries and assign percentages or specific amounts.
+       </p>
+     </div>
+   </div>
+ ) : (
+   <>
+     <div className="lg:col-span-1">
+       <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-4">
+         <h3 className="font-bold text-lg mb-3 text-gray-900">Assets ({selectedAssetIds.length} selected)</h3>
+         <div className="max-h-96 overflow-y-auto">
+           <AssetSelector
+             assets={assets}
+             selectedAssetIds={selectedAssetIds}
+             onSelectionChange={setSelectedAssetIds}
+           />
+         </div>
+       </div>
+     </div>
+     <div className="lg:col-span-1">
+       <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-4">
+         <h3 className="font-bold text-lg mb-3">Beneficiaries</h3>
+         <BeneficiaryForm
+           beneficiaries={beneficiaries}
+           onBeneficiariesChange={setBeneficiaries}
+         />
+       </div>
+     </div>
+     <div className="lg:col-span-1">
+       <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-4">
+         <h3 className="font-bold text-lg mb-3">Allocations</h3>
+         <AllocationPanel
+           assets={assets.filter(a => selectedAssetIds.includes(a.id))}
+           beneficiaries={beneficiaries}
+           allocations={allocations}
+           onAllocationChange={setAllocations}
+         />
+       </div>
+     </div>
+   </>
+ )}
  </div>
  <div className="mt-6 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
  <div className="flex items-start justify-between">
@@ -1496,7 +1594,7 @@ export default function Home() {
  </div>
  )}
 
- {step === 'download' && paymentVerified && (
+ {step === 'download' && (paymentVerified || discountApplied) && (
  <div className="max-w-2xl mx-auto text-center">
  <h2 className="text-3xl font-bold text-gray-900 mb-2">Document Ready!</h2>
  <p className="text-gray-600 mb-8">
