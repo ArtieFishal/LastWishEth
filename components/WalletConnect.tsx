@@ -240,23 +240,55 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             // Try multiple methods to get accounts
             let accounts = null
             
-            // Try requestAccounts first
+            // Try requestAccounts first - this will show the popup and wait for user approval
             if (typeof xverseProvider.requestAccounts === 'function') {
               try {
-                console.log('[Xverse Detection] Trying requestAccounts()...')
+                console.log('[Xverse Detection] Trying requestAccounts() - popup should appear, please click Connect...')
                 accounts = await xverseProvider.requestAccounts()
                 console.log('[Xverse Detection] ✅ requestAccounts result:', accounts)
+                // Xverse might return an array of account objects or just addresses
+                if (accounts && !Array.isArray(accounts)) {
+                  accounts = [accounts]
+                }
               } catch (err: any) {
-                console.log('[Xverse Detection] ❌ requestAccounts failed:', err.message)
+                console.log('[Xverse Detection] ❌ requestAccounts failed:', err.message, err)
+                // If user rejected, show error
+                if (err.message?.includes('reject') || err.message?.includes('cancel') || err.code === 4001) {
+                  setConnecting(false)
+                  alert('Connection cancelled. Please try again and click "Connect" in the Xverse popup.')
+                  return
+                }
               }
             }
             
-            // Try getAccounts if requestAccounts didn't work
+            // Try request with 'requestAccounts' method (alternative API)
+            if (!accounts && typeof xverseProvider.request === 'function') {
+              try {
+                console.log('[Xverse Detection] Trying request("requestAccounts") - popup should appear...')
+                accounts = await xverseProvider.request('requestAccounts', {})
+                console.log('[Xverse Detection] ✅ request("requestAccounts") result:', accounts)
+                if (accounts && !Array.isArray(accounts)) {
+                  accounts = [accounts]
+                }
+              } catch (err: any) {
+                console.log('[Xverse Detection] ❌ request("requestAccounts") failed:', err.message, err)
+                if (err.message?.includes('reject') || err.message?.includes('cancel') || err.code === 4001) {
+                  setConnecting(false)
+                  alert('Connection cancelled. Please try again and click "Connect" in the Xverse popup.')
+                  return
+                }
+              }
+            }
+            
+            // Try getAccounts if requestAccounts didn't work (this won't show popup, only works if already connected)
             if (!accounts && typeof xverseProvider.getAccounts === 'function') {
               try {
-                console.log('[Xverse Detection] Trying getAccounts()...')
+                console.log('[Xverse Detection] Trying getAccounts() (may not work if not already connected)...')
                 accounts = await xverseProvider.getAccounts()
                 console.log('[Xverse Detection] ✅ getAccounts result:', accounts)
+                if (accounts && !Array.isArray(accounts)) {
+                  accounts = [accounts]
+                }
               } catch (err: any) {
                 console.log('[Xverse Detection] ❌ getAccounts failed:', err.message)
               }
@@ -268,6 +300,9 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                 console.log('[Xverse Detection] Trying request("getAccounts")...')
                 accounts = await xverseProvider.request('getAccounts', {})
                 console.log('[Xverse Detection] ✅ request("getAccounts") result:', accounts)
+                if (accounts && !Array.isArray(accounts)) {
+                  accounts = [accounts]
+                }
               } catch (err: any) {
                 console.log('[Xverse Detection] ❌ request("getAccounts") failed:', err.message)
               }
@@ -298,7 +333,30 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
         try {
           console.log('[Xverse Detection] ✅ Found window.btc, trying multiple methods...')
           
-          // Try request('getAccounts')
+          // Try request('requestAccounts') first - this shows popup and waits for user approval
+          try {
+            console.log('[Xverse Detection] Trying btc.request("requestAccounts") - popup should appear, please click Connect...')
+            const accounts = await win.btc.request('requestAccounts', {})
+            console.log('[Xverse Detection] ✅ btc.request("requestAccounts") result:', accounts)
+            if (accounts && accounts.length > 0) {
+              const address = accounts[0].address || accounts[0]
+              if (address) {
+                setBtcAddress(address)
+                setConnecting(false)
+                onBitcoinConnect?.(address)
+                return
+              }
+            }
+          } catch (err: any) {
+            console.log('[Xverse Detection] ❌ btc.request("requestAccounts") failed:', err.message, err)
+            if (err.message?.includes('reject') || err.message?.includes('cancel') || err.code === 4001) {
+              setConnecting(false)
+              alert('Connection cancelled. Please try again and click "Connect" in the Xverse popup.')
+              return
+            }
+          }
+          
+          // Try request('getAccounts') - may not show popup if already connected
           try {
             console.log('[Xverse Detection] Trying btc.request("getAccounts")...')
             const accounts = await win.btc.request('getAccounts', {})
@@ -314,24 +372,6 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             }
           } catch (err: any) {
             console.log('[Xverse Detection] ❌ btc.request("getAccounts") failed:', err.message)
-          }
-          
-          // Try request('requestAccounts')
-          try {
-            console.log('[Xverse Detection] Trying btc.request("requestAccounts")...')
-            const accounts = await win.btc.request('requestAccounts', {})
-            console.log('[Xverse Detection] ✅ btc.request("requestAccounts") result:', accounts)
-            if (accounts && accounts.length > 0) {
-              const address = accounts[0].address || accounts[0]
-              if (address) {
-                setBtcAddress(address)
-                setConnecting(false)
-                onBitcoinConnect?.(address)
-                return
-              }
-            }
-          } catch (err: any) {
-            console.log('[Xverse Detection] ❌ btc.request("requestAccounts") failed:', err.message)
           }
           
           // Try direct getAccounts method

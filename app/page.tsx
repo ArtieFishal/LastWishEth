@@ -699,12 +699,32 @@ export default function Home() {
  </p>
  {assets.length > 0 && (
  <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+ <div className="flex items-start justify-between">
+ <div className="flex-1">
  <p className="text-sm text-blue-800 font-semibold mb-1">
  {assets.length} asset{assets.length !== 1 ? 's' : ''} loaded from previous wallet{assets.length !== 1 ? 's' : ''}
  </p>
  <p className="text-xs text-blue-700">
  Connect another wallet to add more assets, or continue to review your current assets.
  </p>
+ </div>
+ <button
+ onClick={() => {
+ if (confirm('Clear all assets and start fresh? This will remove all loaded assets and allocations.')) {
+ setAssets([])
+ setSelectedAssetIds([])
+ setAllocations([])
+ if (typeof window !== 'undefined') {
+ localStorage.removeItem('lastwish_state')
+ }
+ setError(null)
+ }
+ }}
+ className="ml-4 px-3 py-1 text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors whitespace-nowrap"
+ >
+ Clear Assets
+ </button>
+ </div>
  </div>
  )}
  {/* Show connected wallets with disconnect options - show ABOVE connect options */}
