@@ -31,3 +31,9 @@ input[type="number"]::placeholder,
 textarea::placeholder {
   color: #9ca3af !important;
 }
+
+/* Ensure wallet connector button colors override Tailwind */
+button[style*="borderColor"] span.font-semibold,
+button[style*="borderColor"] svg {
+  color: inherit !important;
+}

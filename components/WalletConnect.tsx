@@ -614,6 +614,11 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
           Each wallet requires signature verification to prove ownership before assets can be loaded.
         </p>
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <p className="text-xs text-blue-800 dark:text-blue-300">
+            <strong>📱 Mobile Wallet Support:</strong> Clicking "WalletConnect" shows a QR code that works with <strong>any</strong> compatible wallet app on your phone (MetaMask, Trust Wallet, Rainbow, Coinbase Wallet, etc.). Just scan the QR code with your wallet app!
+          </p>
+        </div>
         {availableConnectors.length > 0 ? (
           <div className="space-y-3">
             {availableConnectors.map((connector) => {
@@ -642,19 +647,43 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = `${config.bgColor}20`
                     e.currentTarget.style.borderColor = config.hoverColor
+                    e.currentTarget.style.color = config.hoverColor
+                    // Update text and icon colors on hover
+                    const textSpan = e.currentTarget.querySelector('span.font-semibold') as HTMLElement
+                    const svg = e.currentTarget.querySelector('svg') as SVGSVGElement
+                    if (textSpan) textSpan.style.color = config.hoverColor
+                    if (svg) svg.style.color = config.hoverColor
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = 'white'
                     e.currentTarget.style.borderColor = config.color
+                    e.currentTarget.style.color = config.color
+                    // Reset text and icon colors
+                    const textSpan = e.currentTarget.querySelector('span.font-semibold') as HTMLElement
+                    const svg = e.currentTarget.querySelector('svg') as SVGSVGElement
+                    if (textSpan) textSpan.style.color = config.color
+                    if (svg) svg.style.color = config.color
                   }}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-1">
                     <span className="text-2xl">{config.icon}</span>
-                    <span className="font-semibold" style={{ color: config.color, fontWeight: 600 }}>
+                    <span 
+                      className="font-semibold flex-1" 
+                      style={{ 
+                        color: config.color, 
+                        fontWeight: 600,
+                      } as React.CSSProperties}
+                    >
                       {connector.name}
                     </span>
                   </div>
-                  <svg className="w-5 h-5" style={{ color: config.color }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg 
+                    className="w-5 h-5 flex-shrink-0" 
+                    style={{ color: config.color } as React.CSSProperties} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
@@ -694,25 +723,37 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = `${walletConfig.Xverse.bgColor}20`
             e.currentTarget.style.borderColor = walletConfig.Xverse.hoverColor
+            e.currentTarget.style.color = walletConfig.Xverse.hoverColor
+            // Update text and icon colors on hover
+            const textSpan = e.currentTarget.querySelector('span.font-semibold') as HTMLElement
+            const svg = e.currentTarget.querySelector('svg') as SVGSVGElement
+            if (textSpan) textSpan.style.color = walletConfig.Xverse.hoverColor
+            if (svg) svg.style.color = walletConfig.Xverse.hoverColor
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = 'white'
             e.currentTarget.style.borderColor = walletConfig.Xverse.color
+            e.currentTarget.style.color = walletConfig.Xverse.color
+            // Reset text and icon colors
+            const textSpan = e.currentTarget.querySelector('span.font-semibold') as HTMLElement
+            const svg = e.currentTarget.querySelector('svg') as SVGSVGElement
+            if (textSpan) textSpan.style.color = walletConfig.Xverse.color
+            if (svg) svg.style.color = walletConfig.Xverse.color
           }}
         >
           <div className="flex items-center gap-3">
             <span className="text-2xl">{walletConfig.Xverse.icon}</span>
             <div>
-              <span className="font-semibold block" style={{ color: walletConfig.Xverse.color }}>
+              <span className="font-semibold block" style={{ color: walletConfig.Xverse.color } as React.CSSProperties}>
                 Xverse Wallet
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">Connect your Bitcoin wallet</span>
             </div>
           </div>
           {connecting ? (
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2" style={{ borderColor: walletConfig.Xverse.color }}></div>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2" style={{ borderColor: walletConfig.Xverse.color } as React.CSSProperties}></div>
           ) : (
-            <svg className="w-5 h-5 transition-colors" style={{ color: walletConfig.Xverse.color }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 transition-colors" style={{ color: walletConfig.Xverse.color } as React.CSSProperties} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           )}
