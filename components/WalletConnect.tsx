@@ -70,6 +70,39 @@ const getWalletConfig = (walletName: string) => {
   }
 }
 
+// Helper function to extract Bitcoin address from various account formats
+const extractBitcoinAddress = (account: any): string | null => {
+  if (!account) return null
+  
+  // If it's already a string, return it
+  if (typeof account === 'string') {
+    return account
+  }
+  
+  // Try different address property names that Xverse might use
+  const addressFields = [
+    'address',
+    'paymentsAddress',
+    'payments_address',
+    'paymentAddress',
+    'payment_address',
+    'legacyAddress',
+    'legacy_address',
+    'p2pkhAddress',
+    'p2pkh_address',
+    'p2shAddress',
+    'p2sh_address'
+  ]
+  
+  for (const field of addressFields) {
+    if (account[field] && typeof account[field] === 'string') {
+      return account[field]
+    }
+  }
+  
+  return null
+}
+
 export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectProps) {
   const { address, isConnected } = useAccount()
   const { connect, connectors, isPending, error: connectError } = useConnect()
@@ -309,13 +342,40 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             }
             
             if (accounts && accounts.length > 0) {
-              const address = accounts[0].address || accounts[0]
+              // Xverse might return account objects with different structures
+              let address = null
+              const account = accounts[0]
+              
+              // Try different address formats
+              if (typeof account === 'string') {
+                address = account
+              } else if (account.address) {
+                address = account.address
+              } else if (account.paymentsAddress) {
+                address = account.paymentsAddress
+              } else if (account.payments_address) {
+                address = account.payments_address
+              } else if (account.paymentAddress) {
+                address = account.paymentAddress
+              } else if (account.payment_address) {
+                address = account.payment_address
+              } else if (account.legacyAddress) {
+                address = account.legacyAddress
+              } else if (account.legacy_address) {
+                address = account.legacy_address
+              }
+              
+              console.log('[Xverse Detection] Account object:', account)
+              console.log('[Xverse Detection] Extracted address:', address)
+              
               if (address) {
                 console.log('[Xverse Detection] 🎉 SUCCESS! Connected address:', address)
                 setBtcAddress(address)
                 setConnecting(false)
                 onBitcoinConnect?.(address)
                 return
+              } else {
+                console.log('[Xverse Detection] ⚠️ Could not extract address from account:', account)
               }
             } else {
               console.log('[Xverse Detection] ⚠️ Provider found but no accounts returned')
@@ -339,7 +399,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             const accounts = await win.btc.request('requestAccounts', {})
             console.log('[Xverse Detection] ✅ btc.request("requestAccounts") result:', accounts)
             if (accounts && accounts.length > 0) {
-              const address = accounts[0].address || accounts[0]
+              const address = extractBitcoinAddress(accounts[0])
               if (address) {
                 setBtcAddress(address)
                 setConnecting(false)
@@ -362,7 +422,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             const accounts = await win.btc.request('getAccounts', {})
             console.log('[Xverse Detection] ✅ btc.request("getAccounts") result:', accounts)
             if (accounts && accounts.length > 0) {
-              const address = accounts[0].address || accounts[0]
+              const address = extractBitcoinAddress(accounts[0])
               if (address) {
                 setBtcAddress(address)
                 setConnecting(false)
@@ -381,7 +441,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
               const accounts = await win.btc.getAccounts()
               console.log('[Xverse Detection] ✅ btc.getAccounts() result:', accounts)
               if (accounts && accounts.length > 0) {
-                const address = accounts[0].address || accounts[0]
+                const address = extractBitcoinAddress(accounts[0])
                 if (address) {
                   setBtcAddress(address)
                   setConnecting(false)
@@ -401,7 +461,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
               const accounts = await win.btc.requestAccounts()
               console.log('[Xverse Detection] ✅ btc.requestAccounts() result:', accounts)
               if (accounts && accounts.length > 0) {
-                const address = accounts[0].address || accounts[0]
+                const address = extractBitcoinAddress(accounts[0])
                 if (address) {
                   setBtcAddress(address)
                   setConnecting(false)
@@ -555,7 +615,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
           console.log('Trying window.bitcoin...')
           const accounts = await win.bitcoin.requestAccounts()
           if (accounts && accounts.length > 0) {
-            const address = accounts[0].address || accounts[0]
+            const address = extractBitcoinAddress(accounts[0])
             if (address) {
               setBtcAddress(address)
               setConnecting(false)
