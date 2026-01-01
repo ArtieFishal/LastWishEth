@@ -535,6 +535,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
               const address = accounts[0]
               if (address) {
                 setBtcAddress(address)
+                setConnecting(false)
                 onBitcoinConnect?.(address)
                 return
               }
