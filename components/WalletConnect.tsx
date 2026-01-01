@@ -99,20 +99,25 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
     }
   }, [connectError])
 
-  // Prevent hydration mismatch
+  // Prevent hydration mismatch - show skeleton UI instead of just "Loading..."
   if (!mounted) {
     return (
       <div className="space-y-6">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">EVM Wallets (Ethereum, Base, Arbitrum, Polygon)</h3>
           <div className="rounded-lg border-2 border-gray-300 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+            <div className="animate-pulse space-y-3">
+              <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+              <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+            </div>
           </div>
         </div>
         <div className="border-t dark:border-gray-700 pt-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Bitcoin Wallet</h3>
           <div className="rounded-lg border-2 border-gray-300 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+            <div className="animate-pulse">
+              <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+            </div>
           </div>
         </div>
       </div>
