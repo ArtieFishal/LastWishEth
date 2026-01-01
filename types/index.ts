@@ -1,0 +1,67 @@
+export interface Asset {
+  id: string
+  chain: string
+  type: 'native' | 'erc20' | 'erc721' | 'erc1155' | 'btc'
+  symbol: string
+  name: string
+  balance: string
+  balanceFormatted: string
+  usdValue?: number
+  contractAddress?: string
+  tokenId?: string
+  collectionName?: string
+  decimals?: number
+  walletAddress?: string // Wallet address this asset belongs to
+  imageUrl?: string // NFT image URL
+  metadata?: any // Full NFT metadata
+}
+
+export interface Beneficiary {
+  id: string
+  name: string
+  walletAddress: string
+  ensName?: string // Resolved ENS name for Ethereum addresses
+}
+
+export interface Allocation {
+  assetId: string
+  beneficiaryId: string
+  amount?: string
+  percentage?: number
+  type: 'amount' | 'percentage'
+}
+
+export interface UserData {
+  ownerName: string
+  ownerFullName: string
+  ownerAddress: string
+  ownerCity: string
+  ownerState: string
+  ownerZipCode: string
+  ownerPhone: string
+  ownerEmail: string
+  executorName: string
+  executorAddress: string
+  executorPhone?: string
+  executorEmail?: string
+  beneficiaries: Beneficiary[]
+  allocations: Allocation[]
+  keyInstructions: string
+  connectedWallets: {
+    evm: string[]
+    btc?: string
+  }
+  walletNames: Record<string, string> // Maps address to ENS name or custom name
+  resolvedEnsNames?: Record<string, string> // Maps lowercase address to ENS name
+}
+
+export interface Invoice {
+  id: string
+  amount: string
+  token: string
+  chain: string
+  recipientAddress: string
+  status: 'pending' | 'paid' | 'expired'
+  createdAt: string
+}
+
