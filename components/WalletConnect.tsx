@@ -487,6 +487,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             if (address) {
               console.log('[Xverse Detection] 🎉 SUCCESS! Extracted address:', address)
               setBtcAddress(address)
+              setConnecting(false)
               onBitcoinConnect?.(address)
               return
             } else {
@@ -512,6 +513,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             const address = accounts[0].address || accounts[0]
             if (address) {
               setBtcAddress(address)
+              setConnecting(false)
               onBitcoinConnect?.(address)
               return
             }
