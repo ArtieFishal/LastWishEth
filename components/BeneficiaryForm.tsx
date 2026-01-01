@@ -15,14 +15,18 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
   const [walletAddress, setWalletAddress] = useState('')
   const [resolvingEns, setResolvingEns] = useState(false)
   const [ensName, setEnsName] = useState<string | null>(null)
+  const [resolvedAddress, setResolvedAddress] = useState<string | null>(null)
   
-  // Resolve ENS name when wallet address changes
+  // Resolve ENS name or address when wallet address changes
   useEffect(() => {
     const resolveENS = async () => {
-      if (!walletAddress || !walletAddress.startsWith('0x') || walletAddress.length < 42) {
+      if (!walletAddress || walletAddress.trim().length === 0) {
         setEnsName(null)
+        setResolvedAddress(null)
         return
       }
+      
+      const input = walletAddress.trim()
       
       setResolvingEns(true)
       try {
@@ -30,11 +34,41 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
           chain: mainnet,
           transport: http(),
         })
-        const resolved = await publicClient.getEnsName({ address: walletAddress as `0x${string}` })
-        setEnsName(resolved || null)
+        
+        // Check if input is an ENS name (ends with .eth)
+        if (input.endsWith('.eth')) {
+          // Forward lookup: ENS name -> address
+          const address = await publicClient.getEnsAddress({ name: input })
+          if (address) {
+            setResolvedAddress(address)
+            setEnsName(input) // Keep the ENS name
+            console.log(`Resolved ENS "${input}" to address: ${address}`)
+          } else {
+            setResolvedAddress(null)
+            setEnsName(null)
+          }
+        } 
+        // Check if input is an Ethereum address (starts with 0x and is 42 chars)
+        else if (input.startsWith('0x') && input.length === 42) {
+          // Reverse lookup: address -> ENS name
+          const resolved = await publicClient.getEnsName({ address: input as `0x${string}` })
+          if (resolved) {
+            setEnsName(resolved)
+            setResolvedAddress(input.toLowerCase())
+            console.log(`Resolved address "${input}" to ENS: ${resolved}`)
+          } else {
+            setEnsName(null)
+            setResolvedAddress(input.toLowerCase())
+          }
+        } else {
+          // Not a valid ENS name or address
+          setEnsName(null)
+          setResolvedAddress(null)
+        }
       } catch (error) {
         console.error('Error resolving ENS:', error)
         setEnsName(null)
+        setResolvedAddress(null)
       } finally {
         setResolvingEns(false)
       }
@@ -55,16 +89,27 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
       return
     }
 
+    // Use resolved address if available (from ENS lookup), otherwise use input
+    const finalAddress = resolvedAddress || walletAddress.trim()
+    
+    // Validate address format
+    if (!finalAddress.startsWith('0x') || finalAddress.length !== 42) {
+      alert('Invalid wallet address. Please enter a valid Ethereum address (0x...) or ENS name (.eth)')
+      return
+    }
+
     const newBeneficiary: Beneficiary = {
       id: `ben-${Date.now()}`,
       name: name.trim(),
-      walletAddress: walletAddress.trim(),
+      walletAddress: finalAddress.toLowerCase(),
       ensName: ensName || undefined,
     }
 
     onBeneficiariesChange([...beneficiaries, newBeneficiary])
     setName('')
     setWalletAddress('')
+    setEnsName(null)
+    setResolvedAddress(null)
   }
 
   const handleRemove = (id: string) => {
@@ -88,22 +133,34 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1">
-              Wallet Address {ensName && <span className="text-green-600">✓ ENS: {ensName}</span>}
+              Wallet Address or ENS Name
             </label>
             <input
               type="text"
               value={walletAddress}
               onChange={(e) => setWalletAddress(e.target.value)}
               className="w-full rounded-lg border border-gray-300 p-2 text-sm font-mono focus:border-blue-500 focus:outline-none"
-              placeholder="0x... or bc1... or name.eth"
+              placeholder="0x... or name.eth (e.g., crazypretty.eth)"
             />
             {resolvingEns && (
-              <p className="text-xs text-gray-500 mt-1">Resolving ENS name...</p>
+              <p className="text-xs text-gray-500 mt-1">Resolving ENS...</p>
             )}
-            {ensName && (
-              <p className="text-xs text-green-600 font-semibold mt-1">
-                ✓ Resolved: {ensName}
-              </p>
+            {ensName && resolvedAddress && (
+              <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-xs text-green-800 font-semibold">
+                  ✓ ENS Name: <span className="font-bold">{ensName}</span>
+                </p>
+                <p className="text-xs text-green-700 font-mono break-all mt-1">
+                  Address: {resolvedAddress}
+                </p>
+              </div>
+            )}
+            {!ensName && resolvedAddress && (
+              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-blue-800 font-semibold">
+                  ✓ Valid Address: <span className="font-mono">{resolvedAddress}</span>
+                </p>
+              </div>
             )}
           </div>
         </div>

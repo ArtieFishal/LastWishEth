@@ -298,32 +298,40 @@ export default function Home() {
  }, [evmAddress, connectedEVMAddresses])
 
  // Load assets when wallets are connected (but don't auto-load, let user control it)
- const loadAssets = async (append = false) => {
+ const loadAssets = async (append = false, loadFromAllWallets = false) => {
  setLoading(true)
  setError(null)
  // Show loading message
  console.log('Loading assets, be patient...')
  try {
  const newAssets: Asset[] = []
- const currentWalletKey = `${evmAddress || ''}-${btcAddress || ''}`
-
- // Skip if we've already loaded this wallet combination
- if (!append && loadedWallets.has(currentWalletKey)) {
- setLoading(false)
- return
+ 
+ // Determine which wallets to load from
+ let walletsToLoad: string[] = []
+ 
+ if (loadFromAllWallets) {
+ // Load from ALL connected and verified wallets
+ walletsToLoad = Array.from(connectedEVMAddresses).filter(addr => verifiedAddresses.has(addr))
+ console.log(`Loading from all verified wallets: ${walletsToLoad.length} wallet(s)`)
+ } else {
+ // Load from currently connected wallet only (if verified)
+ if (isConnected && evmAddress && verifiedAddresses.has(evmAddress)) {
+ walletsToLoad = [evmAddress]
+ }
  }
 
- // Load EVM assets (only for verified addresses - signature verification required!)
- if (isConnected && evmAddress && verifiedAddresses.has(evmAddress)) {
+ // Load EVM assets from all specified wallets
+ if (walletsToLoad.length > 0) {
  try {
  const evmResponse = await axios.post('/api/portfolio/evm', {
- addresses: [evmAddress],
+ addresses: walletsToLoad,
  })
  if (evmResponse.data?.assets && Array.isArray(evmResponse.data.assets)) {
  // Filter out duplicates by checking if asset ID already exists
  const existingIds = new Set(assets.map(a => a.id))
  const uniqueAssets = evmResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
  newAssets.push(...uniqueAssets)
+ console.log(`Loaded ${uniqueAssets.length} new assets from ${walletsToLoad.length} wallet(s)`)
  }
  } catch (err) {
  console.error('Error loading EVM assets:', err)
@@ -364,17 +372,26 @@ export default function Home() {
  }
  }
 
- // Track this wallet combination as loaded
+ // Track loaded wallets
+ if (loadFromAllWallets) {
+ // Mark all loaded wallets
+ walletsToLoad.forEach(addr => {
+ const walletKey = `${addr}-`
+ setLoadedWallets(new Set([...loadedWallets, walletKey]))
+ })
+ } else {
+ // Track current wallet combination
+ const currentWalletKey = `${evmAddress || ''}-${btcAddress || ''}`
  if (currentWalletKey && (evmAddress || btcAddress)) {
  setLoadedWallets(new Set([...loadedWallets, currentWalletKey]))
- // Track EVM addresses for ENS resolution
- if (evmAddress) {
- setConnectedEVMAddresses(new Set([...connectedEVMAddresses, evmAddress]))
  }
  }
 
- if (newAssets.length === 0 && (isConnected || btcAddress)) {
- setError('No new assets found. Make sure your wallets have balances.')
+ if (newAssets.length === 0 && (walletsToLoad.length > 0 || btcAddress)) {
+ // Only show error if we actually tried to load from wallets
+ if (walletsToLoad.length > 0 || btcAddress) {
+ setError('No new assets found. Make sure your wallets have balances and are verified (signature required).')
+ }
  }
  } catch (error) {
  console.error('Error loading assets:', error)
@@ -629,9 +646,55 @@ export default function Home() {
  {/* Show connected wallets with disconnect options - show ABOVE connect options */}
  {(connectedEVMAddresses.size > 0 || btcAddress) && (
  <div className="mb-6 space-y-4">
- <h3 className="text-lg font-bold text-gray-900 border-b-2 border-gray-300 pb-2">
+ <div className="flex items-center justify-between border-b-2 border-gray-300 pb-2">
+ <h3 className="text-lg font-bold text-gray-900">
  Connected Wallets ({connectedEVMAddresses.size + (btcAddress ? 1 : 0)})
  </h3>
+ <div className="flex gap-2">
+ <button
+ onClick={async () => {
+ // Load assets from ALL verified wallets at once
+ const verifiedWallets = Array.from(connectedEVMAddresses).filter(addr => verifiedAddresses.has(addr))
+ if (verifiedWallets.length > 0) {
+ await loadAssets(true, true) // append=true, loadFromAllWallets=true
+ } else {
+ setError('Please verify at least one wallet (sign message) before loading assets.')
+ }
+ }}
+ disabled={loading || Array.from(connectedEVMAddresses).filter(addr => verifiedAddresses.has(addr)).length === 0}
+ className="px-4 py-2 text-sm font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+ >
+ {loading ? 'Loading...' : 'Load All Wallets'}
+ </button>
+ <button
+ onClick={() => {
+ // Disconnect all wallets and clear state
+ if (confirm('Disconnect all wallets and clear all data? This will remove all loaded assets and allocations.')) {
+ // Clear all wallet connections
+ setConnectedEVMAddresses(new Set())
+ setBtcAddress(null)
+ setVerifiedAddresses(new Set())
+ setLoadedWallets(new Set())
+ disconnect()
+ // Clear all state
+ setAssets([])
+ setSelectedAssetIds([])
+ setBeneficiaries([])
+ setAllocations([])
+ setStep('connect')
+ // Clear localStorage
+ if (typeof window !== 'undefined') {
+ localStorage.removeItem('lastwish_state')
+ }
+ setError(null)
+ }
+ }}
+ className="px-4 py-2 text-sm font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors"
+ >
+ Disconnect All
+ </button>
+ </div>
+ </div>
  {Array.from(connectedEVMAddresses).map((addr) => {
  const ensName = resolvedEnsNames[addr.toLowerCase()] || walletNames[addr]
  const walletAssets = assets.filter(a => 
@@ -809,13 +872,24 @@ export default function Home() {
  <div className="mt-8 space-y-3">
  <button
  onClick={async () => {
- await loadAssets(assets.length > 0) // Append if we already have assets
+ await loadAssets(assets.length > 0, false) // Append if we already have assets, load from current wallet only
  setStep('assets')
  }}
  className="w-full rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg"
  >
- {assets.length > 0 ? 'Add Assets from This Wallet' : 'Load Assets →'}
+ {assets.length > 0 ? 'Add Assets from This Wallet' : 'Load Assets from This Wallet →'}
  </button>
+ {connectedEVMAddresses.size > 1 && Array.from(connectedEVMAddresses).filter(addr => verifiedAddresses.has(addr)).length > 1 && (
+ <button
+ onClick={async () => {
+ await loadAssets(assets.length > 0, true) // Append if we already have assets, load from ALL verified wallets
+ setStep('assets')
+ }}
+ className="w-full rounded-lg bg-green-600 text-white p-4 font-semibold hover:bg-green-700 transition-colors shadow-lg"
+ >
+ Load Assets from ALL Verified Wallets ({Array.from(connectedEVMAddresses).filter(addr => verifiedAddresses.has(addr)).length}) →
+ </button>
+ )}
  {assets.length > 0 && (
  <button
  onClick={() => setStep('assets')}
@@ -826,7 +900,7 @@ export default function Home() {
  )}
  <div className="mt-4 text-center">
  <p className="text-sm text-gray-600">
- 💡 You can connect multiple wallets. Click "Add Assets from This Wallet" for each wallet, then continue when done.
+ 💡 You can connect multiple wallets. Load assets from each wallet individually, or load from all verified wallets at once.
  </p>
  </div>
  </div>
