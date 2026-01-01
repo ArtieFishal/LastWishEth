@@ -65,6 +65,7 @@ export default function Home() {
  const [discountCode, setDiscountCode] = useState('')
  const [discountApplied, setDiscountApplied] = useState(false)
  const [paymentWalletAddress, setPaymentWalletAddress] = useState<string | null>(null) // First verified wallet for payment
+ const [selectedWalletForLoading, setSelectedWalletForLoading] = useState<string | null>(null) // Currently selected wallet for loading assets
 
  // Prevent hydration mismatch
  useEffect(() => {
@@ -295,7 +296,70 @@ export default function Home() {
  if (evmAddress || connectedEVMAddresses.size > 0) {
  resolveWalletNames()
  }
- }, [evmAddress, connectedEVMAddresses])
+ 
+ // Auto-select first verified wallet if none selected
+ if (selectedWalletForLoading === null && connectedEVMAddresses.size > 0) {
+ const firstVerified = Array.from(connectedEVMAddresses).find(addr => verifiedAddresses.has(addr))
+ if (firstVerified) {
+ setSelectedWalletForLoading(firstVerified)
+ }
+ }
+ }, [evmAddress, connectedEVMAddresses, verifiedAddresses, selectedWalletForLoading])
+
+ // Load assets from a specific wallet address
+ const loadAssetsFromWallet = async (walletAddress: string, append = false) => {
+ setLoading(true)
+ setError(null)
+ console.log(`Loading assets from wallet: ${walletAddress}`)
+ try {
+ const newAssets: Asset[] = []
+ 
+ if (verifiedAddresses.has(walletAddress)) {
+ try {
+ const evmResponse = await axios.post('/api/portfolio/evm', {
+ addresses: [walletAddress],
+ })
+ if (evmResponse.data?.assets && Array.isArray(evmResponse.data.assets)) {
+ const existingIds = new Set(assets.map(a => a.id))
+ const uniqueAssets = evmResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
+ newAssets.push(...uniqueAssets)
+ console.log(`Loaded ${uniqueAssets.length} new assets from wallet`)
+ }
+ } catch (err) {
+ console.error('Error loading EVM assets:', err)
+ setError('Failed to load EVM assets. Please try again.')
+ }
+ } else {
+ setError('Wallet must be verified (signature required) before loading assets.')
+ setLoading(false)
+ return
+ }
+
+ if (append) {
+ setAssets([...assets, ...newAssets])
+ if (newAssets.length > 0) {
+ setSelectedAssetIds([...selectedAssetIds, ...newAssets.map(a => a.id)])
+ }
+ } else {
+ setAssets(newAssets)
+ if (newAssets.length > 0) {
+ setSelectedAssetIds(newAssets.map(a => a.id))
+ }
+ }
+
+ const walletKey = `${walletAddress}-`
+ setLoadedWallets(new Set([...loadedWallets, walletKey]))
+
+ if (newAssets.length === 0) {
+ setError('No new assets found. Make sure your wallet has balances.')
+ }
+ } catch (error) {
+ console.error('Error loading assets:', error)
+ setError('Failed to load assets. Please try again.')
+ } finally {
+ setLoading(false)
+ }
+ }
 
  // Load assets when wallets are connected (but don't auto-load, let user control it)
  const loadAssets = async (append = false, loadFromAllWallets = false) => {
@@ -701,14 +765,45 @@ export default function Home() {
  a.walletAddress === addr
  )
  const walletAssetCount = walletAssets.length
+ const isSelected = selectedWalletForLoading === addr
+ const isVerified = verifiedAddresses.has(addr)
  return (
- <div key={addr} className="bg-white border-2 border-blue-200 rounded-lg p-4 shadow-sm">
+ <div 
+ key={addr} 
+ onClick={() => {
+ if (isVerified) {
+ setSelectedWalletForLoading(addr)
+ // Switch wagmi connection to this wallet if needed
+ if (evmAddress !== addr && isConnected) {
+ // Note: wagmi doesn't support switching accounts directly
+ // User would need to switch in their wallet
+ }
+ }
+ }}
+ className={`bg-white border-2 rounded-lg p-4 shadow-sm cursor-pointer transition-all ${
+ isSelected 
+ ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-300' 
+ : isVerified
+ ? 'border-blue-200 hover:border-blue-300 hover:shadow-md'
+ : 'border-gray-200 opacity-60'
+ }`}
+ >
  <div className="flex items-start justify-between">
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2 mb-2">
  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
  EVM WALLET
  </span>
+ {isSelected && (
+ <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-600 text-white">
+ ✓ SELECTED
+ </span>
+ )}
+ {!isVerified && (
+ <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+ ⚠ VERIFY REQUIRED
+ </span>
+ )}
  {walletAssetCount > 0 && (
  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
  {walletAssetCount} Asset{walletAssetCount !== 1 ? 's' : ''} Loaded
@@ -743,6 +838,7 @@ export default function Home() {
  </div>
  </div>
  
+ <div className="ml-4 flex flex-col gap-2">
  <button
  onClick={() => {
  // Just disconnect the wallet - KEEP all assets and selections
@@ -750,6 +846,11 @@ export default function Home() {
  setConnectedEVMAddresses(prev => {
  const newSet = new Set(prev)
  newSet.delete(addr)
+ // If this was the selected wallet, select another one
+ if (selectedWalletForLoading === addr) {
+ const remaining = Array.from(newSet).filter(a => verifiedAddresses.has(a))
+ setSelectedWalletForLoading(remaining.length > 0 ? remaining[0] : null)
+ }
  return newSet
  })
  // Disconnect from wagmi if this is the currently active connection
@@ -759,10 +860,23 @@ export default function Home() {
  // Don't remove assets - they're already loaded and selected assets should be preserved
  // The walletAddress field on assets will still show which wallet they came from
  }}
- className="ml-4 px-4 py-2 text-sm font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors whitespace-nowrap"
+ className="px-4 py-2 text-sm font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors whitespace-nowrap"
  >
  Disconnect
  </button>
+ {isVerified && (
+ <button
+ onClick={() => setSelectedWalletForLoading(addr)}
+ className={`px-4 py-2 text-sm font-semibold rounded-lg border transition-colors whitespace-nowrap ${
+ isSelected
+ ? 'bg-blue-600 text-white border-blue-600'
+ : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+ }`}
+ >
+ {isSelected ? '✓ Selected' : 'Select'}
+ </button>
+ )}
+ </div>
  </div>
  </div>
  )
@@ -834,10 +948,23 @@ export default function Home() {
  }}
  onEvmConnect={async (addr) => {
  if (addr && !connectedEVMAddresses.has(addr)) {
+ // Check wallet limit (20 wallets max)
+ if (connectedEVMAddresses.size >= 20) {
+ setError('Maximum 20 wallets allowed. Please disconnect a wallet first.')
+ return
+ }
  setConnectedEVMAddresses(prev => new Set([...prev, addr]))
+ // Set as selected if it's the first wallet or no wallet is selected
+ if (selectedWalletForLoading === null) {
+ setSelectedWalletForLoading(addr)
+ }
  // Request signature to verify ownership
  if (!verifiedAddresses.has(addr)) {
- await verifyWalletOwnership(addr)
+ const verified = await verifyWalletOwnership(addr)
+ // If verified and no wallet is selected, select this one
+ if (verified && selectedWalletForLoading === null) {
+ setSelectedWalletForLoading(addr)
+ }
  }
  }
  }}
@@ -868,16 +995,30 @@ export default function Home() {
  </div>
  )}
 
- {mounted && ((isConnected && evmAddress && verifiedAddresses.has(evmAddress)) || btcAddress) && !loading && (
+ {mounted && selectedWalletForLoading && verifiedAddresses.has(selectedWalletForLoading) && !loading && (
  <div className="mt-8 space-y-3">
+ <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+ <p className="text-sm font-semibold text-blue-900 mb-1">
+ Selected Wallet:
+ </p>
+ <p className="text-xs text-blue-700 font-mono break-all">
+ {resolvedEnsNames[selectedWalletForLoading.toLowerCase()] || walletNames[selectedWalletForLoading] || selectedWalletForLoading}
+ </p>
+ </div>
  <button
  onClick={async () => {
- await loadAssets(assets.length > 0, false) // Append if we already have assets, load from current wallet only
+ // Temporarily set evmAddress context to selected wallet for loading
+ const originalEvmAddress = evmAddress
+ // Load from selected wallet
+ if (selectedWalletForLoading) {
+ // Create a temporary context - we'll pass the address directly to loadAssets
+ await loadAssetsFromWallet(selectedWalletForLoading, assets.length > 0)
  setStep('assets')
+ }
  }}
  className="w-full rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg"
  >
- {assets.length > 0 ? 'Add Assets from This Wallet' : 'Load Assets from This Wallet →'}
+ {assets.length > 0 ? 'Add Assets from Selected Wallet' : 'Load Assets from Selected Wallet →'}
  </button>
  {connectedEVMAddresses.size > 1 && Array.from(connectedEVMAddresses).filter(addr => verifiedAddresses.has(addr)).length > 1 && (
  <button

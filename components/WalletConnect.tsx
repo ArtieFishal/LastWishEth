@@ -619,10 +619,28 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
           Each wallet requires signature verification to prove ownership before assets can be loaded.
         </p>
-        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <p className="text-xs text-blue-800 dark:text-blue-300">
-            <strong>📱 Mobile Wallet Support:</strong> Clicking "WalletConnect" shows a QR code that works with <strong>any</strong> compatible wallet app on your phone (MetaMask, Trust Wallet, Rainbow, Coinbase Wallet, etc.). Just scan the QR code with your wallet app!
-          </p>
+        <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border-2 border-blue-300 dark:border-blue-700 rounded-lg shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl flex-shrink-0">📱</span>
+            <div>
+              <p className="text-sm font-bold text-blue-900 dark:text-blue-100 mb-2">
+                Mobile Wallet Support
+              </p>
+              <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                Clicking <strong className="font-bold">"WalletConnect"</strong> shows a QR code that works with <strong className="font-bold">any</strong> compatible wallet app on your phone:
+              </p>
+              <ul className="text-sm text-blue-800 dark:text-blue-200 mt-2 ml-4 list-disc space-y-1">
+                <li>MetaMask</li>
+                <li>Trust Wallet</li>
+                <li>Rainbow</li>
+                <li>Coinbase Wallet</li>
+                <li>And many more!</li>
+              </ul>
+              <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mt-2">
+                Just scan the QR code with your wallet app!
+              </p>
+            </div>
+          </div>
         </div>
         {availableConnectors.length > 0 ? (
           <div className="space-y-3">
