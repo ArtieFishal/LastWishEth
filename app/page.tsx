@@ -942,9 +942,13 @@ export default function Home() {
  Connect more wallets to add their assets. You can connect multiple EVM wallets and Bitcoin wallets.
  </p>
  <WalletConnect
- onBitcoinConnect={(addr) => {
+ onBitcoinConnect={async (addr) => {
  setBtcAddress(addr)
  setError(null)
+ // Automatically load Bitcoin assets after connection
+ if (addr) {
+ await loadAssets(true, false) // append=true, loadFromAllWallets=false
+ }
  }}
  onEvmConnect={async (addr) => {
  if (addr && !connectedEVMAddresses.has(addr)) {
