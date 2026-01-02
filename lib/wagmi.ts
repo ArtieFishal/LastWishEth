@@ -53,35 +53,8 @@ const buildConnectors = async () => {
     }
   }
   
-  // Add injected connectors AFTER WalletConnect - these are secondary options
-  // Only show if wallet is actually installed and ready
-  try {
-    const { injected } = await import('wagmi/connectors')
-    
-    // Add specific injected connectors for top 3 most popular wallets only
-    // wagmi will only show the ones that are actually installed in the user's browser
-    const commonWallets = [
-      'metaMask',        // #1 most popular
-      'phantom',         // #2 most popular  
-      'rainbow',         // #3 most popular
-    ]
-    
-    // Add connectors for each common wallet type
-    // These will only appear if the wallet extension is actually installed
-    commonWallets.forEach(target => {
-      try {
-        const connector = injected({ target: target as any })
-        connectors.push(connector)
-      } catch (e) {
-        // Skip if specific wallet connector fails
-      }
-    })
-  } catch (error) {
-    // Silently fail if injected connectors can't be loaded
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('Injected connectors not available:', error)
-    }
-  }
+  // No injected wallet connectors - keeping it simple with just WalletConnect
+  // Users can connect any wallet via WalletConnect QR code
   
   return connectors
 }
