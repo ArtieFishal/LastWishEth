@@ -888,7 +888,6 @@ setError('Failed to load Bitcoin assets. Please try again.')
 
  // Check required owner fields
  if (!ownerFullName.trim()) errors.push('Owner full name')
- if (!ownerName.trim()) errors.push('Owner name')
  if (!ownerAddress.trim()) errors.push('Owner address')
  if (!ownerCity.trim()) errors.push('Owner city')
  if (!ownerState.trim()) errors.push('Owner state')
