@@ -16,12 +16,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const discountCode = body.discountCode?.toLowerCase().trim() || ''
     
-    // Check for discount code
+    // Check for discount code (accept common variations)
+    const normalizedCode = discountCode.replace(/[^a-z0-9]/g, '') // Remove special chars
     const validDiscountCodes: Record<string, number> = {
-      'nofomo': 100, // 100% discount
+      'nofomo': 100, // 100% discount (accepts nofomo, no-fomo, no_fomo, etc.)
     }
     
-    const discountPercent = validDiscountCodes[discountCode] || 0
+    const discountPercent = validDiscountCodes[normalizedCode] || 0
     const discountApplied = discountPercent === 100
     
     const invoiceId = uuidv4()

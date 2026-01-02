@@ -723,15 +723,25 @@ export default function Home() {
  const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
  const url = URL.createObjectURL(blob)
  
- // Open PDF in new window for printing
- const printWindow = window.open(url, '_blank')
+ // Create iframe for printing (more reliable than window.open)
+ const iframe = document.createElement('iframe')
+ iframe.style.display = 'none'
+ iframe.src = url
+ document.body.appendChild(iframe)
  
- if (printWindow) {
- // Wait for PDF to load, then trigger print dialog
- printWindow.onload = () => {
+ // Wait for iframe to load, then trigger print
+ iframe.onload = () => {
  setTimeout(() => {
- printWindow.print()
- }, 500)
+ try {
+ // Try to print from iframe
+ if (iframe.contentWindow) {
+ iframe.contentWindow.focus()
+ iframe.contentWindow.print()
+ }
+ } catch (e) {
+ console.error('Error printing from iframe:', e)
+ }
+ }, 1000) // Give PDF time to fully load
  }
  
  // Also download the file automatically
@@ -742,21 +752,13 @@ export default function Home() {
  a.click()
  document.body.removeChild(a)
  
- // Clean up URL after a delay
+ // Clean up iframe and URL after printing
  setTimeout(() => {
- URL.revokeObjectURL(url)
- }, 2000)
- } else {
- // Fallback if popup blocked - just download
- const a = document.createElement('a')
- a.href = url
- a.download = `lastwish-crypto-instructions-${Date.now()}.pdf`
- document.body.appendChild(a)
- a.click()
- document.body.removeChild(a)
- URL.revokeObjectURL(url)
- alert('Please allow popups to enable automatic printing. The PDF has been downloaded.')
+ if (iframe.parentNode) {
+ iframe.parentNode.removeChild(iframe)
  }
+ URL.revokeObjectURL(url)
+ }, 5000)
  } catch (error) {
  console.error('Error generating PDF:', error)
  setError('Failed to generate PDF. Please try again.')
@@ -2081,11 +2083,12 @@ export default function Home() {
  // Send transaction with manual gas limit to avoid estimation issues
  // Simple ETH transfer needs ~21,000 gas, we'll use 50,000 to be safe
  // Wallet can still override this if needed
+ // Send transaction - let wallet handle gas estimation completely
+ // Don't specify gas limit - wallet will estimate and show user options
  sendTransaction({
  to: paymentRecipientAddress,
  value: parseEther('0.00025'),
- gas: BigInt(50000), // Manual gas limit - avoids estimation errors
- // Let wallet set gas price (it will show options)
+ // No gas limit specified - wallet handles everything
  })
  } catch (error: any) {
  console.error('Error sending payment:', error)
