@@ -814,7 +814,48 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
  {/* Header */}
- <header className="text-center mb-12">
+ <header className="text-center mb-12 relative">
+ <div className="absolute top-0 right-0">
+ <button
+ onClick={() => {
+ if (confirm('Start over? This will clear all your progress and return to the beginning.')) {
+ // Clear all state
+ setStep('connect')
+ setAssets([])
+ setBeneficiaries([])
+ setAllocations([])
+ setSelectedAssetIds([])
+ setQueuedSessions([])
+ setOwnerName('')
+ setOwnerFullName('')
+ setOwnerAddress('')
+ setOwnerCity('')
+ setOwnerState('')
+ setOwnerZipCode('')
+ setOwnerPhone('')
+ setExecutorName('')
+ setExecutorAddress('')
+ setExecutorPhone('')
+ setExecutorEmail('')
+ setExecutorTwitter('')
+ setExecutorLinkedIn('')
+ setKeyInstructions('')
+ setInvoiceId(null)
+ setPaymentVerified(false)
+ setDiscountCode('')
+ setDiscountApplied(false)
+ setError(null)
+ // Clear localStorage
+ if (typeof window !== 'undefined') {
+ localStorage.removeItem('lastwish_state')
+ }
+ }
+ }}
+ className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors"
+ >
+ ↻ Start Over
+ </button>
+ </div>
  <h1 className="text-5xl font-bold text-gray-900 mb-3">LastWish.eth</h1>
  <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-4">
  Do you really want to take your crypto to the grave with you by accident?
