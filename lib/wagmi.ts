@@ -32,8 +32,8 @@ const buildConnectors = async () => {
           },
           qrModalOptions: {
             themeMode: 'light',
-            // Make QR code more prominent and user-friendly
-            enableExplorer: true,
+            // Only show recommended wallets (no explorer with all wallets)
+            enableExplorer: false,
             explorerRecommendedWalletIds: [
               'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96', // MetaMask
               '4622a2b2d6af1c984494a1eb792761e6169f3a0e25b1423488c2082b1633d88', // Trust Wallet
