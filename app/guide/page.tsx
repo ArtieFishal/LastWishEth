@@ -15,10 +15,10 @@ export default function GuidePage() {
           <section className="border-b-2 border-gray-200 pb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">📋 Table of Contents</h2>
             <ul className="space-y-2 text-gray-700">
-              <li><a href="#crisis-benefits" className="text-blue-600 hover:underline">1. Benefits in Times of Crisis</a></li>
-              <li><a href="#lost-crypto-stats" className="text-blue-600 hover:underline">2. The Cost of Inaction: Lost Crypto Statistics</a></li>
-              <li><a href="#why-matters" className="text-blue-600 hover:underline">3. Why LastWish.eth Matters</a></li>
-              <li><a href="#navigation-guide" className="text-blue-600 hover:underline">4. Step-by-Step Navigation Guide</a></li>
+              <li><a href="#navigation-guide" className="text-blue-600 hover:underline">1. Step-by-Step Navigation Guide</a></li>
+              <li><a href="#crisis-benefits" className="text-blue-600 hover:underline">2. Benefits in Times of Crisis</a></li>
+              <li><a href="#lost-crypto-stats" className="text-blue-600 hover:underline">3. The Cost of Inaction: Lost Crypto Statistics</a></li>
+              <li><a href="#why-matters" className="text-blue-600 hover:underline">4. Why LastWish.eth Matters</a></li>
             </ul>
           </section>
 
