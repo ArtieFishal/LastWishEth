@@ -1102,11 +1102,11 @@ export default function Home() {
  <div className="flex-1">
  <div className="flex items-center gap-2 mb-2">
  <span className="font-mono text-sm font-semibold text-gray-900">
- {session.ensName || `${session.walletAddress.slice(0, 6)}...${session.walletAddress.slice(-4)}`}
+ {session.ensName || session.walletAddress}
  </span>
  {session.ensName && (
  <span className="text-xs text-gray-500 font-mono">
- ({session.walletAddress.slice(0, 6)}...{session.walletAddress.slice(-4)})
+ ({session.walletAddress})
  </span>
  )}
  <span className={`px-2 py-1 rounded text-xs font-semibold ${
@@ -1232,126 +1232,127 @@ export default function Home() {
  </div>
  {Array.from(connectedEVMAddresses).map((addr) => {
  const ensName = resolvedEnsNames[addr.toLowerCase()] || walletNames[addr]
- const walletAssets = assets.filter(a => 
- a.walletAddress === addr
- )
+ const walletAssets = assets.filter(a => a.walletAddress === addr)
  const walletAssetCount = walletAssets.length
  const isSelected = selectedWalletForLoading === addr
  const isVerified = verifiedAddresses.has(addr)
+ const walletProvider = walletProviders[addr] || 'Unknown'
+ 
  return (
- <div 
- key={addr} 
- onClick={() => {
- if (isVerified) {
- setSelectedWalletForLoading(addr)
- // Switch wagmi connection to this wallet if needed
- if (evmAddress !== addr && isConnected) {
- // Note: wagmi doesn't support switching accounts directly
- // User would need to switch in their wallet
- }
- }
- }}
- className={`bg-gray-50 border-2 rounded-lg p-4 shadow-sm cursor-pointer transition-all ${
- isSelected 
- ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-300' 
- : isVerified
- ? 'border-blue-200 hover:border-blue-300 hover:shadow-md'
- : 'border-gray-200 opacity-60'
- }`}
- >
- <div className="flex items-start justify-between">
- <div className="flex-1 min-w-0">
- <div className="flex items-center gap-2 mb-2">
- <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
- EVM WALLET
- </span>
- {isSelected && (
- <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-600 text-white">
- ✓ SELECTED
- </span>
- )}
- {!isVerified && (
- <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
- ⚠ VERIFY REQUIRED
- </span>
- )}
- {walletAssetCount > 0 && (
- <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
- {walletAssetCount} Asset{walletAssetCount !== 1 ? 's' : ''} Loaded
- </span>
- )}
- </div>
- 
- {ensName && ensName !== addr && (
- <div className="mb-2">
- <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
- ENS Name
- </p>
- <p className="text-base font-bold text-gray-900 break-all">
- {ensName}
- </p>
- </div>
- )}
- 
- <div className="mt-2">
- <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
- Wallet Address
- </p>
- <p className="text-sm font-mono text-gray-700 break-all bg-gray-50 p-2 rounded border">
- {addr}
- </p>
- </div>
- 
- <div className="mt-3 pt-3 border-t border-gray-200">
- <p className="text-xs text-gray-500">
- <span className="font-semibold">Supported Chains:</span> Ethereum, Base, Arbitrum, Polygon
- </p>
- </div>
- </div>
- 
- <div className="ml-4 flex flex-col gap-2">
- <button
- onClick={() => {
- // Just disconnect the wallet - KEEP all assets and selections
- // Assets are already loaded and have walletAddress, so they're preserved
- setConnectedEVMAddresses(prev => {
- const newSet = new Set(prev)
- newSet.delete(addr)
- // If this was the selected wallet, select another one
- if (selectedWalletForLoading === addr) {
- const remaining = Array.from(newSet).filter(a => verifiedAddresses.has(a))
- setSelectedWalletForLoading(remaining.length > 0 ? remaining[0] : null)
- }
- return newSet
- })
- // Disconnect from wagmi if this is the currently active connection
- if (evmAddress === addr) {
- disconnect()
- }
- // Don't remove assets - they're already loaded and selected assets should be preserved
- // The walletAddress field on assets will still show which wallet they came from
- }}
- className="px-4 py-2 text-sm font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors whitespace-nowrap"
- >
- Disconnect
- </button>
- {isVerified && (
- <button
- onClick={() => setSelectedWalletForLoading(addr)}
- className={`px-4 py-2 text-sm font-semibold rounded-lg border transition-colors whitespace-nowrap ${
- isSelected
- ? 'bg-blue-600 text-white border-blue-600'
- : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
- }`}
- >
- {isSelected ? '✓ Selected' : 'Select'}
- </button>
- )}
- </div>
- </div>
- </div>
+   <div 
+     key={addr} 
+     className={`bg-white border-2 rounded-lg shadow-sm transition-all mb-3 ${
+       isSelected 
+       ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-300' 
+       : isVerified
+       ? 'border-blue-200 hover:border-blue-300 hover:shadow-md'
+       : 'border-gray-200 opacity-60'
+     }`}
+   >
+     {/* Wallet header - clickable to select */}
+     <div 
+       onClick={() => {
+         if (isVerified) {
+           setSelectedWalletForLoading(addr)
+         }
+       }}
+       className="p-4 cursor-pointer"
+     >
+       <div className="flex items-start justify-between">
+         <div className="flex-1 min-w-0">
+           <div className="flex items-center gap-2 mb-2 flex-wrap">
+             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+               {walletProvider}
+             </span>
+             {isSelected && (
+               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-600 text-white">
+                 ✓ Selected
+               </span>
+             )}
+             {!isVerified && (
+               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                 ⚠ Verify Required
+               </span>
+             )}
+             {walletAssetCount > 0 && (
+               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                 {walletAssetCount} Asset{walletAssetCount !== 1 ? 's' : ''}
+               </span>
+             )}
+           </div>
+           
+           {/* Full address display - NO truncation */}
+           <div className="mt-2">
+             {ensName && ensName !== addr && (
+               <p className="text-sm font-semibold text-gray-900 mb-1 break-all">
+                 {ensName}
+               </p>
+             )}
+             <p className="text-xs font-mono text-gray-700 break-all bg-gray-50 p-2 rounded border">
+               {addr}
+             </p>
+           </div>
+         </div>
+         
+         <div className="ml-4 flex gap-2 flex-shrink-0">
+           <button
+             onClick={(e) => {
+               e.stopPropagation()
+               setConnectedEVMAddresses(prev => {
+                 const newSet = new Set(prev)
+                 newSet.delete(addr)
+                 if (selectedWalletForLoading === addr) {
+                   const remaining = Array.from(newSet).filter(a => verifiedAddresses.has(a))
+                   setSelectedWalletForLoading(remaining.length > 0 ? remaining[0] : null)
+                 }
+                 return newSet
+               })
+               if (evmAddress === addr) {
+                 disconnect()
+               }
+             }}
+             className="px-3 py-1.5 text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+           >
+             Disconnect
+           </button>
+           {isVerified && (
+             <button
+               onClick={(e) => {
+                 e.stopPropagation()
+                 setSelectedWalletForLoading(addr)
+               }}
+               className={`px-3 py-1.5 text-xs font-semibold rounded border transition-colors ${
+                 isSelected
+                 ? 'bg-blue-600 text-white border-blue-600'
+                 : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+               }`}
+             >
+               {isSelected ? '✓' : 'Select'}
+             </button>
+           )}
+         </div>
+       </div>
+     </div>
+     
+     {/* Load Assets button - appears directly below wallet when verified */}
+     {isVerified && (
+       <div className="px-4 pb-4 border-t border-gray-200 pt-3">
+         <button
+           onClick={async (e) => {
+             e.stopPropagation()
+             await loadAssetsFromWallet(addr, assets.length > 0)
+             setStep('assets')
+           }}
+           disabled={loading}
+           className="w-full rounded-lg bg-blue-600 text-white p-3 font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+         >
+           {loading ? 'Loading Assets...' : (walletAssetCount > 0 ? `Reload Assets from ${walletProvider}` : `Load Assets from ${walletProvider}`)}
+         </button>
+       </div>
+     )}
+   </div>
  )
- })}
+})}
  {btcAddress && (() => {
  const btcAssets = assets.filter(a => a.chain === 'bitcoin')
  const btcAssetCount = btcAssets.length
@@ -1837,7 +1838,7 @@ export default function Home() {
  {executorEnsName && executorResolvedAddress && (
  <div className="mt-2 text-sm text-green-600">
  <span className="font-semibold">{executorEnsName}</span>
- <span className="text-gray-500 ml-2 font-mono">({executorResolvedAddress.slice(0, 6)}...{executorResolvedAddress.slice(-4)})</span>
+ <span className="text-gray-500 ml-2 font-mono">({executorResolvedAddress})</span>
  </div>
  )}
  {!executorEnsName && executorResolvedAddress && (

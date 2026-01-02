@@ -58,15 +58,12 @@ const buildConnectors = async () => {
   try {
     const { injected } = await import('wagmi/connectors')
     
-    // Add specific injected connectors for common wallets
+    // Add specific injected connectors for top 3 most popular wallets only
     // wagmi will only show the ones that are actually installed in the user's browser
     const commonWallets = [
-      'metaMask',
-      'coinbaseWallet', 
-      'rainbow',
-      'trust',
-      'okxWallet',
-      'phantom',
+      'metaMask',        // #1 most popular
+      'coinbaseWallet',  // #2 most popular  
+      'rainbow',         // #3 most popular
     ]
     
     // Add connectors for each common wallet type

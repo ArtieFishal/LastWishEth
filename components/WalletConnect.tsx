@@ -722,33 +722,97 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
     }
   }
 
-  // Filter and sort connectors - WalletConnect first (for QR code), then injected wallets
-  // Only show injected wallets if they're actually installed and ready
+  // Filter and sort connectors - WalletConnect first, then only top 3 injected wallets
+  const top3Wallets = ['MetaMask', 'Coinbase Wallet', 'Rainbow']
   const availableConnectors = (connectors?.filter(c => {
     if (!c || !c.uid) return false
-    return true
+    // Only show WalletConnect and top 3 injected wallets
+    if (c.name === 'WalletConnect') return true
+    if (c.type === 'injected' && top3Wallets.includes(c.name)) return true
+    return false
   }) || []).sort((a, b) => {
-    // WalletConnect first (for QR code), then injected wallets
+    // WalletConnect first, then top 3 wallets in order
     if (a.name === 'WalletConnect') return -1
     if (b.name === 'WalletConnect') return 1
+    const aIndex = top3Wallets.indexOf(a.name)
+    const bIndex = top3Wallets.indexOf(b.name)
+    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
+    if (aIndex !== -1) return -1
+    if (bIndex !== -1) return 1
     return 0
   })
+
+  // Separate WalletConnect from injected wallets
+  const walletConnectConnector = availableConnectors.find(c => c.name === 'WalletConnect')
+  const injectedConnectors = availableConnectors.filter(c => c.name !== 'WalletConnect')
 
   return (
     <div className="space-y-6">
       {/* Always show connection options - don't show wagmi connected status here, parent manages that */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <h3 className="text-xl font-bold text-gray-950 mb-4">
           Connect EVM Wallet (Ethereum, Base, Arbitrum, Polygon)
         </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-sm text-gray-600 mb-4">
           Each wallet requires signature verification to prove ownership before assets can be loaded.
         </p>
-        {availableConnectors.length > 0 ? (
-          <div className="space-y-3">
-            {availableConnectors.map((connector) => {
-              const config = getWalletConfig(connector.name)
-              return (
+        
+        {/* WalletConnect button at the top */}
+        {walletConnectConnector && (
+          <div className="mb-6">
+            <button
+              key={walletConnectConnector.uid}
+              onClick={async () => {
+                try {
+                  await connect({ connector: walletConnectConnector })
+                } catch (error: any) {
+                  if (error?.name !== 'UserRejectedRequestError' && error?.message !== 'User rejected the request.') {
+                    console.error('Error connecting:', error)
+                  }
+                }
+              }}
+              disabled={isPending}
+              className="w-full rounded-xl border-2 p-4 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between group"
+              style={{
+                borderColor: '#3B99FC',
+                backgroundColor: 'white',
+                color: '#3B99FC',
+              } as React.CSSProperties}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#3B99FC20'
+                e.currentTarget.style.borderColor = '#2E7CD6'
+                e.currentTarget.style.color = '#2E7CD6'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'white'
+                e.currentTarget.style.borderColor = '#3B99FC'
+                e.currentTarget.style.color = '#3B99FC'
+              }}
+            >
+              <div className="flex items-center gap-3 flex-1">
+                <span className="text-2xl">🔗</span>
+                <span className="font-semibold flex-1">WalletConnect</span>
+              </div>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              Connect any wallet via QR code
+            </p>
+          </div>
+        )}
+
+        {/* Top 3 Popular Wallets */}
+        {injectedConnectors.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-3">
+              Popular Browser Wallets
+            </h4>
+            <div className="space-y-3">
+              {injectedConnectors.map((connector) => {
+                const config = getWalletConfig(connector.name)
+                return (
                 <button
                   key={connector.uid}
                   onClick={async () => {
@@ -855,10 +919,13 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        ) : (
+        )}
+
+        {availableConnectors.length === 0 && (
           <div className="rounded-xl border-2 border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 p-4">
             <p className="text-sm text-yellow-800 dark:text-yellow-300">
               <strong>WalletConnect not configured.</strong> Please add <code className="bg-yellow-100 dark:bg-yellow-900/40 px-1 rounded">NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID</code> to your .env.local file.
