@@ -4,8 +4,8 @@ import { useAccount, useConnect, useDisconnect, useConnectorClient } from 'wagmi
 import { useState, useEffect } from 'react'
 
 interface WalletConnectProps {
-  onBitcoinConnect?: (address: string) => void
-  onEvmConnect?: (address: string) => void
+  onBitcoinConnect?: (address: string, provider?: string) => void
+  onEvmConnect?: (address: string, provider?: string) => void
 }
 
 // Wallet configuration with colors and icons

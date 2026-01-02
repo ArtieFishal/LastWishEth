@@ -1398,7 +1398,7 @@ export default function Home() {
  await loadAssets(true, false) // append=true, loadFromAllWallets=false
  }
  }}
- onEvmConnect={async (addr, provider) => {
+ onEvmConnect={async (addr: string, provider?: string) => {
  if (addr && !connectedEVMAddresses.has(addr)) {
  // Check wallet limit (20 wallets max including queued)
  if (connectedEVMAddresses.size + queuedSessions.length >= 20) {
