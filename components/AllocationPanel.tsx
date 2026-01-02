@@ -20,6 +20,7 @@ export function AllocationPanel({
   const [selectedBeneficiary, setSelectedBeneficiary] = useState<string | null>(null)
   const [allocationType, setAllocationType] = useState<'amount' | 'percentage'>('percentage')
   const [allocationValue, setAllocationValue] = useState('')
+  const [editingAllocation, setEditingAllocation] = useState<{ assetId: string; beneficiaryId: string } | null>(null)
 
   // Helper to check if asset is NFT (non-fungible)
   const isNFT = (asset: Asset) => asset.type === 'erc721' || asset.type === 'erc1155'
@@ -260,6 +261,41 @@ export function AllocationPanel({
         (a) => !(a.assetId === assetId && a.beneficiaryId === beneficiaryId)
       )
     )
+  }
+
+  const handleChangeBeneficiary = (assetId: string, oldBeneficiaryId: string, newBeneficiaryId: string) => {
+    if (!newBeneficiaryId || newBeneficiaryId === oldBeneficiaryId) {
+      return
+    }
+
+    const asset = assets.find(a => a.id === assetId)
+    if (!asset) return
+
+    const assetIsNFT = isNFT(asset)
+    
+    // For NFTs, check if already allocated to the new beneficiary
+    if (assetIsNFT) {
+      const existingAllocation = allocations.find(
+        a => a.assetId === assetId && a.beneficiaryId === newBeneficiaryId
+      )
+      if (existingAllocation) {
+        alert(`This NFT is already allocated to ${beneficiaries.find(b => b.id === newBeneficiaryId)?.name || 'another beneficiary'}.`)
+        return
+      }
+    }
+
+    // Update the allocation with new beneficiary
+    const updatedAllocations = allocations.map(alloc => {
+      if (alloc.assetId === assetId && alloc.beneficiaryId === oldBeneficiaryId) {
+        return {
+          ...alloc,
+          beneficiaryId: newBeneficiaryId
+        }
+      }
+      return alloc
+    })
+
+    onAllocationChange(updatedAllocations)
   }
 
   // Calculate allocation summary
@@ -578,27 +614,66 @@ export function AllocationPanel({
                   <div className="space-y-1 mt-2">
                     {assetAllocs.map((alloc) => {
                       const beneficiary = beneficiaries.find((b) => b.id === alloc.beneficiaryId)
+                      const isEditing = editingAllocation?.assetId === alloc.assetId && editingAllocation?.beneficiaryId === alloc.beneficiaryId
                       return (
                         <div
                           key={`${alloc.assetId}-${alloc.beneficiaryId}`}
                           className="flex items-center justify-between text-xs bg-white rounded p-2"
                         >
-                          <span className="text-gray-700">
-                            <span className="font-semibold">{beneficiary?.name}:</span>{' '}
-                            {assetIsNFT ? (
-                              <span className="text-pink-700 font-bold">100% (Entire NFT)</span>
-                            ) : alloc.type === 'percentage' ? (
-                              `${alloc.percentage}% of ${asset.symbol}`
-                            ) : (
-                              `${alloc.amount} ${asset.symbol}`
-                            )}
-                          </span>
-                          <button
-                            onClick={() => handleRemoveAllocation(alloc.assetId, alloc.beneficiaryId)}
-                            className="text-red-600 hover:text-red-700 font-semibold px-2 py-0.5 rounded hover:bg-red-50 transition-colors"
-                          >
-                            ×
-                          </button>
+                          {isEditing ? (
+                            <div className="flex-1 flex items-center gap-2">
+                              <select
+                                value={alloc.beneficiaryId}
+                                onChange={(e) => {
+                                  handleChangeBeneficiary(alloc.assetId, alloc.beneficiaryId, e.target.value)
+                                  setEditingAllocation(null)
+                                }}
+                                className="flex-1 rounded border border-gray-300 p-1 text-xs focus:border-blue-500 focus:outline-none"
+                                autoFocus
+                              >
+                                {beneficiaries.map((ben) => (
+                                  <option key={ben.id} value={ben.id}>
+                                    {ben.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={() => setEditingAllocation(null)}
+                                className="text-gray-600 hover:text-gray-700 px-2 py-0.5 rounded hover:bg-gray-50 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="text-gray-700 flex-1">
+                                <span className="font-semibold">{beneficiary?.name}:</span>{' '}
+                                {assetIsNFT ? (
+                                  <span className="text-pink-700 font-bold">100% (Entire NFT)</span>
+                                ) : alloc.type === 'percentage' ? (
+                                  `${alloc.percentage}% of ${asset.symbol}`
+                                ) : (
+                                  `${alloc.amount} ${asset.symbol}`
+                                )}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => setEditingAllocation({ assetId: alloc.assetId, beneficiaryId: alloc.beneficiaryId })}
+                                  className="text-blue-600 hover:text-blue-700 font-semibold px-2 py-0.5 rounded hover:bg-blue-50 transition-colors"
+                                  title="Change beneficiary"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveAllocation(alloc.assetId, alloc.beneficiaryId)}
+                                  className="text-red-600 hover:text-red-700 font-semibold px-2 py-0.5 rounded hover:bg-red-50 transition-colors"
+                                  title="Remove allocation"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       )
                     })}
