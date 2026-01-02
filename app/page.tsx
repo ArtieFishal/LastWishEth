@@ -1,5 +1,10 @@
 'use client'
 
+// Disable static generation - this page requires client-side only features (wallet connections, indexedDB)
+export const dynamic = 'force-dynamic'
+export const dynamicParams = true
+export const revalidate = 0
+
 import { useState, useEffect } from 'react'
 import { useAccount, useDisconnect, useSignMessage, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi'
 import { createPublicClient, http, parseEther, isAddress } from 'viem'
