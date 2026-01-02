@@ -1018,6 +1018,8 @@ setError('Failed to load Bitcoin assets. Please try again.')
       <div className="mt-4">
         <a 
           href="/guide" 
+          target="_blank"
+          rel="noopener noreferrer"
           className="inline-block text-blue-600 hover:text-blue-700 font-semibold text-sm underline"
         >
           📖 View Complete User Guide & Statistics →
