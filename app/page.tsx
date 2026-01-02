@@ -1982,6 +1982,7 @@ export default function Home() {
  </div>
  )}
  </div>
+ </div>
  <div className="mt-6 flex flex-col gap-4">
  {isConnected && chain?.id === mainnet.id && paymentRecipientAddress ? (
  <button
