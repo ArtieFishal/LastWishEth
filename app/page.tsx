@@ -560,23 +560,30 @@ export default function Home() {
  }
  }
 
- // Load Bitcoin assets
- if (btcAddress) {
- try {
- const btcResponse = await axios.post('/api/portfolio/btc', {
- address: btcAddress,
- })
- if (btcResponse.data?.assets && Array.isArray(btcResponse.data.assets)) {
- // Filter out duplicates
- const existingIds = new Set(assets.map(a => a.id))
- const uniqueAssets = btcResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
- newAssets.push(...uniqueAssets)
- }
- } catch (err) {
- console.error('Error loading BTC assets:', err)
- setError('Failed to load Bitcoin assets. Please try again.')
- }
- }
+// Load Bitcoin assets
+if (btcAddress) {
+try {
+console.log('[Bitcoin] Loading assets for address:', btcAddress)
+const btcResponse = await axios.post('/api/portfolio/btc', {
+address: btcAddress,
+})
+console.log('[Bitcoin] API response:', btcResponse.data)
+if (btcResponse.data?.assets && Array.isArray(btcResponse.data.assets)) {
+console.log('[Bitcoin] Found', btcResponse.data.assets.length, 'assets')
+// Filter out duplicates
+const existingIds = new Set(assets.map(a => a.id))
+const uniqueAssets = btcResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
+console.log('[Bitcoin] After deduplication:', uniqueAssets.length, 'unique assets')
+console.log('[Bitcoin] Asset details:', uniqueAssets)
+newAssets.push(...uniqueAssets)
+} else {
+console.warn('[Bitcoin] No assets in response or invalid format:', btcResponse.data)
+}
+} catch (err) {
+console.error('[Bitcoin] Error loading BTC assets:', err)
+setError('Failed to load Bitcoin assets. Please try again.')
+}
+}
 
  if (append) {
  // Append new assets to existing ones
@@ -1631,15 +1638,26 @@ export default function Home() {
      )}
    </div>
  )}
- <AssetSelector
- assets={selectedWalletForLoading 
-   ? assets.filter(a => a.walletAddress?.toLowerCase() === selectedWalletForLoading.toLowerCase())
-   : btcAddress
-   ? assets.filter(a => a.chain === 'bitcoin' && a.walletAddress === btcAddress)
-   : assets}
- selectedAssetIds={selectedAssetIds}
- onSelectionChange={setSelectedAssetIds}
- />
+<AssetSelector
+assets={(() => {
+  let filtered = assets
+  if (selectedWalletForLoading) {
+    filtered = assets.filter(a => a.walletAddress?.toLowerCase() === selectedWalletForLoading.toLowerCase())
+  } else if (btcAddress) {
+    filtered = assets.filter(a => a.chain === 'bitcoin' && (a.walletAddress === btcAddress || a.contractAddress === btcAddress))
+    console.log('[Assets Step] Filtering Bitcoin assets:', {
+      btcAddress,
+      allAssets: assets.length,
+      bitcoinAssets: assets.filter(a => a.chain === 'bitcoin').length,
+      filtered: filtered.length,
+      filteredAssets: filtered
+    })
+  }
+  return filtered
+})()}
+selectedAssetIds={selectedAssetIds}
+onSelectionChange={setSelectedAssetIds}
+/>
  <div className="mt-6 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
  <div className="flex items-start justify-between">
  <div className="flex-1">
