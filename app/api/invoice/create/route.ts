@@ -5,9 +5,9 @@ import { v4 as uuidv4 } from 'uuid'
 // If ENS name, it will be resolved automatically
 const PAYMENT_RECEIVER_ADDRESS = process.env.PAYMENT_RECEIVER_ADDRESS || '0x016ae25Ac494B123C40EDb2418d9b1FC2d62279b' // lastwish.eth resolved address
 
-// Payment in ETH ($20.26 ≈ 0.006 ETH at current prices)
+// Payment in ETH (testing amount)
 // Using native ETH on Ethereum mainnet
-const PAYMENT_AMOUNT = '0.006' // 0.006 ETH (~$20.26)
+const PAYMENT_AMOUNT = '0.000025' // 0.000025 ETH
 const PAYMENT_TOKEN = null // Native ETH (no token contract)
 const PAYMENT_CHAIN = 'ethereum'
 

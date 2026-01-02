@@ -375,8 +375,16 @@ export async function generatePDF(
   const walletGroups: Record<string, { chain: string; assets: Asset[]; provider?: string }[]> = {}
   
   assets.forEach((asset) => {
-    const walletAddr = asset.walletAddress || 'Unknown'
-    const provider = walletProviders?.[walletAddr] || asset.walletProvider || 'Unknown Wallet'
+    // For Bitcoin assets, use walletAddress or contractAddress (which contains the Bitcoin address)
+    let walletAddr = asset.walletAddress
+    if (!walletAddr && asset.chain === 'bitcoin' && asset.contractAddress) {
+      walletAddr = asset.contractAddress // Bitcoin address is stored in contractAddress
+    }
+    if (!walletAddr) {
+      walletAddr = 'Unknown'
+    }
+    
+    const provider = walletProviders?.[walletAddr] || asset.walletProvider || (asset.chain === 'bitcoin' ? 'Xverse' : 'Unknown Wallet')
     if (!walletGroups[walletAddr]) {
       walletGroups[walletAddr] = []
     }
