@@ -1417,6 +1417,7 @@ export default function Home() {
           onClick={async () => {
             if (btcAddress) {
               await loadAssets(true, false) // append=true, loadFromAllWallets=false
+              setStep('assets') // Navigate to assets step after loading
             }
           }}
           disabled={loading}
