@@ -1364,6 +1364,7 @@ export default function Home() {
          <button
            onClick={async (e) => {
              e.stopPropagation()
+             setSelectedWalletForLoading(addr) // Set selected wallet first
              await loadAssetsFromWallet(addr, assets.length > 0)
              setStep('assets')
            }}
@@ -1574,7 +1575,9 @@ export default function Home() {
  <div>
  <h2 className="text-3xl font-bold text-gray-900 mb-2">Your Assets</h2>
  <p className="text-gray-600 mb-8">
- Review all assets across your connected wallets
+ {selectedWalletForLoading || btcAddress 
+   ? 'Assets from the currently selected wallet'
+   : 'Review all assets across your connected wallets'}
  </p>
  {loading ? (
  <div className="text-center py-12">
@@ -1604,8 +1607,33 @@ export default function Home() {
  </div>
  ) : (
  <>
+ {/* Show which wallet's assets are being displayed */}
+ {(selectedWalletForLoading || btcAddress) && (
+   <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+     <p className="text-sm font-semibold text-blue-900 mb-1">
+       Currently Viewing Assets From:
+     </p>
+     {selectedWalletForLoading && (
+       <p className="text-xs text-blue-700 font-mono break-all">
+         {resolvedEnsNames[selectedWalletForLoading.toLowerCase()] || walletNames[selectedWalletForLoading] || selectedWalletForLoading}
+         {walletProviders[selectedWalletForLoading] && (
+           <span className="ml-2 text-blue-600">({walletProviders[selectedWalletForLoading]})</span>
+         )}
+       </p>
+     )}
+     {btcAddress && (
+       <p className="text-xs text-blue-700 font-mono break-all">
+         {btcAddress} (Bitcoin Wallet)
+       </p>
+     )}
+   </div>
+ )}
  <AssetSelector
- assets={assets}
+ assets={selectedWalletForLoading 
+   ? assets.filter(a => a.walletAddress?.toLowerCase() === selectedWalletForLoading.toLowerCase())
+   : btcAddress
+   ? assets.filter(a => a.chain === 'bitcoin' && a.walletAddress === btcAddress)
+   : assets}
  selectedAssetIds={selectedAssetIds}
  onSelectionChange={setSelectedAssetIds}
  />
