@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 export const dynamicParams = true
 
 import { useState, useEffect } from 'react'
-import { useAccount, useDisconnect, useSignMessage, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useDisconnect, useSignMessage, useSendTransaction, useWaitForTransactionReceipt, useConnect } from 'wagmi'
 import { createPublicClient, http, parseEther, formatEther, isAddress } from 'viem'
 import { mainnet } from 'viem/chains'
 import { WalletConnect } from '@/components/WalletConnect'
@@ -31,6 +31,7 @@ const steps: Array<{ id: Step; label: string; number: number }> = [
 export default function Home() {
  const { address: evmAddress, isConnected, chain } = useAccount()
  const { disconnect } = useDisconnect()
+ const { connect, connectors } = useConnect()
  const { signMessageAsync } = useSignMessage({
  mutation: {
  onError: (error) => {
@@ -41,7 +42,14 @@ export default function Home() {
  
  // Payment transaction hooks
  const [paymentRecipientAddress, setPaymentRecipientAddress] = useState<`0x${string}` | null>(null)
- const { data: sendTxHash, sendTransaction, isPending: isSendingPayment, error: sendError } = useSendTransaction()
+ const { data: sendTxHash, sendTransaction, isPending: isSendingPayment, error: sendError, reset: resetSendTransaction } = useSendTransaction({
+ mutation: {
+ onError: (error) => {
+ // Clear error state when user tries again
+ console.error('Send transaction error:', error)
+ }
+ }
+ })
  const { isLoading: isConfirming, isSuccess: isPaymentSent } = useWaitForTransactionReceipt({
  hash: sendTxHash,
  })
@@ -2015,22 +2023,43 @@ export default function Home() {
  </p>
  </div>
  )}
- {sendError && (
- <div className="bg-red-50 border border-red-200 rounded-lg p-4">
- <p className="text-sm text-red-800 mb-2">
- <strong>Transaction Error:</strong> {sendError.message || 'Failed to send payment'}
- </p>
- <p className="text-xs text-red-700">
- If you're seeing a gas error but have enough ETH, the issue might be gas estimation. Try:
- <ul className="list-disc list-inside mt-1 space-y-1">
- <li>Make sure you're on Ethereum Mainnet (not a testnet)</li>
- <li>Try refreshing the page and reconnecting your wallet</li>
- <li>If using WalletConnect, try disconnecting and reconnecting via QR code</li>
- <li>Your wallet should show the actual gas cost - you can adjust it there</li>
- </ul>
- </p>
- </div>
- )}
+ {sendError && (() => {
+   // Check if this is a user rejection (cancellation)
+   const errorMessage = sendError.message || ''
+   const isUserRejection = errorMessage.includes('User rejected') || 
+                          errorMessage.includes('User denied') ||
+                          errorMessage.includes('rejected') ||
+                          errorMessage.includes('denied transaction signature')
+   
+   if (isUserRejection) {
+     // User cancelled - show simple message, no troubleshooting
+     return (
+       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+         <p className="text-sm text-yellow-800">
+           <strong>Transaction Cancelled:</strong> You cancelled the transaction. Click the button below to try again.
+         </p>
+       </div>
+     )
+   }
+   
+   // Other errors - show troubleshooting
+   return (
+     <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+       <p className="text-sm text-red-800 mb-2">
+         <strong>Transaction Error:</strong> {sendError.message || 'Failed to send payment'}
+       </p>
+       <p className="text-xs text-red-700">
+         If you're seeing a gas error but have enough ETH, the issue might be gas estimation. Try:
+         <ul className="list-disc list-inside mt-1 space-y-1">
+           <li>Make sure you're on Ethereum Mainnet (not a testnet)</li>
+           <li>Try refreshing the page and reconnecting your wallet</li>
+           <li>If using WalletConnect, try disconnecting and reconnecting via QR code</li>
+           <li>Your wallet should show the actual gas cost - you can adjust it there</li>
+         </ul>
+       </p>
+     </div>
+   )
+ })()}
  </div>
  </div>
  <div className="mt-6 flex flex-col gap-4">
@@ -2066,14 +2095,39 @@ export default function Home() {
  {isSendingPayment ? 'Confirm in Wallet...' : isConfirming ? 'Confirming Transaction...' : '💳 Send Payment (0.00025 ETH)'}
  </button>
  ) : !isConnected ? (
- <div className="bg-gray-50 border-2 border-gray-300 rounded-lg p-4 text-center">
+ <div className="bg-gray-50 border-2 border-gray-300 rounded-lg p-4 text-center space-y-3">
  <p className="text-sm text-gray-700 mb-2">Connect your wallet to send payment directly from this page</p>
+ <div className="flex gap-2 justify-center">
  <button
- onClick={() => setStep('connect')}
+ onClick={async () => {
+ // Open WalletConnect QR code directly
+ const walletConnectConnector = connectors?.find(c => c.name === 'WalletConnect')
+ if (walletConnectConnector) {
+ try {
+ await connect({ connector: walletConnectConnector })
+ } catch (error: any) {
+ // Silently handle user rejection
+ if (error?.message?.includes('rejected') || error?.message?.includes('User rejected')) {
+ return
+ }
+ console.error('Error connecting:', error)
+ }
+ } else {
+ // Fallback to connect step if WalletConnect not available
+ setStep('connect')
+ }
+ }}
  className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
  >
- Go to Connect Wallet
+ Open WalletConnect QR
  </button>
+ <button
+ onClick={() => setStep('connect')}
+ className="px-4 py-2 bg-gray-600 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+ >
+ Other Options
+ </button>
+ </div>
  </div>
  ) : chain?.id !== mainnet.id ? (
  <div className="bg-orange-50 border-2 border-orange-300 rounded-lg p-4 text-center">
