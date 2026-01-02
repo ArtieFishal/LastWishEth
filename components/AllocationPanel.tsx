@@ -523,17 +523,46 @@ export function AllocationPanel({
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
                   {allocationType === 'percentage' ? 'Percentage (%)' : 'Amount'}
+                  {allocationType === 'amount' && selectedAssets.some(id => {
+                    const asset = assets.find(a => a.id === id)
+                    return asset?.type === 'btc'
+                  }) && (
+                    <span className="text-gray-500 font-normal ml-1">(in BTC or SATs)</span>
+                  )}
                 </label>
                 <input
                   type="number"
                   value={allocationValue}
                   onChange={(e) => setAllocationValue(e.target.value)}
-                  placeholder={allocationType === 'percentage' && beneficiaries.length > 0 ? defaultPercentage.toFixed(2) : ''}
+                  placeholder={allocationType === 'percentage' && beneficiaries.length > 0 ? defaultPercentage.toFixed(2) : 
+                    selectedAssets.some(id => {
+                      const asset = assets.find(a => a.id === id)
+                      return asset?.type === 'btc'
+                    }) ? '0.00000001 (1 SAT minimum)' : ''}
                   className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
-                  step={allocationType === 'percentage' ? '0.01' : '0.00000001'}
+                  step={allocationType === 'percentage' ? '0.01' : 
+                    selectedAssets.some(id => {
+                      const asset = assets.find(a => a.id === id)
+                      return asset?.type === 'btc'
+                    }) ? '0.00000001' : '0.00000001'}
                   min="0"
                   max={allocationType === 'percentage' ? '100' : undefined}
                 />
+                {allocationType === 'amount' && selectedAssets.some(id => {
+                  const asset = assets.find(a => a.id === id)
+                  return asset?.type === 'btc' && allocationValue
+                }) && (() => {
+                  const btcAmount = parseFloat(allocationValue)
+                  if (!isNaN(btcAmount) && btcAmount > 0) {
+                    const sats = Math.floor(btcAmount * 100000000)
+                    return (
+                      <p className="text-xs text-gray-500 mt-1">
+                        = {sats.toLocaleString('en-US')} SATs
+                      </p>
+                    )
+                  }
+                  return null
+                })()}
               </div>
             </>
           )}
@@ -650,10 +679,31 @@ export function AllocationPanel({
                   <div className="space-y-1 text-xs">
                     {assetAllocs.map((alloc) => {
                       const beneficiary = beneficiaries.find((b) => b.id === alloc.beneficiaryId)
+                      let allocationDisplay = ''
+                      if (assetIsNFT) {
+                        allocationDisplay = '100%'
+                      } else if (alloc.type === 'percentage') {
+                        allocationDisplay = `${alloc.percentage}%`
+                        // For Bitcoin, show SATs equivalent
+                        if (asset.type === 'btc' && alloc.percentage) {
+                          const satsAmount = Math.floor((parseFloat(asset.balance) * alloc.percentage) / 100)
+                          allocationDisplay += ` (${satsAmount.toLocaleString('en-US')} SATs)`
+                        }
+                      } else {
+                        allocationDisplay = `${alloc.amount} ${asset.symbol}`
+                        // For Bitcoin, show SATs equivalent
+                        if (asset.type === 'btc' && alloc.amount) {
+                          const btcAmount = parseFloat(alloc.amount)
+                          if (!isNaN(btcAmount)) {
+                            const satsAmount = Math.floor(btcAmount * 100000000)
+                            allocationDisplay += ` (${satsAmount.toLocaleString('en-US')} SATs)`
+                          }
+                        }
+                      }
                       return (
                         <div key={`${alloc.assetId}-${alloc.beneficiaryId}`} className="flex items-center justify-between bg-white rounded p-1">
                           <span className="text-gray-700 truncate">
-                            {beneficiary?.name}: {assetIsNFT ? '100%' : alloc.type === 'percentage' ? `${alloc.percentage}%` : alloc.amount}
+                            {beneficiary?.name}: {allocationDisplay}
                           </span>
                           <button
                             onClick={() => handleRemoveAllocation(alloc.assetId, alloc.beneficiaryId)}

@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
           name: 'Bitcoin',
           balance: netBalance.toString(), // Balance in satoshis
           balanceFormatted: btcBalance, // Balance in BTC
+          decimals: 8, // Bitcoin uses 8 decimals (satoshis)
           contractAddress: address,
           walletAddress: address, // Track which wallet this asset belongs to
           metadata: {
