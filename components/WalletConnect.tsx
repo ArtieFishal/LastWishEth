@@ -57,6 +57,12 @@ const walletConfig: Record<string, { color: string; hoverColor: string; bgColor:
     hoverColor: '#E6820A',
     bgColor: '#F7931A',
     icon: '₿'
+  },
+  'Bankr': {
+    color: '#8B5CF6',
+    hoverColor: '#7C3AED',
+    bgColor: '#8B5CF6',
+    icon: '🤖'
   }
 }
 
@@ -110,6 +116,8 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
   const [btcAddress, setBtcAddress] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [bankrAddress, setBankrAddress] = useState<string>('')
+  const [connectingBankr, setConnectingBankr] = useState(false)
 
   // Prevent hydration mismatch by only rendering after mount
   useEffect(() => {
@@ -940,6 +948,103 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             <p className="text-sm text-red-800 dark:text-red-400">Connection error: {connectError.message || 'Failed to connect'}</p>
           </div>
         )}
+      </div>
+
+      {/* Bankr Wallet Connection */}
+      <div className="border-t dark:border-gray-700 pt-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Bankr Wallet (Social Media Wallet)
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Connect your Bankr wallet linked to your X (Twitter) account. Enter your wallet address below.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Bankr Wallet Address
+            </label>
+            <input
+              type="text"
+              value={bankrAddress}
+              onChange={(e) => setBankrAddress(e.target.value)}
+              placeholder="0xce561ebc384d48146997b9cf2dc41335c4ee9477"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 p-3 text-sm font-mono focus:border-blue-500 focus:outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Enter your Bankr wallet address (starts with 0x)
+            </p>
+          </div>
+          <button
+            onClick={async () => {
+              if (!bankrAddress.trim()) {
+                alert('Please enter your Bankr wallet address')
+                return
+              }
+              
+              const trimmedAddress = bankrAddress.trim().toLowerCase()
+              
+              // Validate Ethereum address format
+              if (!trimmedAddress.startsWith('0x') || trimmedAddress.length !== 42) {
+                alert('Invalid wallet address. Please enter a valid Ethereum address (starts with 0x, 42 characters).')
+                return
+              }
+              
+              setConnectingBankr(true)
+              try {
+                // Connect Bankr wallet as an EVM wallet with provider "Bankr"
+                await onEvmConnect?.(trimmedAddress, 'Bankr')
+                setBankrAddress('') // Clear input on success
+              } catch (error: any) {
+                console.error('Error connecting Bankr wallet:', error)
+                alert(`Failed to connect Bankr wallet: ${error.message || 'Unknown error'}`)
+              } finally {
+                setConnectingBankr(false)
+              }
+            }}
+            disabled={connectingBankr || !bankrAddress.trim()}
+            className="w-full rounded-xl border-2 p-4 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between group"
+            style={{
+              borderColor: walletConfig.Bankr.color,
+              backgroundColor: 'white',
+              color: walletConfig.Bankr.color,
+            } as React.CSSProperties}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = `${walletConfig.Bankr.bgColor}20`
+              e.currentTarget.style.borderColor = walletConfig.Bankr.hoverColor
+              e.currentTarget.style.color = walletConfig.Bankr.hoverColor
+              const textSpan = e.currentTarget.querySelector('span.font-semibold') as HTMLElement
+              const svg = e.currentTarget.querySelector('svg') as SVGSVGElement
+              if (textSpan) textSpan.style.color = walletConfig.Bankr.hoverColor
+              if (svg) svg.style.color = walletConfig.Bankr.hoverColor
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'white'
+              e.currentTarget.style.borderColor = walletConfig.Bankr.color
+              e.currentTarget.style.color = walletConfig.Bankr.color
+              const textSpan = e.currentTarget.querySelector('span.font-semibold') as HTMLElement
+              const svg = e.currentTarget.querySelector('svg') as SVGSVGElement
+              if (textSpan) textSpan.style.color = walletConfig.Bankr.color
+              if (svg) svg.style.color = walletConfig.Bankr.color
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{walletConfig.Bankr.icon}</span>
+              <div>
+                <span className="font-semibold block" style={{ color: walletConfig.Bankr.color } as React.CSSProperties}>
+                  Connect Bankr Wallet
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">Connect your social media wallet</span>
+              </div>
+            </div>
+            {connectingBankr ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2" style={{ borderColor: walletConfig.Bankr.color } as React.CSSProperties}></div>
+            ) : (
+              <svg className="w-5 h-5 transition-colors" style={{ color: walletConfig.Bankr.color } as React.CSSProperties} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
       
       <div className="border-t dark:border-gray-700 pt-6">
