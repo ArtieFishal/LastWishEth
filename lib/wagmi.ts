@@ -39,8 +39,9 @@ const buildConnectors = async () => {
       }
     })
     
-    // Add generic browser wallet connector as fallback (catches any other injected wallet)
-    connectors.push(injected({ target: 'browser' }))
+    // Add generic injected connector without target to auto-detect any other installed wallets
+    // This will catch any wallet extensions not explicitly listed above
+    connectors.push(injected())
   } catch (error) {
     // Silently fail if injected connectors can't be loaded
     if (process.env.NODE_ENV === 'development') {
