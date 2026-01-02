@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     // Check for discount code (accept common variations)
     const normalizedCode = discountCode.replace(/[^a-z0-9]/g, '') // Remove special chars
     const validDiscountCodes: Record<string, number> = {
-      'nofomo': 100, // 100% discount (accepts nofomo, no-fomo, no_fomo, etc.)
+      'tryitfree': 100, // 100% discount (accepts tryitfree, try-it-free, try_it_free, etc.)
     }
     
     const discountPercent = validDiscountCodes[normalizedCode] || 0

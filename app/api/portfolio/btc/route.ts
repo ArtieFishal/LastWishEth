@@ -41,22 +41,31 @@ export async function POST(request: NextRequest) {
 
       // Convert satoshis to BTC
       const btcBalance = (netBalance / 100000000).toFixed(8)
+      
+      // Format SATs with commas for readability
+      const satsFormatted = netBalance.toLocaleString('en-US')
 
-      return NextResponse.json({
-        assets: [
-          {
-            id: `btc-${address}`,
-            chain: 'bitcoin',
-            type: 'btc',
-            symbol: 'BTC',
-            name: 'Bitcoin',
-            balance: netBalance.toString(),
-            balanceFormatted: btcBalance,
-            contractAddress: address,
-            walletAddress: address, // Track which wallet this asset belongs to
+      // Return Bitcoin assets - main BTC balance and SATs info
+      const assets = [
+        {
+          id: `btc-${address}`,
+          chain: 'bitcoin',
+          type: 'btc',
+          symbol: 'BTC',
+          name: 'Bitcoin',
+          balance: netBalance.toString(), // Balance in satoshis
+          balanceFormatted: btcBalance, // Balance in BTC
+          contractAddress: address,
+          walletAddress: address, // Track which wallet this asset belongs to
+          metadata: {
+            sats: netBalance.toString(),
+            satsFormatted: satsFormatted,
+            note: 'This balance includes all satoshis. Rare SATs (ordinals, special block numbers, etc.) may be present but require specialized tools like Ordiscan to detect. When allocating, consider that rare SATs should be preserved separately from regular Bitcoin.',
           },
-        ],
-      })
+        },
+      ]
+
+      return NextResponse.json({ assets })
     } catch (error) {
       console.error('Error fetching Bitcoin balance:', error)
       return NextResponse.json(

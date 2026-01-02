@@ -650,10 +650,10 @@ export default function Home() {
  }
  }
 
- const handleDiscountCode = () => {
- const code = discountCode.trim().toLowerCase().replace(/[^a-z0-9]/g, '') // Remove special chars for flexible matching
- // Accept common variations: nofomo, no-fomo, no_fomo, etc.
- if (code === 'nofomo') {
+    const handleDiscountCode = () => {
+      const code = discountCode.trim().toLowerCase().replace(/[^a-z0-9]/g, '') // Remove special chars for flexible matching
+      // Accept common variations: tryitfree, try-it-free, try_it_free, etc.
+      if (code === 'tryitfree') {
  setDiscountApplied(true)
  setError(null)
  } else if (code) {
@@ -987,12 +987,22 @@ export default function Home() {
  </button>
  </div>
  <h1 className="text-5xl font-bold text-gray-900 mb-3">LastWish.eth</h1>
- <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-4">
- Do you really want to take your crypto to the grave with you by accident?
- </p>
- <p className="text-sm text-gray-500">
- Secure crypto inheritance instructions • 0.006 ETH (~$20.26) one-time fee
- </p>
+    <div className="max-w-2xl mx-auto mb-6 space-y-3">
+      <p className="text-lg text-gray-600 font-semibold">
+        Do you really want to take your crypto to the grave with you by accident?
+      </p>
+      <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-gray-700 mb-2">
+          <strong>We don't ask for seed phrases or private keys.</strong>
+        </p>
+        <p className="text-xs text-gray-600 mb-2">
+          This is a stateless website. Nothing is ever saved beyond creating the PDF document and you downloading it to your device or printing it on the spot. <strong>We suggest you do both.</strong>
+        </p>
+      </div>
+      <p className="text-sm text-gray-500">
+        Secure crypto inheritance instructions • <span className="font-semibold text-orange-600">$42.00 value</span> • <span className="font-bold text-green-600">On sale today for New Year's only: 0.006 ETH (~$20.26)</span> one-time fee
+      </p>
+    </div>
  </header>
 
  {/* Progress Steps */}
@@ -1394,24 +1404,37 @@ export default function Home() {
  </p>
  </div>
  
- <div className="mt-3 pt-3 border-t border-gray-200">
- <p className="text-xs text-gray-500">
- <span className="font-semibold">Network:</span> Bitcoin Mainnet
- </p>
- </div>
- </div>
- 
- <button
- onClick={() => {
- // Just disconnect the wallet - KEEP all assets and selections
- setBtcAddress(null)
- // Don't remove assets - they're already loaded and selected assets should be preserved
- // The walletAddress field on assets will still show which wallet they came from
- }}
- className="ml-4 px-4 py-2 text-sm font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors whitespace-nowrap"
- >
- Disconnect
- </button>
+        <div className="mt-3 pt-3 border-t border-gray-200">
+          <p className="text-xs text-gray-500">
+            <span className="font-semibold">Network:</span> Bitcoin Mainnet
+          </p>
+        </div>
+      </div>
+
+      <div className="ml-4 flex flex-col gap-2">
+        <button
+          onClick={async () => {
+            if (btcAddress) {
+              await loadAssets(true, false) // append=true, loadFromAllWallets=false
+            }
+          }}
+          disabled={loading}
+          className="px-4 py-2 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg border border-orange-600 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? 'Loading...' : 'Load Assets from Selected Wallet'}
+        </button>
+        <button
+          onClick={() => {
+            // Just disconnect the wallet - KEEP all assets and selections
+            setBtcAddress(null)
+            // Don't remove assets - they're already loaded and selected assets should be preserved
+            // The walletAddress field on assets will still show which wallet they came from
+          }}
+          className="px-4 py-2 text-sm font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors whitespace-nowrap"
+        >
+          Disconnect
+        </button>
+      </div>
  </div>
  </div>
  )
