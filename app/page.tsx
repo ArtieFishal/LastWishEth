@@ -1531,20 +1531,6 @@ export default function Home() {
        </button>
      </div>
    </div>
- ) : beneficiaries.length === 0 ? (
-   <div className="lg:col-span-3 text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-     <div className="max-w-md mx-auto">
-       <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-         <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-         </svg>
-       </div>
-       <h3 className="text-xl font-bold text-gray-900 mb-2">No Beneficiaries Added Yet</h3>
-       <p className="text-gray-600 mb-6">
-         Add beneficiaries to allocate your selected assets to. You can add multiple beneficiaries and assign percentages or specific amounts.
-       </p>
-     </div>
-   </div>
  ) : (
    <>
      <div className="lg:col-span-1">
@@ -1562,6 +1548,13 @@ export default function Home() {
      <div className="lg:col-span-1">
        <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-4">
          <h3 className="font-bold text-lg mb-3">Beneficiaries</h3>
+         {beneficiaries.length === 0 && (
+           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+             <p className="text-sm text-blue-800">
+               <strong>Start by adding a beneficiary:</strong> Enter a name and wallet address below to get started.
+             </p>
+           </div>
+         )}
          <BeneficiaryForm
            beneficiaries={beneficiaries}
            onBeneficiariesChange={setBeneficiaries}
@@ -1571,12 +1564,18 @@ export default function Home() {
      <div className="lg:col-span-1">
        <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-4">
          <h3 className="font-bold text-lg mb-3">Allocations</h3>
-         <AllocationPanel
-           assets={assets.filter(a => selectedAssetIds.includes(a.id))}
-           beneficiaries={beneficiaries}
-           allocations={allocations}
-           onAllocationChange={setAllocations}
-         />
+         {beneficiaries.length === 0 ? (
+           <div className="text-center py-8 text-gray-500">
+             <p className="text-sm">Add beneficiaries first to allocate assets</p>
+           </div>
+         ) : (
+           <AllocationPanel
+             assets={assets.filter(a => selectedAssetIds.includes(a.id))}
+             beneficiaries={beneficiaries}
+             allocations={allocations}
+             onAllocationChange={setAllocations}
+           />
+         )}
        </div>
      </div>
    </>
