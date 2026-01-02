@@ -9,7 +9,7 @@ import { AssetList } from '@/components/AssetList'
 import { AssetSelector } from '@/components/AssetSelector'
 import { BeneficiaryForm } from '@/components/BeneficiaryForm'
 import { AllocationPanel } from '@/components/AllocationPanel'
-import { Asset, Beneficiary, Allocation, UserData } from '@/types'
+import { Asset, Beneficiary, Allocation, UserData, QueuedWalletSession } from '@/types'
 import axios from 'axios'
 import { generatePDF } from '@/lib/pdf-generator'
 
@@ -69,6 +69,8 @@ export default function Home() {
  const [discountApplied, setDiscountApplied] = useState(false)
  const [paymentWalletAddress, setPaymentWalletAddress] = useState<string | null>(null) // First verified wallet for payment
  const [selectedWalletForLoading, setSelectedWalletForLoading] = useState<string | null>(null) // Currently selected wallet for loading assets
+ const [queuedSessions, setQueuedSessions] = useState<QueuedWalletSession[]>([])
+ const [currentSessionWallet, setCurrentSessionWallet] = useState<string | null>(null)
 
  // Prevent hydration mismatch
  useEffect(() => {
@@ -105,6 +107,7 @@ export default function Home() {
  if (parsed.paymentVerified) setPaymentVerified(parsed.paymentVerified)
  if (parsed.discountCode) setDiscountCode(parsed.discountCode)
  if (parsed.discountApplied) setDiscountApplied(parsed.discountApplied)
+ if (parsed.queuedSessions) setQueuedSessions(parsed.queuedSessions)
  }
  } catch (err) {
  console.error('Error loading saved state:', err)
@@ -142,6 +145,7 @@ export default function Home() {
  paymentVerified,
  discountCode,
  discountApplied,
+ queuedSessions,
  }
  localStorage.setItem('lastwish_state', JSON.stringify(stateToSave))
  } catch (err) {
@@ -174,6 +178,7 @@ export default function Home() {
  paymentVerified,
  discountCode,
  discountApplied,
+ queuedSessions,
  mounted,
  ])
 
@@ -580,26 +585,27 @@ export default function Home() {
  return
  }
 
- // Filter assets to only include selected ones
- const selectedAssets = assets.filter(a => selectedAssetIds.includes(a.id))
+ // Merge all queued sessions
+ const allQueuedAssets = queuedSessions.flatMap(s => s.assets)
+ const allQueuedAllocations = queuedSessions.flatMap(s => s.allocations)
  
- // Collect all unique EVM addresses from assets
+ // Collect all unique EVM addresses from queued sessions
  const allEVMAddresses = new Set<string>()
- assets.forEach(asset => {
- if (asset.chain !== 'bitcoin' && asset.contractAddress && asset.contractAddress.startsWith('0x')) {
- // Extract address from asset ID (format: chain-address-...)
- const parts = asset.id.split('-')
- if (parts.length >= 2 && parts[1].startsWith('0x')) {
- allEVMAddresses.add(parts[1])
- }
+ allQueuedAssets.forEach(asset => {
+ if (asset.chain !== 'bitcoin' && asset.walletAddress && asset.walletAddress.startsWith('0x')) {
+ allEVMAddresses.add(asset.walletAddress)
  }
  })
- // Add current connected address
- if (evmAddress) {
- allEVMAddresses.add(evmAddress)
+ 
+ // Add queued wallet addresses
+ queuedSessions.forEach(session => {
+ if (session.walletType === 'evm') {
+ allEVMAddresses.add(session.walletAddress)
  }
- // Add all tracked addresses
- connectedEVMAddresses.forEach(addr => allEVMAddresses.add(addr))
+ })
+
+ // Get Bitcoin address from queued sessions
+ const btcAddressFromQueue = queuedSessions.find(s => s.walletType === 'btc')?.walletAddress || null
 
  const userData: UserData = {
  ownerName,
@@ -616,11 +622,11 @@ export default function Home() {
  executorTwitter: executorTwitter || undefined,
  executorLinkedIn: executorLinkedIn || undefined,
  beneficiaries,
- allocations,
+ allocations: allQueuedAllocations, // Use merged allocations
  keyInstructions,
  connectedWallets: {
  evm: Array.from(allEVMAddresses),
- btc: btcAddress || undefined,
+ btc: btcAddressFromQueue || undefined,
  },
  walletNames,
  resolvedEnsNames,
@@ -628,7 +634,7 @@ export default function Home() {
 
  try {
  setError(null)
- const pdfBytes = await generatePDF(userData, selectedAssets)
+ const pdfBytes = await generatePDF(userData, allQueuedAssets) // Use merged assets
  const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
  const url = URL.createObjectURL(blob)
  
@@ -672,26 +678,127 @@ export default function Home() {
  }
  }
 
+ const handleSaveToQueue = () => {
+ // Check if we have a connected wallet
+ const walletAddress = evmAddress || btcAddress
+ if (!walletAddress) {
+ setError('No wallet connected. Please connect a wallet first.')
+ return
+ }
+
+ // Check if we have selected assets
+ if (selectedAssetIds.length === 0) {
+ setError('Please select at least one asset to save to queue.')
+ return
+ }
+
+ // Check if we have allocations
+ const sessionAllocations = allocations.filter(a => selectedAssetIds.includes(a.assetId))
+ if (sessionAllocations.length === 0) {
+ setError('Please allocate assets to beneficiaries before saving to queue.')
+ return
+ }
+
+ // Check queue limit
+ if (queuedSessions.length >= 20) {
+ setError('Maximum 20 wallets allowed. Please remove a queued wallet first.')
+ return
+ }
+
+ // Check if this wallet is already queued
+ if (queuedSessions.some(s => s.walletAddress.toLowerCase() === walletAddress.toLowerCase())) {
+ setError('This wallet is already in the queue. Please disconnect and connect a different wallet.')
+ return
+ }
+
+ // Get assets for this session
+ const sessionAssets = assets.filter(a => selectedAssetIds.includes(a.id))
+
+ // Create session
+ const session: QueuedWalletSession = {
+ id: `${walletAddress.toLowerCase()}-${Date.now()}`,
+ walletAddress: walletAddress.toLowerCase(),
+ walletType: evmAddress ? 'evm' : 'btc',
+ ensName: evmAddress ? (resolvedEnsNames[evmAddress.toLowerCase()] || undefined) : undefined,
+ assets: sessionAssets,
+ allocations: sessionAllocations,
+ verified: evmAddress ? verifiedAddresses.has(evmAddress) : true,
+ createdAt: Date.now()
+ }
+
+ // Add to queue
+ setQueuedSessions(prev => [...prev, session])
+
+ // Clear current session data (but keep beneficiaries)
+ setAssets([])
+ setAllocations([])
+ setSelectedAssetIds([])
+ setCurrentSessionWallet(null)
+
+ // Disconnect wallet
+ if (evmAddress) {
+ setConnectedEVMAddresses(prev => {
+ const next = new Set(prev)
+ next.delete(evmAddress)
+ return next
+ })
+ if (isConnected) {
+ disconnect()
+ }
+ }
+ if (btcAddress) {
+ setBtcAddress(null)
+ }
+
+ // Show success message
+ setError(null)
+ 
+ // Return to connect step
+ setStep('connect')
+ }
+
+ const handleRemoveQueuedSession = (sessionId: string) => {
+ if (confirm('Remove this wallet session from the queue? This will delete all assets and allocations for this wallet.')) {
+ setQueuedSessions(prev => prev.filter(s => s.id !== sessionId))
+ }
+ }
+
  const canProceedToPayment = () => {
- // Filter allocations to only selected assets
- const selectedAssetAllocations = allocations.filter(a => selectedAssetIds.includes(a.assetId))
- return (
- ownerFullName.trim() &&
- ownerName.trim() &&
- ownerAddress.trim() &&
- ownerCity.trim() &&
- ownerState.trim() &&
- ownerZipCode.trim() &&
- ownerPhone.trim() &&
- executorName.trim() &&
- executorAddress.trim() &&
- executorPhone.trim() &&
- executorEmail.trim() &&
- beneficiaries.length > 0 &&
- selectedAssetAllocations.length > 0 &&
- keyInstructions.trim() &&
- selectedAssetIds.length > 0
- )
+ // Must have at least one queued session
+ if (queuedSessions.length === 0) {
+ return false
+ }
+
+ // Check required owner fields
+ if (!ownerFullName.trim() || !ownerName.trim() || !ownerAddress.trim() || 
+ !ownerCity.trim() || !ownerState.trim() || !ownerZipCode.trim() || 
+ !ownerPhone.trim()) {
+ return false
+ }
+
+ // Check required executor fields
+ if (!executorName.trim() || !executorAddress.trim() || 
+ !executorPhone.trim() || !executorEmail.trim()) {
+ return false
+ }
+
+ // Check beneficiaries
+ if (beneficiaries.length === 0) {
+ return false
+ }
+
+ // Check that we have allocations across all queued sessions
+ const totalAllocations = queuedSessions.reduce((sum, session) => sum + session.allocations.length, 0)
+ if (totalAllocations === 0) {
+ return false
+ }
+
+ // Check key instructions
+ if (!keyInstructions.trim()) {
+ return false
+ }
+
+ return true
  }
 
  const canGeneratePDF = () => {
@@ -728,10 +835,10 @@ export default function Home() {
  // Determine if step has content and can be navigated to
  const hasContent = (() => {
    switch(s.id) {
-     case 'connect': return connectedEVMAddresses.size > 0 || btcAddress || assets.length > 0
-     case 'assets': return assets.length > 0
-     case 'allocate': return beneficiaries.length > 0 || allocations.length > 0 || selectedAssetIds.length > 0
-     case 'details': return ownerFullName || ownerName || beneficiaries.length > 0
+     case 'connect': return queuedSessions.length > 0 || connectedEVMAddresses.size > 0 || btcAddress || assets.length > 0
+     case 'assets': return assets.length > 0 || queuedSessions.length > 0
+     case 'allocate': return allocations.length > 0 || queuedSessions.some(s => s.allocations.length > 0) || beneficiaries.length > 0 || selectedAssetIds.length > 0
+     case 'details': return ownerFullName || ownerName || beneficiaries.length > 0 || queuedSessions.length > 0
      case 'payment': return invoiceId !== null || discountApplied
      case 'download': return paymentVerified || discountApplied
      default: return false
@@ -808,8 +915,85 @@ export default function Home() {
  <div className="max-w-2xl mx-auto">
  <h2 className="text-3xl font-bold text-gray-900 mb-2">Connect Your Wallets</h2>
  <p className="text-gray-600 mb-8">
- Connect your crypto wallets to view and allocate your assets. You can connect multiple wallets and add assets incrementally.
+ Connect and process up to 20 wallets. Each wallet's assets will be saved to a queue after allocation.
  </p>
+
+ {/* Queue Status */}
+ {queuedSessions.length > 0 && (
+ <div className="mb-8 bg-green-50 border-2 border-green-300 rounded-lg p-6">
+ <div className="flex items-center justify-between mb-4">
+ <h3 className="text-xl font-bold text-gray-900">
+ Queued Wallets ({queuedSessions.length}/20)
+ </h3>
+ {queuedSessions.length > 0 && (
+ <button
+ onClick={() => {
+ if (confirm('Clear all queued wallets? This cannot be undone.')) {
+ setQueuedSessions([])
+ }
+ }}
+ className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors"
+ >
+ Clear All
+ </button>
+ )}
+ </div>
+ <div className="space-y-3 max-h-96 overflow-y-auto">
+ {queuedSessions.map((session) => {
+ const totalAssets = session.assets.length
+ const totalAllocations = session.allocations.length
+ return (
+ <div key={session.id} className="bg-white rounded-lg border border-gray-200 p-4">
+ <div className="flex items-start justify-between">
+ <div className="flex-1">
+ <div className="flex items-center gap-2 mb-2">
+ <span className="font-mono text-sm font-semibold text-gray-900">
+ {session.ensName || `${session.walletAddress.slice(0, 6)}...${session.walletAddress.slice(-4)}`}
+ </span>
+ {session.ensName && (
+ <span className="text-xs text-gray-500 font-mono">
+ ({session.walletAddress.slice(0, 6)}...{session.walletAddress.slice(-4)})
+ </span>
+ )}
+ <span className={`px-2 py-1 rounded text-xs font-semibold ${
+ session.verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+ }`}>
+ {session.verified ? '✓ Verified' : 'Unverified'}
+ </span>
+ <span className="px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800">
+ {session.walletType.toUpperCase()}
+ </span>
+ </div>
+ <div className="text-sm text-gray-600">
+ <span className="font-semibold">{totalAssets}</span> asset{totalAssets !== 1 ? 's' : ''} • 
+ <span className="font-semibold"> {totalAllocations}</span> allocation{totalAllocations !== 1 ? 's' : ''}
+ </div>
+ </div>
+ <button
+ onClick={() => handleRemoveQueuedSession(session.id)}
+ className="ml-4 px-3 py-1 bg-red-100 text-red-700 text-sm font-semibold rounded hover:bg-red-200 transition-colors"
+ >
+ Remove
+ </button>
+ </div>
+ </div>
+ )
+ })}
+ </div>
+ {queuedSessions.length > 0 && (
+ <div className="mt-4 pt-4 border-t border-green-200">
+ <button
+ onClick={() => setStep('details')}
+ disabled={queuedSessions.length === 0}
+ className="w-full rounded-lg bg-blue-600 text-white p-3 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+ >
+ Continue to Details ({queuedSessions.length} wallet{queuedSessions.length !== 1 ? 's' : ''} queued) →
+ </button>
+ </div>
+ )}
+ </div>
+ )}
+
  {assets.length > 0 && (
  <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
  <div className="flex items-start justify-between">
@@ -1085,9 +1269,9 @@ export default function Home() {
  }}
  onEvmConnect={async (addr) => {
  if (addr && !connectedEVMAddresses.has(addr)) {
- // Check wallet limit (20 wallets max)
- if (connectedEVMAddresses.size >= 20) {
- setError('Maximum 20 wallets allowed. Please disconnect a wallet first.')
+ // Check wallet limit (20 wallets max including queued)
+ if (connectedEVMAddresses.size + queuedSessions.length >= 20) {
+ setError('Maximum 20 wallets allowed (including queued). Please disconnect a wallet or remove from queue first.')
  return
  }
  setConnectedEVMAddresses(prev => new Set([...prev, addr]))
@@ -1367,18 +1551,20 @@ export default function Home() {
  ← Back to Assets
  </button>
  <button
- onClick={() => setStep('connect')}
- className="px-6 rounded-lg border-2 border-blue-300 bg-blue-50 text-blue-700 p-4 font-semibold hover:bg-blue-100 transition-colors"
+ onClick={handleSaveToQueue}
+ disabled={selectedAssetIds.length === 0 || allocations.filter(a => selectedAssetIds.includes(a.assetId)).length === 0}
+ className="flex-1 rounded-lg bg-green-600 text-white p-4 font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
  >
- + Wallet
+ ✓ Save to Queue ({queuedSessions.length}/20)
  </button>
+ {queuedSessions.length > 0 && (
  <button
  onClick={() => setStep('details')}
- disabled={beneficiaries.length === 0 || allocations.filter(a => selectedAssetIds.includes(a.assetId)).length === 0 || selectedAssetIds.length === 0}
- className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+ className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg"
  >
- Continue to Details →
+ Continue to Details ({queuedSessions.length} wallet{queuedSessions.length !== 1 ? 's' : ''}) →
  </button>
+ )}
  </div>
  </div>
  )}

@@ -31,6 +31,17 @@ export interface Allocation {
   type: 'amount' | 'percentage'
 }
 
+export interface QueuedWalletSession {
+  id: string // Unique ID for this session
+  walletAddress: string
+  walletType: 'evm' | 'btc'
+  ensName?: string // Resolved ENS name if available
+  assets: Asset[]
+  allocations: Allocation[] // Allocations for assets in this wallet
+  verified: boolean
+  createdAt: number // Timestamp
+}
+
 export interface UserData {
   ownerName: string
   ownerFullName: string
