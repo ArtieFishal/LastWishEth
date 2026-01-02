@@ -406,7 +406,7 @@ export function AllocationPanel({
                         </div>
                         {asset.walletAddress && (
                           <p className="text-xs text-gray-500 font-mono mt-1 break-all">
-                            Wallet: {asset.walletAddress.slice(0, 6)}...{asset.walletAddress.slice(-4)}
+                            Wallet: {asset.walletAddress}
                           </p>
                         )}
                       </div>
