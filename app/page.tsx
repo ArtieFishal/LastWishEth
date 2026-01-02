@@ -633,7 +633,11 @@ export default function Home() {
  if (response.data.discountApplied) {
  setDiscountApplied(true)
  setPaymentVerified(true) // Skip payment if 100% discount
+ setError(null) // Clear any errors
+ // Use setTimeout to ensure state updates are applied before navigation
+ setTimeout(() => {
  setStep('download')
+ }, 100)
  } else {
  setStep('payment')
  }
@@ -2213,7 +2217,9 @@ export default function Home() {
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
  </svg>
  </div>
- <p className="text-lg font-semibold text-gray-900 mb-2">Payment Verified</p>
+ <p className="text-lg font-semibold text-gray-900 mb-2">
+ {discountApplied ? 'Discount Applied - FREE' : 'Payment Verified'}
+ </p>
  <p className="text-sm text-gray-600">
  Your document has been generated and is ready to download
  </p>
@@ -2229,6 +2235,23 @@ export default function Home() {
  </p>
  </div>
         </div>
+ )}
+
+ {step === 'download' && !paymentVerified && !discountApplied && (
+ <div className="max-w-2xl mx-auto text-center">
+ <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-8">
+ <h2 className="text-2xl font-bold text-yellow-900 mb-4">Payment Required</h2>
+ <p className="text-yellow-800 mb-4">
+ Please complete payment or apply a discount code to download your document.
+ </p>
+ <button
+ onClick={() => setStep('payment')}
+ className="px-6 py-3 bg-yellow-600 text-white font-semibold rounded-lg hover:bg-yellow-700 transition-colors"
+ >
+ Go to Payment Step
+ </button>
+ </div>
+ </div>
  )}
       </main>
 
