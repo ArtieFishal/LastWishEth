@@ -32,7 +32,7 @@ const getAssetCategory = (asset: Asset): string => {
 
 export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: AssetSelectorProps) {
   const [filter, setFilter] = useState<'all' | 'currencies' | 'nfts' | 'other'>('all')
-  const [sortBy, setSortBy] = useState<'chain' | 'type' | 'value'>('type')
+  const [sortBy, setSortBy] = useState<'chain' | 'type' | 'value' | 'wallet'>('type')
 
   // Group and filter assets
   const groupedAssets = useMemo(() => {
@@ -51,6 +51,16 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
       if (sortBy === 'chain') {
         return a.chain.localeCompare(b.chain)
       } else if (sortBy === 'type') {
+        return getAssetCategory(a).localeCompare(getAssetCategory(b))
+      } else if (sortBy === 'wallet') {
+        // Sort by wallet address (group assets by wallet)
+        const aWallet = a.walletAddress || 'unknown'
+        const bWallet = b.walletAddress || 'unknown'
+        const walletCompare = aWallet.localeCompare(bWallet)
+        if (walletCompare !== 0) return walletCompare
+        // If same wallet, sort by chain then type
+        const chainCompare = a.chain.localeCompare(b.chain)
+        if (chainCompare !== 0) return chainCompare
         return getAssetCategory(a).localeCompare(getAssetCategory(b))
       } else {
         const aValue = a.usdValue || 0
@@ -139,6 +149,7 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
           >
             <option value="type">Sort by Type</option>
             <option value="chain">Sort by Chain</option>
+            <option value="wallet">Sort by Wallet</option>
             <option value="value">Sort by Value</option>
           </select>
         </div>

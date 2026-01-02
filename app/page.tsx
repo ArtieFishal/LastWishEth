@@ -6,7 +6,7 @@ export const dynamicParams = true
 
 import { useState, useEffect } from 'react'
 import { useAccount, useDisconnect, useSignMessage, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi'
-import { createPublicClient, http, parseEther, isAddress } from 'viem'
+import { createPublicClient, http, parseEther, formatEther, isAddress } from 'viem'
 import { mainnet } from 'viem/chains'
 import { WalletConnect } from '@/components/WalletConnect'
 import { AssetList } from '@/components/AssetList'
@@ -2033,13 +2033,31 @@ export default function Home() {
  return
  }
  try {
+ // Check balance before sending (estimate gas + payment amount)
+ const publicClient = createPublicClient({
+ chain: mainnet,
+ transport: http(),
+ })
+ const balance = await publicClient.getBalance({ address: evmAddress! })
+ const paymentAmount = parseEther('0.00025')
+ const estimatedGas = parseEther('0.0001') // Rough estimate for gas
+ const totalNeeded = paymentAmount + estimatedGas
+ if (balance < totalNeeded) {
+ setError(`Insufficient balance. You need at least ${formatEther(totalNeeded)} ETH (0.00025 ETH payment + ~0.0001 ETH gas). Your balance: ${formatEther(balance)} ETH`)
+ return
+ }
  sendTransaction({
  to: paymentRecipientAddress,
- value: parseEther('0.00025'),
+ value: paymentAmount,
  })
  } catch (error: any) {
  console.error('Error sending payment:', error)
+ // Check if it's a balance error
+ if (error?.message?.includes('insufficient') || error?.message?.includes('balance')) {
+ setError('Insufficient balance for payment + gas. Please ensure you have at least 0.00035 ETH in your wallet.')
+ } else {
  setError(error?.message || 'Failed to send payment')
+ }
  }
  }}
  disabled={isSendingPayment || isConfirming || !paymentRecipientAddress}

@@ -21,6 +21,7 @@ export function AllocationPanel({
   const [allocationType, setAllocationType] = useState<'amount' | 'percentage'>('percentage')
   const [allocationValue, setAllocationValue] = useState('')
   const [editingAllocation, setEditingAllocation] = useState<{ assetId: string; beneficiaryId: string } | null>(null)
+  const [allocationHistory, setAllocationHistory] = useState<Allocation[][]>([]) // Track history for undo
 
   // Helper to check if asset is NFT (non-fungible)
   const isNFT = (asset: Asset) => asset.type === 'erc721' || asset.type === 'erc1155'
@@ -133,6 +134,8 @@ export function AllocationPanel({
       if (nftCount > 0) {
         message += `Allocated ${nftCount} NFT${nftCount !== 1 ? 's' : ''} to ${beneficiaries[0].name} (NFTs cannot be split).`
       }
+      // Save current state to history before adding
+      setAllocationHistory(prev => [...prev, [...allocations]])
       onAllocationChange([...allocations, ...newAllocations])
       alert(message.trim())
     } else {
@@ -241,6 +244,8 @@ export function AllocationPanel({
 
     // Add new allocations
     if (newAllocations.length > 0) {
+      // Save current state to history before adding
+      setAllocationHistory(prev => [...prev, [...allocations]])
       onAllocationChange([...allocations, ...newAllocations])
     }
 
@@ -256,6 +261,8 @@ export function AllocationPanel({
   }
 
   const handleRemoveAllocation = (assetId: string, beneficiaryId: string) => {
+    // Save current state to history before removing
+    setAllocationHistory(prev => [...prev, [...allocations]])
     onAllocationChange(
       allocations.filter(
         (a) => !(a.assetId === assetId && a.beneficiaryId === beneficiaryId)
@@ -284,6 +291,9 @@ export function AllocationPanel({
       }
     }
 
+    // Save current state to history before change
+    setAllocationHistory(prev => [...prev, [...allocations]])
+
     // Update the allocation with new beneficiary
     const updatedAllocations = allocations.map(alloc => {
       if (alloc.assetId === assetId && alloc.beneficiaryId === oldBeneficiaryId) {
@@ -296,6 +306,16 @@ export function AllocationPanel({
     })
 
     onAllocationChange(updatedAllocations)
+  }
+
+  const handleUnallocateLast = () => {
+    if (allocationHistory.length === 0) {
+      alert('Nothing to undo. No previous allocation state to restore.')
+      return
+    }
+    const previousState = allocationHistory[allocationHistory.length - 1]
+    setAllocationHistory(prev => prev.slice(0, -1)) // Remove last history entry
+    onAllocationChange(previousState)
   }
 
   // Calculate allocation summary
@@ -521,30 +541,41 @@ export function AllocationPanel({
         </button>
       </div>
 
-      {/* Quick Allocate Button */}
-      {beneficiaries.length > 0 && assets.length > 0 && (
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-blue-900">Quick Allocate</p>
-              <p className="text-xs text-blue-700">
-                {fungibleAssets.length > 0 && (
-                  <>Distribute {fungibleAssets.length} fungible token{fungibleAssets.length !== 1 ? 's' : ''} evenly ({defaultPercentage.toFixed(2)}% each). </>
-                )}
-                {nftAssets.length > 0 && (
-                  <>Assign {nftAssets.length} NFT{nftAssets.length !== 1 ? 's' : ''} to {beneficiaries[0]?.name || 'first beneficiary'} (NFTs cannot be split).</>
-                )}
-              </p>
+      {/* Quick Allocate Button and Undo */}
+      <div className="flex gap-3">
+        {beneficiaries.length > 0 && assets.length > 0 && (
+          <div className="flex-1 bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-blue-900">Quick Allocate</p>
+                <p className="text-xs text-blue-700">
+                  {fungibleAssets.length > 0 && (
+                    <>Distribute {fungibleAssets.length} fungible token{fungibleAssets.length !== 1 ? 's' : ''} evenly ({defaultPercentage.toFixed(2)}% each). </>
+                  )}
+                  {nftAssets.length > 0 && (
+                    <>Assign {nftAssets.length} NFT{nftAssets.length !== 1 ? 's' : ''} to {beneficiaries[0]?.name || 'first beneficiary'} (NFTs cannot be split).</>
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={handleQuickAllocate}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Quick Allocate
+              </button>
             </div>
-            <button
-              onClick={handleQuickAllocate}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Quick Allocate
-            </button>
           </div>
-        </div>
-      )}
+        )}
+        {allocationHistory.length > 0 && (
+          <button
+            onClick={handleUnallocateLast}
+            className="px-4 py-2 bg-orange-600 text-white text-sm font-semibold rounded-lg hover:bg-orange-700 transition-colors whitespace-nowrap"
+            title="Undo last allocation change"
+          >
+            ↶ Undo Last
+          </button>
+        )}
+      </div>
 
       {/* Allocation Summary */}
       <div className="space-y-2">
