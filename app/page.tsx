@@ -2045,13 +2045,14 @@ export default function Home() {
  // Clear any previous errors
  setError(null)
  
- // Send transaction - let wallet handle gas estimation
- // If gas estimation fails, the wallet will show the error
+ // Send transaction with manual gas limit to avoid estimation issues
+ // Simple ETH transfer needs ~21,000 gas, we'll use 50,000 to be safe
+ // Wallet can still override this if needed
  sendTransaction({
  to: paymentRecipientAddress,
  value: parseEther('0.00025'),
- // Don't specify gas parameters - let wallet estimate
- // This allows wallet to show gas options and let user adjust
+ gas: BigInt(50000), // Manual gas limit - avoids estimation errors
+ // Let wallet set gas price (it will show options)
  })
  } catch (error: any) {
  console.error('Error sending payment:', error)
