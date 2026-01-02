@@ -962,91 +962,19 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
           Connect your Bankr wallet linked to your X (Twitter) account. Enter your X handle or wallet address.
         </p>
         <div className="space-y-3">
-          {/* X Handle Input */}
+          {/* Wallet Address Input */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              X (Twitter) Handle
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={bankrXHandle}
-                onChange={(e) => {
-                  setBankrXHandle(e.target.value)
-                  setResolvedAddress(null) // Clear resolved address when handle changes
-                }}
-                placeholder="@yourhandle or yourhandle"
-                className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 p-3 text-sm focus:border-blue-500 focus:outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              />
-              <button
-                onClick={async () => {
-                  if (!bankrXHandle.trim()) {
-                    alert('Please enter your X handle')
-                    return
-                  }
-
-                  setResolvingXHandle(true)
-                  try {
-                    const response = await fetch('/api/bankr/resolve', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({ xHandle: bankrXHandle }),
-                    })
-
-                    const data = await response.json()
-
-                    if (response.ok && data.walletAddress) {
-                      setResolvedAddress(data.walletAddress)
-                      setBankrAddress(data.walletAddress) // Auto-fill wallet address
-                    } else {
-                      // Show error but don't block - user can still enter manually
-                      const errorMsg = data.error || 'Failed to resolve X handle. Make sure your X account is connected to Bankr.'
-                      console.warn('X handle resolution failed:', errorMsg)
-                      // Don't show alert - just log it, user can still use manual entry
-                      // The error is informational, not blocking
-                    }
-                  } catch (error: any) {
-                    console.error('Error resolving X handle:', error)
-                    alert('Failed to resolve X handle. Please try entering your wallet address manually.')
-                  } finally {
-                    setResolvingXHandle(false)
-                  }
-                }}
-                disabled={resolvingXHandle || !bankrXHandle.trim()}
-                className="px-4 py-3 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-              >
-                {resolvingXHandle ? 'Resolving...' : 'Resolve'}
-              </button>
-            </div>
-            {resolvingXHandle && (
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                Resolving X handle...
-              </p>
-            )}
-            {resolvedAddress && (
-              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                ✓ Resolved: {resolvedAddress}
-              </p>
-            )}
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Enter your X handle to automatically find your Bankr wallet (or use manual entry below)
-            </p>
-          </div>
-
-          {/* Wallet Address Input (Manual or Auto-filled) */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Bankr Wallet Address
+              Bankr Wallet Address *
             </label>
             <input
               type="text"
               value={bankrAddress}
               onChange={(e) => {
-                setBankrAddress(e.target.value)
+                const value = e.target.value
+                setBankrAddress(value)
                 // Clear resolved address if user manually edits
-                if (resolvedAddress && e.target.value !== resolvedAddress) {
+                if (resolvedAddress && value !== resolvedAddress) {
                   setResolvedAddress(null)
                 }
               }}
@@ -1059,20 +987,84 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
               </p>
             )}
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Enter your Bankr wallet address directly (starts with 0x). You can skip X handle resolution and enter this manually.
+              Enter your Bankr wallet address (starts with 0x). This is the address linked to your X account.
             </p>
           </div>
 
+          {/* Optional: X Handle Input (for future OAuth integration) */}
+          <details className="text-xs text-gray-500 dark:text-gray-400">
+            <summary className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 mb-2">
+              Optional: Try X handle resolution (experimental)
+            </summary>
+            <div className="mt-2 space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={bankrXHandle}
+                  onChange={(e) => {
+                    setBankrXHandle(e.target.value)
+                    setResolvedAddress(null) // Clear resolved address when handle changes
+                  }}
+                  placeholder="@yourhandle or yourhandle"
+                  className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 p-2 text-sm focus:border-blue-500 focus:outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                />
+                <button
+                  onClick={async () => {
+                    if (!bankrXHandle.trim()) {
+                      alert('Please enter your X handle')
+                      return
+                    }
+
+                    setResolvingXHandle(true)
+                    try {
+                      const response = await fetch('/api/bankr/resolve', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ xHandle: bankrXHandle }),
+                      })
+
+                      const data = await response.json()
+
+                      if (response.ok && data.walletAddress) {
+                        setResolvedAddress(data.walletAddress)
+                        setBankrAddress(data.walletAddress) // Auto-fill wallet address
+                      } else {
+                        console.warn('X handle resolution failed:', data.error)
+                        // Don't show alert - just log it
+                      }
+                    } catch (error: any) {
+                      console.error('Error resolving X handle:', error)
+                    } finally {
+                      setResolvingXHandle(false)
+                    }
+                  }}
+                  disabled={resolvingXHandle || !bankrXHandle.trim()}
+                  className="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                >
+                  {resolvingXHandle ? 'Resolving...' : 'Resolve'}
+                </button>
+              </div>
+              {resolvedAddress && (
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  ✓ Resolved: {resolvedAddress}
+                </p>
+              )}
+              <p className="text-xs text-gray-400 italic">
+                Note: X handle resolution requires Bankr's API. If it doesn't work, enter your wallet address manually above.
+              </p>
+            </div>
+          </details>
+
           <button
             onClick={async () => {
-              const addressToUse = resolvedAddress || bankrAddress.trim()
-              
-              if (!addressToUse) {
-                alert('Please enter your X handle and click "Resolve" or enter your wallet address manually')
+              if (!bankrAddress.trim()) {
+                alert('Please enter your Bankr wallet address')
                 return
               }
               
-              const trimmedAddress = addressToUse.trim().toLowerCase()
+              const trimmedAddress = bankrAddress.trim().toLowerCase()
               
               // Validate Ethereum address format
               if (!trimmedAddress.startsWith('0x') || trimmedAddress.length !== 42) {
@@ -1095,7 +1087,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                 setConnectingBankr(false)
               }
             }}
-            disabled={connectingBankr || (!bankrAddress.trim() && !resolvedAddress)}
+            disabled={connectingBankr || !bankrAddress.trim()}
             className="w-full rounded-xl border-2 p-4 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between group"
             style={{
               borderColor: walletConfig.Bankr.color,
