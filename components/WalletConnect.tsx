@@ -858,11 +858,11 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                       // Explicitly use the clicked connector - don't let wagmi auto-select
                       console.log('Connecting with connector:', connector.name, connector.uid, connector.type)
                       
-                      // For injected connectors, check if wallet is actually available
-                      // If not, fall back to WalletConnect QR code
-                      if (connector.type === 'injected' && connector.name !== 'WalletConnect') {
+                      // For injected connectors, try to connect directly
+                      // Only check availability for wallets that support it well (not Phantom)
+                      if (connector.type === 'injected' && connector.name !== 'WalletConnect' && connector.name !== 'Phantom') {
                         try {
-                          // Try to check if wallet is available
+                          // Try to check if wallet is available (skip for Phantom as it may not expose accounts the same way)
                           const accounts = await connector.getAccounts?.().catch(() => [])
                           if (!accounts || accounts.length === 0) {
                             // Wallet not available, use WalletConnect QR instead
@@ -874,7 +874,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                             }
                           }
                         } catch (e) {
-                          // If check fails, try WalletConnect QR as fallback
+                          // If check fails, try WalletConnect QR as fallback (but not for Phantom)
                           const walletConnectConnector = connectors?.find(c => c.name === 'WalletConnect')
                           if (walletConnectConnector) {
                             console.log(`${connector.name} check failed, using WalletConnect QR instead`)
@@ -884,14 +884,14 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                         }
                       }
                       
-                      // Connect with the specific connector
+                      // Connect with the specific connector (for Phantom, connect directly without pre-check)
                       await connect({ connector })
                     } catch (error: any) {
                       // Don't show error for user rejection
                       if (error?.name !== 'UserRejectedRequestError' && error?.message !== 'User rejected the request.') {
                         console.error('Error connecting to', connector.name, ':', error)
-                        // If injected wallet fails, try WalletConnect QR as fallback
-                        if (connector.type === 'injected' && connector.name !== 'WalletConnect') {
+                        // If injected wallet fails, try WalletConnect QR as fallback (but not for Phantom)
+                        if (connector.type === 'injected' && connector.name !== 'WalletConnect' && connector.name !== 'Phantom') {
                           const walletConnectConnector = connectors?.find(c => c.name === 'WalletConnect')
                           if (walletConnectConnector) {
                             try {
