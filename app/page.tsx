@@ -892,62 +892,59 @@ export default function Home() {
  const isActive = step === s.id
  const isCompleted = currentIndex > index
  
- // Determine if step has content and can be navigated to
- const hasContent = (() => {
+ // Allow free navigation to steps 1-4 (Connect, Assets, Allocate, Details)
+ // Steps 5-6 (Payment, Download) require completion of previous steps
+ const isFreeNavigationStep = index < 4
+ const canNavigate = isFreeNavigationStep || isActive || isCompleted || (() => {
    switch(s.id) {
-     case 'connect': return queuedSessions.length > 0 || connectedEVMAddresses.size > 0 || btcAddress || assets.length > 0
-     case 'assets': return assets.length > 0 || queuedSessions.length > 0
-     case 'allocate': return allocations.length > 0 || queuedSessions.some(s => s.allocations.length > 0) || beneficiaries.length > 0 || selectedAssetIds.length > 0
-     case 'details': return ownerFullName || ownerName || beneficiaries.length > 0 || queuedSessions.length > 0
      case 'payment': return invoiceId !== null || discountApplied
      case 'download': return paymentVerified || discountApplied
      default: return false
    }
  })()
  
- // Allow navigation if: current step, completed step, or step has content
- const canNavigate = isActive || isCompleted || hasContent || index === 0
- 
  return (
  <div key={s.id} className="flex items-center flex-1">
  <div className="flex flex-col items-center flex-1">
  <button
  onClick={() => {
-   if (canNavigate) {
+   // Always allow navigation for steps 1-4, check canNavigate for steps 5-6
+   if (isFreeNavigationStep || canNavigate) {
      setStep(s.id)
    }
  }}
- disabled={!canNavigate}
+ disabled={!isFreeNavigationStep && !canNavigate}
  className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${
    isActive
      ? 'bg-blue-600 text-white shadow-lg scale-110 cursor-default'
      : isCompleted
      ? 'bg-green-500 text-white hover:bg-green-600 cursor-pointer'
-     : canNavigate
+     : (isFreeNavigationStep || canNavigate)
      ? 'bg-gray-300 text-gray-600 hover:bg-gray-400 cursor-pointer'
      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
  }`}
- title={canNavigate ? `Go to ${s.label}` : 'Complete previous steps first'}
+ title={isFreeNavigationStep || canNavigate ? `Go to ${s.label}` : 'Complete previous steps first'}
  >
  {isCompleted ? '✓' : s.number}
  </button>
  <button
  onClick={() => {
-   if (canNavigate) {
+   // Always allow navigation for steps 1-4, check canNavigate for steps 5-6
+   if (isFreeNavigationStep || canNavigate) {
      setStep(s.id)
    }
  }}
- disabled={!canNavigate}
+ disabled={!isFreeNavigationStep && !canNavigate}
  className={`text-xs mt-2 font-medium transition-colors ${
    isActive
      ? 'text-blue-600 cursor-default'
      : isCompleted
      ? 'text-green-600 hover:text-green-700 cursor-pointer'
-     : canNavigate
+     : (isFreeNavigationStep || canNavigate)
      ? 'text-gray-600 hover:text-gray-800 cursor-pointer'
      : 'text-gray-400 cursor-not-allowed'
  }`}
- title={canNavigate ? `Go to ${s.label}` : 'Complete previous steps first'}
+ title={isFreeNavigationStep || canNavigate ? `Go to ${s.label}` : 'Complete previous steps first'}
  >
  {s.label}
  </button>
