@@ -751,16 +751,27 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
               return (
                 <button
                   key={connector.uid}
-                  onClick={() => {
+                  onClick={async () => {
                     try {
                       // Explicitly use the clicked connector - don't let wagmi auto-select
-                      console.log('Connecting with connector:', connector.name, connector.uid)
-                      connect({ connector })
+                      console.log('Connecting with connector:', connector.name, connector.uid, connector.type)
+                      
+                      // Check if connector is ready before connecting
+                      if (connector.type === 'injected') {
+                        // For injected connectors, verify the wallet is actually available
+                        const isAvailable = await connector.getAccounts?.().catch(() => null)
+                        if (!isAvailable && connector.name !== 'WalletConnect') {
+                          console.warn(`${connector.name} may not be installed or ready`)
+                        }
+                      }
+                      
+                      // Connect with the specific connector - this should prevent fallback
+                      await connect({ connector })
                     } catch (error: any) {
                       // Don't show error for user rejection
                       if (error?.name !== 'UserRejectedRequestError' && error?.message !== 'User rejected the request.') {
-                        console.error('Error connecting:', error)
-                        alert('Failed to connect wallet. Please try again.')
+                        console.error('Error connecting to', connector.name, ':', error)
+                        alert(`Failed to connect ${connector.name}. Please make sure the wallet extension is installed and unlocked.`)
                       }
                     }
                   }}

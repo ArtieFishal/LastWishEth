@@ -46,6 +46,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
         if (args.some(arg => typeof arg === 'string' && arg.includes('forwardToConsole'))) {
           return
         }
+        // Skip chrome.runtime.sendMessage errors from wallet extensions (harmless)
+        if (args.some(arg => typeof arg === 'string' && arg.includes('chrome.runtime.sendMessage'))) {
+          return
+        }
+        // Skip Extension ID errors from wallet extensions
+        if (args.some(arg => typeof arg === 'string' && arg.includes('Extension ID'))) {
+          return
+        }
         originalError(...args)
       }
       
