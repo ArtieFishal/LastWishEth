@@ -1001,7 +1001,11 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                       setResolvedAddress(data.walletAddress)
                       setBankrAddress(data.walletAddress) // Auto-fill wallet address
                     } else {
-                      alert(data.error || 'Failed to resolve X handle. Make sure your X account is connected to Bankr.')
+                      // Show error but don't block - user can still enter manually
+                      const errorMsg = data.error || 'Failed to resolve X handle. Make sure your X account is connected to Bankr.'
+                      console.warn('X handle resolution failed:', errorMsg)
+                      // Don't show alert - just log it, user can still use manual entry
+                      // The error is informational, not blocking
                     }
                   } catch (error: any) {
                     console.error('Error resolving X handle:', error)
@@ -1016,30 +1020,46 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                 {resolvingXHandle ? 'Resolving...' : 'Resolve'}
               </button>
             </div>
+            {resolvingXHandle && (
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                Resolving X handle...
+              </p>
+            )}
             {resolvedAddress && (
               <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                 ✓ Resolved: {resolvedAddress}
               </p>
             )}
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Enter your X handle to automatically find your Bankr wallet
+              Enter your X handle to automatically find your Bankr wallet (or use manual entry below)
             </p>
           </div>
 
           {/* Wallet Address Input (Manual or Auto-filled) */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Or Enter Wallet Address Manually
+              Bankr Wallet Address
             </label>
             <input
               type="text"
               value={bankrAddress}
-              onChange={(e) => setBankrAddress(e.target.value)}
+              onChange={(e) => {
+                setBankrAddress(e.target.value)
+                // Clear resolved address if user manually edits
+                if (resolvedAddress && e.target.value !== resolvedAddress) {
+                  setResolvedAddress(null)
+                }
+              }}
               placeholder="0xce561ebc384d48146997b9cf2dc41335c4ee9477"
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 p-3 text-sm font-mono focus:border-blue-500 focus:outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             />
+            {resolvedAddress && bankrAddress === resolvedAddress && (
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                ✓ Auto-filled from X handle
+              </p>
+            )}
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Enter your Bankr wallet address directly (starts with 0x)
+              Enter your Bankr wallet address directly (starts with 0x). You can skip X handle resolution and enter this manually.
             </p>
           </div>
 

@@ -46,11 +46,14 @@ export async function POST(request: NextRequest) {
 
         if (response.ok) {
           const data = await response.json()
-          walletAddress = data.walletAddress || data.address || null
+          console.log('Bankr API response:', data)
+          walletAddress = data.walletAddress || data.address || data.wallet || null
+        } else {
+          console.log(`Bankr API returned ${response.status}: ${response.statusText}`)
         }
-      } catch (e) {
+      } catch (e: any) {
         // API might not be available yet, try alternative
-        console.log('Bankr API not available, trying alternative methods')
+        console.log('Bankr API not available:', e.message)
       }
 
       // Option 2: Try Clanker API (mentioned in docs)
@@ -68,10 +71,36 @@ export async function POST(request: NextRequest) {
 
           if (clankerResponse.ok) {
             const clankerData = await clankerResponse.json()
-            walletAddress = clankerData.walletAddress || clankerData.address || null
+            console.log('Clanker API response:', clankerData)
+            walletAddress = clankerData.walletAddress || clankerData.address || clankerData.wallet || null
+          } else {
+            console.log(`Clanker API returned ${clankerResponse.status}: ${clankerResponse.statusText}`)
           }
-        } catch (e) {
-          console.log('Clanker API not available')
+        } catch (e: any) {
+          console.log('Clanker API not available:', e.message)
+        }
+      }
+
+      // Option 3: Try alternative endpoint format
+      if (!walletAddress) {
+        try {
+          const altResponse = await fetch(
+            `https://bankr.bot/api/wallet/${encodeURIComponent(cleanHandle)}`,
+            {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json',
+              },
+            }
+          )
+
+          if (altResponse.ok) {
+            const altData = await altResponse.json()
+            console.log('Alternative API response:', altData)
+            walletAddress = altData.walletAddress || altData.address || altData.wallet || null
+          }
+        } catch (e: any) {
+          console.log('Alternative API not available:', e.message)
         }
       }
 
