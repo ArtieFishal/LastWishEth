@@ -1456,10 +1456,12 @@ export default function Home() {
               onBitcoinConnect={async (addr) => {
                 if (!addr) return
                 setBtcAddress(addr)
+                setSelectedWalletForLoading(null) // Clear EVM selection when Bitcoin is connected
                 setError(null)
                 // Automatically load Bitcoin assets after connection
                 try {
                   await loadAssets(true, false) // append=true, loadFromAllWallets=false
+                  setStep('assets') // Navigate to assets step to show Bitcoin assets
                 } catch (err) {
                   console.error('Error loading Bitcoin assets after connection:', err)
                   setError('Connected successfully, but failed to load assets. You can manually load assets using the "Load Assets" button.')
