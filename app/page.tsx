@@ -811,7 +811,7 @@ export default function Home() {
  }
 
  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-200 to-gray-300">
  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
  {/* Header */}
  <header className="text-center mb-12 relative">
@@ -885,7 +885,7 @@ export default function Home() {
  </header>
 
  {/* Progress Steps */}
- <div className="mb-8 bg-white rounded-lg shadow-sm p-4">
+ <div className="mb-8 bg-gray-100 rounded-lg shadow-sm p-4">
  <div className="flex items-center justify-between max-w-4xl mx-auto">
  {steps.map((s, index) => {
  const currentIndex = getCurrentStepIndex()
@@ -961,7 +961,7 @@ export default function Home() {
  </div>
 
  {/* Main Content */}
- <main className="bg-white rounded-xl shadow-xl p-8 md:p-12">
+ <main className="bg-gray-100 rounded-xl shadow-xl p-8 md:p-12">
  {error && (
  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
  <p className="text-red-800 text-sm">{error}</p>
@@ -1000,7 +1000,7 @@ export default function Home() {
  const totalAssets = session.assets.length
  const totalAllocations = session.allocations.length
  return (
- <div key={session.id} className="bg-white rounded-lg border border-gray-200 p-4">
+ <div key={session.id} className="bg-gray-50 rounded-lg border border-gray-300 p-4">
  <div className="flex items-start justify-between">
  <div className="flex-1">
  <div className="flex items-center gap-2 mb-2">
@@ -1154,7 +1154,7 @@ export default function Home() {
  }
  }
  }}
- className={`bg-white border-2 rounded-lg p-4 shadow-sm cursor-pointer transition-all ${
+ className={`bg-gray-50 border-2 rounded-lg p-4 shadow-sm cursor-pointer transition-all ${
  isSelected 
  ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-300' 
  : isVerified
@@ -1259,7 +1259,7 @@ export default function Home() {
  const btcAssets = assets.filter(a => a.chain === 'bitcoin')
  const btcAssetCount = btcAssets.length
   return (
- <div className="bg-white border-2 border-orange-200 rounded-lg p-4 shadow-sm">
+ <div className="bg-gray-50 border-2 border-orange-200 rounded-lg p-4 shadow-sm">
  <div className="flex items-start justify-between">
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2 mb-2">
@@ -1861,14 +1861,14 @@ export default function Home() {
  </p>
  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-8 border-2 border-blue-200">
  <div className="space-y-4">
- <div className="bg-white rounded-lg p-4">
+ <div className="bg-gray-50 rounded-lg p-4">
  <p className="text-sm text-gray-600 mb-1">Amount</p>
                     <p className="text-2xl font-bold text-gray-900">0.00025 ETH</p> </div>
- <div className="bg-white rounded-lg p-4">
+ <div className="bg-gray-50 rounded-lg p-4">
  <p className="text-sm text-gray-600 mb-1">Token</p>
                     <p className="text-lg font-semibold text-gray-900">Native ETH on Ethereum Mainnet</p>
  </div>
- <div className="bg-white rounded-lg p-4">
+ <div className="bg-gray-50 rounded-lg p-4">
  <p className="text-sm text-gray-600 mb-1">Recipient</p>
  <p className="text-lg font-mono text-gray-900 break-all">lastwish.eth</p>
  </div>
