@@ -351,8 +351,10 @@ export function AllocationPanel({
 
   return (
     <div className="space-y-4">
-      {/* Add Allocation Form */}
-      <div className="bg-white rounded-lg border-2 border-gray-200 p-4 space-y-3">
+      {/* Two-column layout for better visibility */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Left Column: Add Allocation Form */}
+        <div className="bg-white rounded-lg border-2 border-gray-200 p-4 space-y-3">
         <h4 className="font-semibold text-gray-900 text-sm">Add Allocation</h4>
         
         {/* Multi-select Assets */}
@@ -375,7 +377,7 @@ export function AllocationPanel({
               </button>
             </div>
           </div>
-          <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1 bg-gray-50">
+          <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1 bg-gray-50">
             {fungibleAssets.length > 0 && (
               <div className="mb-2">
                 <p className="text-xs font-semibold text-gray-700 mb-1">💰 Fungible Tokens (Can Split)</p>
@@ -433,6 +435,25 @@ export function AllocationPanel({
                         onChange={() => toggleAsset(asset.id)}
                         className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 mt-1"
                       />
+                      {/* NFT Image */}
+                      {asset.imageUrl && (
+                        <div className="flex-shrink-0">
+                          <img 
+                            src={asset.imageUrl.startsWith('ipfs://') 
+                              ? asset.imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/')
+                              : asset.imageUrl.startsWith('ipfs/')
+                              ? `https://ipfs.io/${asset.imageUrl}`
+                              : asset.imageUrl
+                            }
+                            alt={asset.name || asset.symbol}
+                            className="w-12 h-12 rounded object-cover border border-gray-200"
+                            onError={(e) => {
+                              // Hide image on error
+                              e.currentTarget.style.display = 'none'
+                            }}
+                          />
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold text-gray-900">{asset.name || asset.symbol}</span>
@@ -440,7 +461,7 @@ export function AllocationPanel({
                             <span className="text-xs text-gray-500">Token #{asset.tokenId}</span>
                           )}
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-800">
-                            NFT
+                            NFT (Cannot Split)
                           </span>
                           {existingAllocation && (
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800">
@@ -450,7 +471,7 @@ export function AllocationPanel({
                         </div>
                         {asset.walletAddress && (
                           <p className="text-xs text-gray-500 font-mono mt-1 break-all">
-                            Wallet: {asset.walletAddress.slice(0, 6)}...{asset.walletAddress.slice(-4)}
+                            Wallet: {asset.walletAddress}
                           </p>
                         )}
                       </div>
@@ -539,6 +560,51 @@ export function AllocationPanel({
           Add Allocation{selectedAssets.length > 1 ? `s (${selectedAssets.length})` : ''}
           {allocationType === 'percentage' && !allocationValue && beneficiaries.length > 0 && ` (${defaultPercentage.toFixed(2)}% each)`}
         </button>
+        </div>
+
+        {/* Right Column: Beneficiaries List */}
+        <div className="bg-white rounded-lg border-2 border-gray-200 p-4">
+          <h4 className="font-semibold text-gray-900 text-sm mb-3">Beneficiaries ({beneficiaries.length})</h4>
+          {beneficiaries.length === 0 ? (
+            <p className="text-xs text-gray-500 text-center py-4">No beneficiaries added yet</p>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {beneficiaries.map((ben) => {
+                const beneficiaryAllocations = allocations.filter(a => a.beneficiaryId === ben.id)
+                const nftCount = beneficiaryAllocations.filter(a => {
+                  const asset = assets.find(ast => ast.id === a.assetId)
+                  return asset && isNFT(asset)
+                }).length
+                const fungibleCount = beneficiaryAllocations.filter(a => {
+                  const asset = assets.find(ast => ast.id === a.assetId)
+                  return asset && isFungible(asset)
+                }).length
+                return (
+                  <div key={ben.id} className="bg-blue-50 border border-blue-200 rounded p-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-900">{ben.name}</span>
+                      <span className="text-xs text-gray-600">
+                        {beneficiaryAllocations.length} allocation{beneficiaryAllocations.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    {beneficiaryAllocations.length > 0 && (
+                      <div className="text-xs text-gray-600 mt-1">
+                        {nftCount > 0 && <span className="text-pink-700">{nftCount} NFT{nftCount !== 1 ? 's' : ''}</span>}
+                        {nftCount > 0 && fungibleCount > 0 && <span className="mx-1">•</span>}
+                        {fungibleCount > 0 && <span>{fungibleCount} token{fungibleCount !== 1 ? 's' : ''}</span>}
+                      </div>
+                    )}
+                    {ben.walletAddress && (
+                      <p className="text-xs text-gray-500 font-mono mt-1 break-all">
+                        {ben.walletAddress}
+                      </p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Quick Allocate Button and Undo */}
@@ -577,10 +643,10 @@ export function AllocationPanel({
         )}
       </div>
 
-      {/* Allocation Summary */}
+      {/* Allocation Summary - Full Width */}
       <div className="space-y-2">
         <h4 className="font-semibold text-gray-900 text-sm">Allocation Summary</h4>
-        <div className="space-y-2 max-h-96 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
           {allocationSummary.map(({ asset, allocations: assetAllocs, totalPercentage, totalAmount, isOverAllocated, isUnallocated, hasPercentageAllocations, hasAmountAllocations, assetBalance }) => {
             const assetIsNFT = isNFT(asset)
             return (
@@ -596,7 +662,25 @@ export function AllocationPanel({
                     : 'border-green-200 bg-green-50'
                 }`}
               >
-                <div className="flex items-start justify-between mb-2">
+                <div className="flex items-start gap-3 mb-2">
+                  {/* NFT Image */}
+                  {assetIsNFT && asset.imageUrl && (
+                    <div className="flex-shrink-0">
+                      <img 
+                        src={asset.imageUrl.startsWith('ipfs://') 
+                          ? asset.imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/')
+                          : asset.imageUrl.startsWith('ipfs/')
+                          ? `https://ipfs.io/${asset.imageUrl}`
+                          : asset.imageUrl
+                        }
+                        alt={asset.name || asset.symbol}
+                        className="w-16 h-16 rounded object-cover border-2 border-pink-300"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                        }}
+                      />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <span className="font-bold text-sm text-gray-900">{asset.name || asset.symbol}</span>
@@ -611,11 +695,11 @@ export function AllocationPanel({
                         </>
                       ) : (
                         <>
-                          <span className="text-xs text-gray-600">
-                            Balance: {asset.balanceFormatted}
+                          <span className="text-xs text-gray-500">
+                            {asset.balanceFormatted}
                           </span>
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800">
-                            Fungible Token
+                            Fungible (Can Split)
                           </span>
                         </>
                       )}
@@ -629,17 +713,17 @@ export function AllocationPanel({
                       </p>
                     )}
                   </div>
-                  <div className="flex gap-2 ml-2">
-                    {assetIsNFT && assetAllocs.length > 0 && (
-                      <span className="text-xs text-pink-700 font-semibold bg-pink-100 px-2 py-0.5 rounded">100% Allocated</span>
-                    )}
-                    {!assetIsNFT && isOverAllocated && (
-                      <span className="text-xs text-red-700 font-semibold bg-red-100 px-2 py-0.5 rounded">⚠️ Over</span>
-                    )}
-                    {isUnallocated && (
-                      <span className="text-xs text-yellow-700 font-semibold bg-yellow-100 px-2 py-0.5 rounded">⚠️ Unallocated</span>
-                    )}
-                  </div>
+                </div>
+                <div className="flex gap-2 mb-2">
+                  {assetIsNFT && assetAllocs.length > 0 && (
+                    <span className="text-xs text-pink-700 font-semibold bg-pink-100 px-2 py-0.5 rounded">100% Allocated</span>
+                  )}
+                  {!assetIsNFT && isOverAllocated && (
+                    <span className="text-xs text-red-700 font-semibold bg-red-100 px-2 py-0.5 rounded">⚠️ Over Allocated</span>
+                  )}
+                  {isUnallocated && (
+                    <span className="text-xs text-yellow-700 font-semibold bg-yellow-100 px-2 py-0.5 rounded">⚠️ Unallocated</span>
+                  )}
                 </div>
                 {assetAllocs.length > 0 && (
                   <div className="space-y-1 mt-2">
