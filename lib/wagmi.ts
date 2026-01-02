@@ -14,6 +14,41 @@ const buildConnectors = async () => {
   
   const connectors: any[] = []
   
+  // Add injected connectors - these automatically detect installed browser extensions
+  // This will show MetaMask, Coinbase Wallet, Rainbow, Trust Wallet, OKX, etc. if installed
+  try {
+    const { injected } = await import('wagmi/connectors')
+    
+    // Add specific injected connectors for common wallets
+    // wagmi will only show the ones that are actually installed in the user's browser
+    const commonWallets = [
+      'metaMask',
+      'coinbaseWallet', 
+      'rainbow',
+      'trust',
+      'okxWallet',
+      'phantom',
+    ]
+    
+    // Add connectors for each common wallet type
+    commonWallets.forEach(target => {
+      try {
+        connectors.push(injected({ target: target as any }))
+      } catch (e) {
+        // Skip if specific wallet connector fails
+      }
+    })
+    
+    // Add generic browser wallet connector as fallback (catches any other injected wallet)
+    connectors.push(injected({ target: 'browser' }))
+  } catch (error) {
+    // Silently fail if injected connectors can't be loaded
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Injected connectors not available:', error)
+    }
+  }
+  
+  // Add WalletConnect connector for mobile wallets and QR code support
   if (projectId && projectId.length > 0) {
     try {
       // Dynamically import walletConnect only on client to prevent SSR indexedDB access
