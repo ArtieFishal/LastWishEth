@@ -39,7 +39,11 @@ async function fetchAndEmbedImage(pdfDoc: PDFDocument, imageUrl: string): Promis
   }
 }
 
-export async function generatePDF(userData: UserData, assets: Asset[]): Promise<Uint8Array> {
+export async function generatePDF(
+  userData: UserData, 
+  assets: Asset[],
+  walletProviders?: Record<string, string>
+): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create()
   let page = pdfDoc.addPage([612, 792]) // US Letter size
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
@@ -367,31 +371,68 @@ export async function generatePDF(userData: UserData, assets: Asset[]): Promise<
   yPosition = addText('EXECUTIVE SUMMARY: ASSET ALLOCATIONS BY WALLET & CHAIN', margin, yPosition, 14, true, colors.title)
   yPosition -= lineHeight * 2
   
-  // Group assets by wallet address first, then by chain
-  const walletGroups: Record<string, { chain: string; assets: Asset[] }[]> = {}
+  // Group assets by wallet address first, then by chain, preserving wallet provider info
+  const walletGroups: Record<string, { chain: string; assets: Asset[]; provider?: string }[]> = {}
   
   assets.forEach((asset) => {
     const walletAddr = asset.walletAddress || 'Unknown'
+    const provider = walletProviders?.[walletAddr] || asset.walletProvider || 'Unknown Wallet'
     if (!walletGroups[walletAddr]) {
       walletGroups[walletAddr] = []
     }
     const chainGroup = walletGroups[walletAddr].find(g => g.chain === asset.chain)
     if (chainGroup) {
       chainGroup.assets.push(asset)
+      // Update provider if not set
+      if (!chainGroup.provider) {
+        chainGroup.provider = provider
+      }
     } else {
-      walletGroups[walletAddr].push({ chain: asset.chain, assets: [asset] })
+      walletGroups[walletAddr].push({ 
+        chain: asset.chain, 
+        assets: [asset],
+        provider: provider
+      })
     }
   })
   
+  // Sort wallets by provider name, then by address
+  const sortedWalletEntries = Object.entries(walletGroups).sort(([addrA, groupsA], [addrB, groupsB]) => {
+    const providerA = groupsA[0]?.provider || ''
+    const providerB = groupsB[0]?.provider || ''
+    if (providerA !== providerB) {
+      return providerA.localeCompare(providerB)
+    }
+    return addrA.localeCompare(addrB)
+  })
+  
+  // Sort chains within each wallet
+  sortedWalletEntries.forEach(([_, chainGroups]) => {
+    chainGroups.sort((a, b) => a.chain.localeCompare(b.chain))
+    // Sort assets within each chain
+    chainGroups.forEach(group => {
+      group.assets.sort((a, b) => {
+        // Sort by symbol first, then by name
+        if (a.symbol !== b.symbol) {
+          return a.symbol.localeCompare(b.symbol)
+        }
+        return (a.name || '').localeCompare(b.name || '')
+      })
+    })
+  })
+  
   // Display summary organized by wallet -> chain -> asset -> beneficiary
-  for (const [walletAddr, chainGroups] of Object.entries(walletGroups)) {
-    const walletIndex = Object.keys(walletGroups).indexOf(walletAddr)
+  for (const [walletAddr, chainGroups] of sortedWalletEntries) {
+    const walletIndex = sortedWalletEntries.findIndex(([addr]) => addr === walletAddr)
     const walletColor = colors.walletColors[walletIndex % colors.walletColors.length]
     const walletEnsName = userData.resolvedEnsNames?.[walletAddr.toLowerCase()] || userData.walletNames?.[walletAddr]
+    const walletProvider = chainGroups[0]?.provider || 'Unknown Wallet'
     
     checkNewPage(60)
     addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 50, walletColor, 0.12)
     yPosition = addText(`WALLET ${walletIndex + 1}`, margin, yPosition, 13, true, walletColor)
+    yPosition -= lineHeight
+    yPosition = addText(`Wallet App: ${walletProvider}`, margin + 20, yPosition, 11, true, walletColor)
     yPosition -= lineHeight
     if (walletEnsName && walletEnsName !== walletAddr) {
       yPosition = addText(`ENS: ${walletEnsName}`, margin + 20, yPosition, 11, true, colors.ens)

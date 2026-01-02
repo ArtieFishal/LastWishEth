@@ -73,6 +73,14 @@ export function AllocationPanel({
     setSelectedAssets([])
   }
 
+  const selectAllFungible = () => {
+    setSelectedAssets(fungibleAssets.map(a => a.id))
+  }
+
+  const selectAllNFTs = () => {
+    setSelectedAssets(nftAssets.map(a => a.id))
+  }
+
   // Quick allocate: distribute fungible tokens evenly, assign NFTs to first beneficiary
   const handleQuickAllocate = () => {
     if (beneficiaries.length === 0) {
@@ -362,6 +370,20 @@ export function AllocationPanel({
             <label className="block text-xs font-semibold text-gray-700">Assets ({selectedAssets.length} selected)</label>
             <div className="flex gap-2">
               <button
+                onClick={selectAllFungible}
+                className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+              >
+                All Fungible
+              </button>
+              <span className="text-gray-300">|</span>
+              <button
+                onClick={selectAllNFTs}
+                className="text-xs text-pink-600 hover:text-pink-700 font-semibold"
+              >
+                All NFTs
+              </button>
+              <span className="text-gray-300">|</span>
+              <button
                 onClick={selectAllAssets}
                 className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
               >
@@ -463,8 +485,8 @@ export function AllocationPanel({
           </div>
         </div>
 
-        {/* Beneficiary and Controls - Compact Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {/* Beneficiary and Controls - Boxed Layout */}
+        <div className="space-y-3">
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1">Beneficiary</label>
             <select

@@ -13,6 +13,9 @@ interface BeneficiaryFormProps {
 export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: BeneficiaryFormProps) {
   const [name, setName] = useState('')
   const [walletAddress, setWalletAddress] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [notes, setNotes] = useState('')
   const [resolvingEns, setResolvingEns] = useState(false)
   const [ensName, setEnsName] = useState<string | null>(null)
   const [resolvedAddress, setResolvedAddress] = useState<string | null>(null)
@@ -103,11 +106,17 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
       name: name.trim(),
       walletAddress: finalAddress.toLowerCase(),
       ensName: ensName || undefined,
+      phone: phone.trim() || undefined,
+      email: email.trim() || undefined,
+      notes: notes.trim() || undefined,
     }
 
     onBeneficiariesChange([...beneficiaries, newBeneficiary])
     setName('')
     setWalletAddress('')
+    setPhone('')
+    setEmail('')
+    setNotes('')
     setEnsName(null)
     setResolvedAddress(null)
   }
@@ -117,49 +126,86 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
   }
 
   return (
-    <div className="flex items-end gap-3">
-      <div className="flex-1">
-        <label className="block text-xs font-semibold text-gray-700 mb-1">Name</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
-          placeholder="John Doe"
-        />
+    <div className="space-y-3">
+      {/* Main fields - horizontal */}
+      <div className="flex items-end gap-3">
+        <div className="flex-1">
+          <label className="block text-xs font-semibold text-gray-700 mb-1">Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+            placeholder="John Doe"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
+            Wallet Address or ENS Name
+          </label>
+          <input
+            type="text"
+            value={walletAddress}
+            onChange={(e) => setWalletAddress(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 p-2 text-sm font-mono focus:border-blue-500 focus:outline-none"
+            placeholder="0x... or name.eth"
+          />
+          {resolvingEns && (
+            <p className="text-xs text-gray-500 mt-1">Resolving ENS...</p>
+          )}
+          {ensName && resolvedAddress && (
+            <div className="mt-1 p-1.5 bg-green-50 border border-green-200 rounded text-xs">
+              <p className="text-green-800 font-semibold">✓ {ensName}</p>
+            </div>
+          )}
+          {!ensName && resolvedAddress && (
+            <div className="mt-1 p-1.5 bg-blue-50 border border-blue-200 rounded text-xs">
+              <p className="text-blue-800 font-semibold">✓ Valid Address</p>
+            </div>
+          )}
+        </div>
+        <button
+          onClick={handleAdd}
+          disabled={!name.trim() || !walletAddress.trim() || beneficiaries.length >= 10}
+          className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+        >
+          Add ({beneficiaries.length}/10)
+        </button>
       </div>
-      <div className="flex-1">
-        <label className="block text-xs font-semibold text-gray-700 mb-1">
-          Wallet Address or ENS Name
-        </label>
-        <input
-          type="text"
-          value={walletAddress}
-          onChange={(e) => setWalletAddress(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 p-2 text-sm font-mono focus:border-blue-500 focus:outline-none"
-          placeholder="0x... or name.eth"
-        />
-        {resolvingEns && (
-          <p className="text-xs text-gray-500 mt-1">Resolving ENS...</p>
-        )}
-        {ensName && resolvedAddress && (
-          <div className="mt-1 p-1.5 bg-green-50 border border-green-200 rounded text-xs">
-            <p className="text-green-800 font-semibold">✓ {ensName}</p>
-          </div>
-        )}
-        {!ensName && resolvedAddress && (
-          <div className="mt-1 p-1.5 bg-blue-50 border border-blue-200 rounded text-xs">
-            <p className="text-blue-800 font-semibold">✓ Valid Address</p>
-          </div>
-        )}
+
+      {/* Optional fields - horizontal */}
+      <div className="flex items-end gap-3">
+        <div className="flex-1">
+          <label className="block text-xs font-semibold text-gray-700 mb-1">Phone (Optional)</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+            placeholder="+1 (555) 123-4567"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-semibold text-gray-700 mb-1">Email (Optional)</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+            placeholder="john@example.com"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-semibold text-gray-700 mb-1">Notes (Optional)</label>
+          <input
+            type="text"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+            placeholder="Additional info to find them"
+          />
+        </div>
       </div>
-      <button
-        onClick={handleAdd}
-        disabled={!name.trim() || !walletAddress.trim() || beneficiaries.length >= 10}
-        className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-      >
-        Add ({beneficiaries.length}/10)
-      </button>
     </div>
   )
 }

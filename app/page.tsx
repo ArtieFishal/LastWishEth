@@ -693,6 +693,20 @@ export default function Home() {
  // Get Bitcoin address from queued sessions
  const btcAddressFromQueue = queuedSessions.find(s => s.walletType === 'btc')?.walletAddress || null
 
+ // Create a map of wallet address to provider from assets and sessions
+ const walletProviderMap: Record<string, string> = {}
+ allQueuedAssets.forEach(asset => {
+   if (asset.walletAddress && asset.walletProvider) {
+     walletProviderMap[asset.walletAddress] = asset.walletProvider
+   }
+ })
+ // Also add from queued sessions
+ queuedSessions.forEach(session => {
+   if (session.walletAddress && session.walletProvider) {
+     walletProviderMap[session.walletAddress] = session.walletProvider
+   }
+ })
+
  const userData: UserData = {
  ownerName,
  ownerFullName,
@@ -719,8 +733,8 @@ export default function Home() {
  }
 
  try {
- setError(null)
- const pdfBytes = await generatePDF(userData, allQueuedAssets) // Use merged assets
+   setError(null)
+   const pdfBytes = await generatePDF(userData, allQueuedAssets, walletProviderMap) // Use merged assets
  const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
  const url = URL.createObjectURL(blob)
  
@@ -1667,9 +1681,18 @@ export default function Home() {
                    <p className="text-xs text-blue-700 font-semibold mb-1">{ben.ensName}</p>
                  )}
                  {ben.walletAddress && (
-                   <p className="text-xs font-mono text-gray-600 break-all leading-tight">
+                   <p className="text-xs font-mono text-gray-600 break-all leading-tight mb-1">
                      {ben.walletAddress}
                    </p>
+                 )}
+                 {ben.phone && (
+                   <p className="text-xs text-gray-600 mb-1">📞 {ben.phone}</p>
+                 )}
+                 {ben.email && (
+                   <p className="text-xs text-gray-600 mb-1">✉️ {ben.email}</p>
+                 )}
+                 {ben.notes && (
+                   <p className="text-xs text-gray-500 italic mb-1">💬 {ben.notes}</p>
                  )}
                  {beneficiaryAllocations.length > 0 && (
                    <p className="text-xs text-gray-600 mt-2 pt-2 border-t border-blue-200">

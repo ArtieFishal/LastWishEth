@@ -22,6 +22,9 @@ export interface Beneficiary {
   name: string
   walletAddress: string
   ensName?: string // Resolved ENS name for Ethereum addresses
+  phone?: string // Optional phone number
+  email?: string // Optional email
+  notes?: string // Optional notes/description
 }
 
 export interface Allocation {
