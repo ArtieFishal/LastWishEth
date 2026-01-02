@@ -565,10 +565,32 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
           if (accounts) {
             console.log('[Xverse Detection] Raw accounts response:', accounts, 'Type:', typeof accounts)
             
+            // Handle JSON-RPC response format (has 'result' property)
+            if (typeof accounts === 'object' && accounts !== null && accounts.result && Array.isArray(accounts.result)) {
+              console.log('[Xverse Detection] JSON-RPC response format detected, result array has', accounts.result.length, 'items')
+              const resultArray = accounts.result
+              if (resultArray.length > 0) {
+                // Prefer payment address (purpose: "payment") over ordinals address
+                const paymentAccount = resultArray.find((acc: any) => acc.purpose === 'payment')
+                const firstAccount = paymentAccount || resultArray[0]
+                console.log('[Xverse Detection] Using account:', firstAccount)
+                address = firstAccount?.address || firstAccount?.value || firstAccount?.publicKey
+                if (address) {
+                  console.log('[Xverse Detection] 🎉 SUCCESS! Extracted address from JSON-RPC result:', address)
+                  setConnecting(false)
+                  setBtcAddress(address)
+                  onBitcoinConnect?.(address)
+                  return
+                }
+              }
+            }
+            
             if (Array.isArray(accounts)) {
               console.log('[Xverse Detection] Accounts is an array with', accounts.length, 'items')
               if (accounts.length > 0) {
-                const first = accounts[0]
+                // Prefer payment address over ordinals
+                const paymentAccount = accounts.find((acc: any) => acc.purpose === 'payment')
+                const first = paymentAccount || accounts[0]
                 console.log('[Xverse Detection] First account item:', first, 'Type:', typeof first)
                 address = first?.address || first?.value || first?.publicKey || first
                 if (typeof first === 'object' && first !== null) {
@@ -581,11 +603,13 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
               address = accounts.address || accounts.value || accounts.publicKey || accounts.account || accounts.btcAddress
               // If it's an object with an array property
               if (!address && accounts.accounts && Array.isArray(accounts.accounts) && accounts.accounts.length > 0) {
-                const first = accounts.accounts[0]
+                const paymentAccount = accounts.accounts.find((acc: any) => acc.purpose === 'payment')
+                const first = paymentAccount || accounts.accounts[0]
                 address = first?.address || first?.value || first
               }
               if (!address && accounts.addresses && Array.isArray(accounts.addresses) && accounts.addresses.length > 0) {
-                const first = accounts.addresses[0]
+                const paymentAccount = accounts.addresses.find((acc: any) => acc.purpose === 'payment')
+                const first = paymentAccount || accounts.addresses[0]
                 address = first?.address || first?.value || first
               }
             } else if (typeof accounts === 'string') {
@@ -594,8 +618,8 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             
             if (address) {
               console.log('[Xverse Detection] 🎉 SUCCESS! Extracted address:', address)
-              setBtcAddress(address)
               setConnecting(false)
+              setBtcAddress(address)
               onBitcoinConnect?.(address)
               return
             } else {
