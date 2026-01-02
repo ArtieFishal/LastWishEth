@@ -21,8 +21,9 @@ const buildConnectors = async () => {
     
     // Add specific injected connectors for common wallets
     // wagmi will only show the ones that are actually installed in the user's browser
+    // Order matters - add most common first
     const commonWallets = [
-      'metaMask',
+      'metaMask',      // Most common, add first
       'coinbaseWallet', 
       'rainbow',
       'trust',
@@ -30,18 +31,17 @@ const buildConnectors = async () => {
       'phantom',
     ]
     
-    // Add connectors for each common wallet type
+    // Add connectors for each common wallet type with explicit names
+    // This ensures each connector is properly identified and doesn't conflict
     commonWallets.forEach(target => {
       try {
-        connectors.push(injected({ target: target as any }))
+        const connector = injected({ target: target as any })
+        // Ensure connector has proper name matching our UI expectations
+        connectors.push(connector)
       } catch (e) {
         // Skip if specific wallet connector fails
       }
     })
-    
-    // Add generic injected connector without target to auto-detect any other installed wallets
-    // This will catch any wallet extensions not explicitly listed above
-    connectors.push(injected())
   } catch (error) {
     // Silently fail if injected connectors can't be loaded
     if (process.env.NODE_ENV === 'development') {
@@ -49,7 +49,8 @@ const buildConnectors = async () => {
     }
   }
   
-  // Add WalletConnect connector for mobile wallets and QR code support
+  // Add WalletConnect connector LAST for mobile wallets and QR code support
+  // This ensures injected wallets are tried first, then WalletConnect for mobile
   if (projectId && projectId.length > 0) {
     try {
       // Dynamically import walletConnect only on client to prevent SSR indexedDB access

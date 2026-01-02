@@ -741,6 +741,8 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                   key={connector.uid}
                   onClick={() => {
                     try {
+                      // Explicitly use the clicked connector - don't let wagmi auto-select
+                      console.log('Connecting with connector:', connector.name, connector.uid)
                       connect({ connector })
                     } catch (error: any) {
                       // Don't show error for user rejection
