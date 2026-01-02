@@ -817,8 +817,22 @@ export default function Home() {
  <header className="text-center mb-12 relative">
  <div className="absolute top-0 right-0">
  <button
- onClick={() => {
- if (confirm('Start over? This will clear all your progress and return to the beginning.')) {
+ onClick={async () => {
+ if (confirm('Start over? This will disconnect all wallets, clear all verifications, and reset everything to the beginning.')) {
+ // Disconnect all wallets first
+ if (isConnected) {
+ disconnect()
+ }
+ 
+ // Clear all wallet connections and verifications
+ setConnectedEVMAddresses(new Set())
+ setBtcAddress(null)
+ setVerifiedAddresses(new Set())
+ setLoadedWallets(new Set())
+ setSelectedWalletForLoading(null)
+ setPaymentWalletAddress(null)
+ setPendingVerification(null)
+ 
  // Clear all state
  setStep('connect')
  setAssets([])
@@ -839,12 +853,17 @@ export default function Home() {
  setExecutorEmail('')
  setExecutorTwitter('')
  setExecutorLinkedIn('')
+ setExecutorEnsName(null)
+ setExecutorResolvedAddress(null)
  setKeyInstructions('')
  setInvoiceId(null)
  setPaymentVerified(false)
  setDiscountCode('')
  setDiscountApplied(false)
+ setWalletNames({})
+ setResolvedEnsNames({})
  setError(null)
+ 
  // Clear localStorage
  if (typeof window !== 'undefined') {
  localStorage.removeItem('lastwish_state')
