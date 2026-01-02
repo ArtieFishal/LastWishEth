@@ -991,7 +991,7 @@ export default function Home() {
  Do you really want to take your crypto to the grave with you by accident?
  </p>
  <p className="text-sm text-gray-500">
- Secure crypto inheritance instructions • 0.00025 ETH one-time fee
+ Secure crypto inheritance instructions • 0.006 ETH (~$20.26) one-time fee
  </p>
  </header>
 
@@ -2008,7 +2008,7 @@ export default function Home() {
  className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
  title={!canProceedToPayment() ? `Missing: ${getPaymentValidationErrors().join(', ')}` : ''}
  >
- {discountApplied ? 'Unlock & Generate (FREE)' : 'Unlock & Generate (0.00025 ETH)'} →
+ {discountApplied ? 'Unlock & Generate (FREE)' : 'Unlock & Generate (0.006 ETH)'} →
  </button>
  </div>
  </div>
@@ -2018,13 +2018,14 @@ export default function Home() {
  <div className="max-w-2xl mx-auto">
  <h2 className="text-3xl font-bold text-gray-900 mb-2">Payment Required</h2>
  <p className="text-gray-600 mb-8">
- Pay 0.00025 ETH to unlock PDF generation
+ Pay 0.006 ETH (~$20.26) to unlock PDF generation
  </p>
  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-8 border-2 border-blue-200">
  <div className="space-y-4">
  <div className="bg-gray-50 rounded-lg p-4">
  <p className="text-sm text-gray-600 mb-1">Amount</p>
-                    <p className="text-2xl font-bold text-gray-900">0.00025 ETH</p> </div>
+                    <p className="text-2xl font-bold text-gray-900">0.006 ETH</p>
+                    <p className="text-sm text-gray-600">(~$20.26)</p> </div>
  <div className="bg-gray-50 rounded-lg p-4">
  <p className="text-sm text-gray-600 mb-1">Token</p>
                     <p className="text-lg font-semibold text-gray-900">Native ETH on Ethereum Mainnet</p>
@@ -2036,7 +2037,7 @@ export default function Home() {
  {isConnected && chain?.id === mainnet.id && paymentRecipientAddress && (
  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
  <p className="text-sm text-green-800">
- <strong>✓ Ready to Pay:</strong> Click "Send Payment" below to send 0.00025 ETH directly from your connected wallet. No need to leave this page!
+ <strong>✓ Ready to Pay:</strong> Click "Send Payment" below to send 0.006 ETH (~$20.26) directly from your connected wallet. No need to leave this page!
  </p>
  </div>
  )}
@@ -2133,7 +2134,7 @@ export default function Home() {
  // Don't specify gas limit - wallet will estimate and show user options
  sendTransaction({
  to: paymentRecipientAddress,
- value: parseEther('0.00025'),
+ value: parseEther('0.006'),
  // No gas limit specified - wallet handles everything
  })
  } catch (error: any) {
@@ -2145,7 +2146,7 @@ export default function Home() {
  disabled={isSendingPayment || isConfirming || !paymentRecipientAddress}
  className="w-full rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-lg"
  >
- {isSendingPayment ? 'Confirm in Wallet...' : isConfirming ? 'Confirming Transaction...' : '💳 Send Payment (0.00025 ETH)'}
+ {isSendingPayment ? 'Confirm in Wallet...' : isConfirming ? 'Confirming Transaction...' : '💳 Send Payment (0.006 ETH)'}
  </button>
  ) : !isConnected ? (
  <div className="bg-gray-50 border-2 border-gray-300 rounded-lg p-4 text-center space-y-3">
