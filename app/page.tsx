@@ -996,7 +996,7 @@ export default function Home() {
           <strong>We don't ask for seed phrases or private keys.</strong>
         </p>
         <p className="text-xs text-gray-600 mb-2">
-          This is a stateless website. Nothing is ever saved beyond creating the PDF document and you downloading it to your device or printing it on the spot. <strong>We suggest you do both.</strong>
+          Nothing is saved, you create a stateless PDF document, you can save it and/or print it on the spot. <strong>We suggest you do both.</strong>
         </p>
       </div>
       <p className="text-sm text-gray-500">
