@@ -837,42 +837,50 @@ export default function Home() {
  }
  }
 
- const canProceedToPayment = () => {
+ const getPaymentValidationErrors = () => {
+ const errors: string[] = []
+ 
  // Must have at least one queued session
  if (queuedSessions.length === 0) {
- return false
+ errors.push('No wallets queued - please connect wallets, add assets, and save to queue')
  }
 
  // Check required owner fields
- if (!ownerFullName.trim() || !ownerName.trim() || !ownerAddress.trim() || 
- !ownerCity.trim() || !ownerState.trim() || !ownerZipCode.trim() || 
- !ownerPhone.trim()) {
- return false
- }
+ if (!ownerFullName.trim()) errors.push('Owner full name')
+ if (!ownerName.trim()) errors.push('Owner name')
+ if (!ownerAddress.trim()) errors.push('Owner address')
+ if (!ownerCity.trim()) errors.push('Owner city')
+ if (!ownerState.trim()) errors.push('Owner state')
+ if (!ownerZipCode.trim()) errors.push('Owner zip code')
+ if (!ownerPhone.trim()) errors.push('Owner phone')
 
  // Check required executor fields
- if (!executorName.trim() || !executorAddress.trim() || 
- !executorPhone.trim() || !executorEmail.trim()) {
- return false
- }
+ if (!executorName.trim()) errors.push('Executor name')
+ if (!executorAddress.trim()) errors.push('Executor address')
+ if (!executorPhone.trim()) errors.push('Executor phone')
+ if (!executorEmail.trim()) errors.push('Executor email')
 
  // Check beneficiaries
  if (beneficiaries.length === 0) {
- return false
+ errors.push('At least one beneficiary')
  }
 
  // Check that we have allocations across all queued sessions
  const totalAllocations = queuedSessions.reduce((sum, session) => sum + session.allocations.length, 0)
  if (totalAllocations === 0) {
- return false
+ errors.push('Asset allocations (allocate assets to beneficiaries)')
  }
 
  // Check key instructions
  if (!keyInstructions.trim()) {
- return false
+ errors.push('Key access instructions')
  }
 
- return true
+ return errors
+ }
+
+ const canProceedToPayment = () => {
+ return getPaymentValidationErrors().length === 0
  }
 
  const canGeneratePDF = () => {
@@ -1912,6 +1920,21 @@ export default function Home() {
  )}
  </div>
  </div>
+ 
+ {/* Show validation errors if button is disabled */}
+ {!canProceedToPayment() && (
+ <div className="mt-6 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+ <p className="text-sm font-semibold text-yellow-900 mb-2">
+ ⚠️ Please complete the following to unlock PDF generation:
+ </p>
+ <ul className="text-sm text-yellow-800 list-disc list-inside space-y-1">
+ {getPaymentValidationErrors().map((error, index) => (
+ <li key={index}>{error}</li>
+ ))}
+ </ul>
+ </div>
+ )}
+ 
  <div className="mt-8 flex gap-4">
  <button
  onClick={() => setStep('allocate')}
@@ -1923,6 +1946,7 @@ export default function Home() {
  onClick={handleCreateInvoice}
  disabled={!canProceedToPayment()}
  className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+ title={!canProceedToPayment() ? `Missing: ${getPaymentValidationErrors().join(', ')}` : ''}
  >
  {discountApplied ? 'Unlock & Generate (FREE)' : 'Unlock & Generate (0.00025 ETH)'} →
  </button>
