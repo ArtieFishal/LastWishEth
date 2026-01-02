@@ -50,6 +50,7 @@ export interface QueuedWalletSession {
 export interface UserData {
   ownerName: string
   ownerFullName: string
+  ownerEnsName?: string // Optional ENS name for owner
   ownerAddress: string
   ownerCity: string
   ownerState: string

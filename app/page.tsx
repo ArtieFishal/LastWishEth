@@ -60,9 +60,10 @@ export default function Home() {
  const [error, setError] = useState<string | null>(null)
  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([])
  const [allocations, setAllocations] = useState<Allocation[]>([])
- const [ownerName, setOwnerName] = useState('')
- const [ownerFullName, setOwnerFullName] = useState('')
- const [ownerAddress, setOwnerAddress] = useState('')
+  const [ownerName, setOwnerName] = useState('')
+  const [ownerFullName, setOwnerFullName] = useState('')
+  const [ownerEnsName, setOwnerEnsName] = useState('')
+  const [ownerAddress, setOwnerAddress] = useState('')
  const [ownerCity, setOwnerCity] = useState('')
  const [ownerState, setOwnerState] = useState('')
  const [ownerZipCode, setOwnerZipCode] = useState('')
@@ -106,9 +107,10 @@ export default function Home() {
  if (parsed.beneficiaries) setBeneficiaries(parsed.beneficiaries)
  if (parsed.allocations) setAllocations(parsed.allocations)
  if (parsed.selectedAssetIds) setSelectedAssetIds(parsed.selectedAssetIds)
- if (parsed.ownerName) setOwnerName(parsed.ownerName)
- if (parsed.ownerFullName) setOwnerFullName(parsed.ownerFullName)
- if (parsed.ownerAddress) setOwnerAddress(parsed.ownerAddress)
+    if (parsed.ownerName) setOwnerName(parsed.ownerName)
+    if (parsed.ownerFullName) setOwnerFullName(parsed.ownerFullName)
+    if (parsed.ownerEnsName) setOwnerEnsName(parsed.ownerEnsName)
+    if (parsed.ownerAddress) setOwnerAddress(parsed.ownerAddress)
  if (parsed.ownerCity) setOwnerCity(parsed.ownerCity)
  if (parsed.ownerState) setOwnerState(parsed.ownerState)
  if (parsed.ownerZipCode) setOwnerZipCode(parsed.ownerZipCode)
@@ -144,9 +146,10 @@ export default function Home() {
  beneficiaries,
  allocations,
  selectedAssetIds,
- ownerName,
- ownerFullName,
- ownerAddress,
+    ownerName,
+    ownerFullName,
+    ownerEnsName: ownerEnsName || undefined,
+    ownerAddress,
  ownerCity,
  ownerState,
  ownerZipCode,
@@ -172,14 +175,15 @@ export default function Home() {
  console.error('Error saving state:', err)
  }
  }
- }, [
- assets,
- beneficiaries,
- allocations,
- selectedAssetIds,
- ownerName,
- ownerFullName,
- ownerAddress,
+  }, [
+    assets,
+    beneficiaries,
+    allocations,
+    selectedAssetIds,
+    ownerName,
+    ownerFullName,
+    ownerEnsName,
+    ownerAddress,
  ownerCity,
  ownerState,
  ownerZipCode,
@@ -715,9 +719,10 @@ setError('Failed to load Bitcoin assets. Please try again.')
  })
 
  const userData: UserData = {
- ownerName,
- ownerFullName,
- ownerAddress,
+    ownerName,
+    ownerFullName,
+    ownerEnsName: ownerEnsName || undefined,
+    ownerAddress,
  ownerCity,
  ownerState,
  ownerZipCode,
@@ -958,9 +963,10 @@ setError('Failed to load Bitcoin assets. Please try again.')
  setAllocations([])
  setSelectedAssetIds([])
  setQueuedSessions([])
- setOwnerName('')
- setOwnerFullName('')
- setOwnerAddress('')
+    setOwnerName('')
+    setOwnerFullName('')
+    setOwnerEnsName('')
+    setOwnerAddress('')
  setOwnerCity('')
  setOwnerState('')
  setOwnerZipCode('')
@@ -1867,16 +1873,16 @@ onSelectionChange={setSelectedAssetIds}
  placeholder="John Michael Doe"
  />
  </div>
- <div>
- <label className="block text-sm font-semibold text-gray-700 mb-2">Preferred Name / Display Name *</label>
- <input
- type="text"
- value={ownerName}
- onChange={(e) => setOwnerName(e.target.value)}
- className="w-full rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors"
- placeholder="John Doe"
- />
- </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">ENS Address (Optional)</label>
+            <input
+              type="text"
+              value={ownerEnsName}
+              onChange={(e) => setOwnerEnsName(e.target.value)}
+              className="w-full rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors"
+              placeholder="yourname.eth"
+            />
+          </div>
  <div>
  <label className="block text-sm font-semibold text-gray-700 mb-2">Street Address *</label>
  <input

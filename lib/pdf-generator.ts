@@ -297,11 +297,17 @@ export async function generatePDF(
   // Owner Name (centered)
   const ownerName = userData.ownerFullName || userData.ownerName || 'Owner'
   yPosition = addCenteredText(ownerName, yPosition, 20, true, rgb(0.2, 0.2, 0.2))
+  
+  // Show owner ENS if available
+  if (userData.ownerEnsName) {
+    yPosition -= lineHeight
+    yPosition = addCenteredText(userData.ownerEnsName, yPosition, 14, false, colors.ens)
+  }
   yPosition -= 50
 
   // Document details box with professional styling
   const boxY = yPosition - 100
-  const boxHeight = 140
+  const boxHeight = 120 // Reduced since we removed document number
   const boxWidth = page.getWidth() - 2 * margin - 100
   const boxX = margin + 50
 
@@ -319,10 +325,6 @@ export async function generatePDF(
   addColoredBox(boxX + 2, boxY + 2, boxWidth - 4, boxHeight - 4, rgb(0.98, 0.98, 0.98), 0.5)
 
   let detailY = boxY - 20
-  detailY = addText('Document Number:', boxX + 20, detailY, 11, false, rgb(0.4, 0.4, 0.4))
-  detailY = addText(docNumber, boxX + 20, detailY, 11, true, rgb(0.1, 0.1, 0.1))
-  detailY -= lineHeight * 1.5
-
   detailY = addText('Date Generated:', boxX + 20, detailY, 11, false, rgb(0.4, 0.4, 0.4))
   detailY = addText(currentDate, boxX + 20, detailY, 11, true, rgb(0.1, 0.1, 0.1))
   detailY -= lineHeight * 1.5
@@ -490,8 +492,10 @@ export async function generatePDF(
   yPosition -= lineHeight * 1.5
   yPosition = addText(`Full Legal Name: ${userData.ownerFullName || userData.ownerName}`, margin, yPosition, 12)
   yPosition -= lineHeight
-  yPosition = addText(`Preferred Name: ${userData.ownerName}`, margin, yPosition, 12)
-  yPosition -= lineHeight
+  if (userData.ownerEnsName) {
+    yPosition = addText(`ENS Address: ${userData.ownerEnsName}`, margin, yPosition, 12, false, colors.ens)
+    yPosition -= lineHeight
+  }
   yPosition = addText(`Address: ${userData.ownerAddress}`, margin, yPosition, 12)
   yPosition -= lineHeight
   yPosition = addText(`City, State ZIP: ${userData.ownerCity}, ${userData.ownerState} ${userData.ownerZipCode}`, margin, yPosition, 12)
@@ -515,8 +519,15 @@ export async function generatePDF(
   yPosition -= lineHeight * 2
   
   // Show all EVM wallets with ENS names, addresses, and verification status
-  if (userData.connectedWallets.evm.length > 0) {
-    userData.connectedWallets.evm.forEach((addr, index) => {
+  // Deduplicate EVM addresses (case-insensitive)
+  const uniqueEVMAddresses = Array.from(new Set(userData.connectedWallets.evm.map(addr => addr.toLowerCase())))
+    .map(addr => {
+      // Find the original case version
+      return userData.connectedWallets.evm.find(a => a.toLowerCase() === addr) || addr
+    })
+  
+  if (uniqueEVMAddresses.length > 0) {
+    uniqueEVMAddresses.forEach((addr, index) => {
       checkNewPage(60)
       const ensName = userData.resolvedEnsNames?.[addr.toLowerCase()]
       const walletName = userData.walletNames?.[addr] || ensName
@@ -549,18 +560,15 @@ export async function generatePDF(
       yPosition = addText('✓ Signature Verified', margin + 20, yPosition, 10, true, colors.success)
       yPosition -= lineHeight * 1.5
       
-      // Always show the 0x address
-      yPosition = addText(`   Address: ${addr}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
-      yPosition -= lineHeight
-      
-      // Show ENS name if available
+      // Show address format: "Hex Address Resolves to 'eth address'"
       if (ensName && ensName !== addr) {
-        yPosition = addText(`   ENS Name: ${ensName}`, margin + 20, yPosition, 11, true, colors.ens)
-        yPosition -= lineHeight
-      } else if (walletName && walletName !== addr) {
-        yPosition = addText(`   Name: ${walletName}`, margin + 20, yPosition, 10, false, rgb(0.4, 0.4, 0.4))
-        yPosition -= lineHeight
+        yPosition = addText(`${addr}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
+        yPosition -= lineHeight * 0.5
+        yPosition = addText(`Resolves to: ${ensName}`, margin + 20, yPosition, 11, true, colors.ens)
+      } else {
+        yPosition = addText(`${addr}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
       }
+      yPosition -= lineHeight
       
       yPosition -= lineHeight * 0.5
     })
@@ -799,11 +807,14 @@ export async function generatePDF(
     yPosition -= lineHeight
     yPosition = addText(`Wallet App: ${walletProvider}`, margin + 20, yPosition, 12, true, walletColor)
     yPosition -= lineHeight
-    if (walletEnsName && walletEnsName !== walletAddr) {
-      yPosition = addText(`ENS: ${walletEnsName}`, margin + 20, yPosition, 11, true, colors.ens)
-      yPosition -= lineHeight
+    // Show address format: "Hex Address Resolves to 'eth address'"
+    if (walletEnsName && walletEnsName !== walletAddr && walletAddr.startsWith('0x')) {
+      yPosition = addText(`${walletAddr}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
+      yPosition -= lineHeight * 0.5
+      yPosition = addText(`Resolves to: ${walletEnsName}`, margin + 20, yPosition, 11, true, colors.ens)
+    } else {
+      yPosition = addText(`${walletAddr}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
     }
-    yPosition = addText(`Address: ${walletAddr}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
     yPosition -= lineHeight * 1.5
     
     for (const chainGroup of chainGroups) {
@@ -869,11 +880,12 @@ export async function generatePDF(
                 height: imageSize,
               })
               
-              const textX = imageX + imageSize + 10
+              const textX = imageX + imageSize + 15
+              const textStartY = yPosition
               yPosition = addText(
                 `${asset.symbol} (${asset.name}) [NFT - NON-FUNGIBLE, CANNOT BE SPLIT]`,
                 textX,
-                yPosition,
+                textStartY,
                 10,
                 true,
                 assetColor
@@ -896,7 +908,8 @@ export async function generatePDF(
                 false,
                 rgb(0.4, 0.4, 0.4)
               )
-              yPosition = imageY - 10
+              // Position below the image, aligned with left edge
+              yPosition = imageY - 15
             } else {
               const assetTypeLabel = ' [NFT - NON-FUNGIBLE, CANNOT BE SPLIT]'
               yPosition = addText(
