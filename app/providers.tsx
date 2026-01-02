@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
-import { getConfig } from '@/lib/wagmi'
+import { getConfig, getSSRConfig } from '@/lib/wagmi'
 import { useState, useEffect } from 'react'
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -16,10 +16,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
     },
   }))
   
-  // Get config only on client side (async)
-  const [config, setConfig] = useState<Awaited<ReturnType<typeof getConfig>> | null>(null)
+  // Get config - use SSR-safe version immediately, then upgrade to full config on client
+  const [config, setConfig] = useState<Awaited<ReturnType<typeof getConfig>>>(() => {
+    // Initialize with SSR-safe config immediately (synchronous, no indexedDB access)
+    // This ensures WagmiProvider is always available, even during SSR
+    return getSSRConfig()
+  })
   
-  // Initialize config on mount (client-side only)
+  // Upgrade to full config with connectors on client mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       getConfig().then(setConfig)
@@ -60,13 +64,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Don't render until config is ready (client-side only)
-  if (!config || typeof window === 'undefined') {
-    return <>{children}</>
-  }
-
+  // Always provide WagmiProvider - config is initialized synchronously for SSR
+  // During SSR it has empty connectors (no indexedDB access)
+  // On client it gets upgraded to full config with connectors
   return (
-    <WagmiProvider config={config}>
+    <WagmiProvider config={config!}>
       <QueryClientProvider client={queryClient}>
         {children}
       </QueryClientProvider>

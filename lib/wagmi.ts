@@ -57,24 +57,30 @@ const buildConnectors = async () => {
 // Lazy config creation - only create on client side
 let _config: ReturnType<typeof createConfig> | null = null
 let _configPromise: Promise<ReturnType<typeof createConfig>> | null = null
+let _ssrConfig: ReturnType<typeof createConfig> | null = null
+
+// Synchronous SSR-safe config getter (no indexedDB access)
+export const getSSRConfig = () => {
+  if (!_ssrConfig) {
+    _ssrConfig = createConfig({
+      chains: [mainnet, base, arbitrum, polygon],
+      connectors: [], // Empty connectors during SSR - no indexedDB access
+      transports: {
+        [mainnet.id]: http(),
+        [base.id]: http(),
+        [arbitrum.id]: http(),
+        [polygon.id]: http(),
+      },
+      ssr: false,
+    })
+  }
+  return _ssrConfig
+}
 
 export const getConfig = async () => {
   if (typeof window === 'undefined') {
-    // Return a minimal config for SSR that won't access indexedDB
-    if (!_config) {
-      _config = createConfig({
-        chains: [mainnet, base, arbitrum, polygon],
-        connectors: [], // Empty connectors during SSR
-        transports: {
-          [mainnet.id]: http(),
-          [base.id]: http(),
-          [arbitrum.id]: http(),
-          [polygon.id]: http(),
-        },
-        ssr: false,
-      })
-    }
-    return _config
+    // Return SSR-safe config synchronously
+    return Promise.resolve(getSSRConfig())
   }
   
   // Create full config with connectors only on client (async to load walletConnect)
