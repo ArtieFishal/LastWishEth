@@ -40,7 +40,7 @@ const buildConnectors = async () => {
               'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96', // MetaMask
               '4622a2b2d6af1c984494a1eb792761e6169f3a0e25b1423488c2082b1633d88', // Trust Wallet
               '1ae92b26df02f0abca6304df07debccd18262fdf5fe82daa81593582dac9a122', // Rainbow
-              'fd20dc426fb37566d803205b19bbc1d4096b248ac04548e3cfb6b3a38bd033aa', // Coinbase Wallet
+              'a797aa35c0fadbfc1a53e7f67567ed348c5293fa12515bd01d60061c4fb574a8', // Phantom
             ],
           },
         })
@@ -62,7 +62,7 @@ const buildConnectors = async () => {
     // wagmi will only show the ones that are actually installed in the user's browser
     const commonWallets = [
       'metaMask',        // #1 most popular
-      'coinbaseWallet',  // #2 most popular  
+      'phantom',         // #2 most popular  
       'rainbow',         // #3 most popular
     ]
     
