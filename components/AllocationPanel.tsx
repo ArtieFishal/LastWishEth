@@ -346,18 +346,17 @@ export function AllocationPanel({
       hasPercentageAllocations: percentageAllocations.length > 0,
       hasAmountAllocations: amountAllocations.length > 0,
       assetBalance,
+      assetIsNFT: isNFT(asset),
     }
   })
 
   return (
     <div className="space-y-4">
-      {/* Two-column layout for better visibility */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Left Column: Add Allocation Form */}
-        <div className="bg-white rounded-lg border-2 border-gray-200 p-4 space-y-3">
+      {/* Add Allocation Form - Compact */}
+      <div className="bg-white rounded-lg border-2 border-gray-200 p-4 space-y-3">
         <h4 className="font-semibold text-gray-900 text-sm">Add Allocation</h4>
         
-        {/* Multi-select Assets */}
+        {/* Multi-select Assets - Compact Grid */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="block text-xs font-semibold text-gray-700">Assets ({selectedAssets.length} selected)</label>
@@ -377,67 +376,63 @@ export function AllocationPanel({
               </button>
             </div>
           </div>
-          <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1 bg-gray-50">
+          <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1 bg-gray-50">
             {fungibleAssets.length > 0 && (
               <div className="mb-2">
                 <p className="text-xs font-semibold text-gray-700 mb-1">💰 Fungible Tokens (Can Split)</p>
-                {fungibleAssets.map((asset) => {
-                  const isSelected = selectedAssets.includes(asset.id)
-                  return (
-                    <label
-                      key={asset.id}
-                      className={`flex items-start gap-2 p-2 rounded cursor-pointer transition-colors ${
-                        isSelected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-100'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleAsset(asset.id)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-1"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-gray-900">{asset.symbol}</span>
-                          <span className="text-xs text-gray-500">({asset.balanceFormatted})</span>
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-800">
-                            {asset.chain.toUpperCase()}
-                          </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                  {fungibleAssets.map((asset) => {
+                    const isSelected = selectedAssets.includes(asset.id)
+                    return (
+                      <label
+                        key={asset.id}
+                        className={`flex items-center gap-2 p-1.5 rounded cursor-pointer transition-colors text-xs ${
+                          isSelected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-100'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleAsset(asset.id)}
+                          className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="font-semibold text-gray-900">{asset.symbol}</span>
+                            <span className="text-gray-500">({asset.chain})</span>
+                          </div>
+                          {asset.walletProvider && (
+                            <p className="text-xs text-gray-500">{asset.walletProvider}</p>
+                          )}
                         </div>
-                        {asset.walletAddress && (
-                          <p className="text-xs text-gray-500 font-mono mt-1 break-all">
-                            Wallet: {asset.walletAddress}
-                          </p>
-                        )}
-                      </div>
-                    </label>
-                  )
-                })}
+                      </label>
+                    )
+                  })}
+                </div>
               </div>
             )}
             {nftAssets.length > 0 && (
-              <div className={fungibleAssets.length > 0 ? 'mt-3 pt-3 border-t border-gray-300' : ''}>
-                <p className="text-xs font-semibold text-gray-700 mb-1">🖼️ NFTs (Cannot Split - One Beneficiary Only)</p>
-                {nftAssets.map((asset) => {
-                  const isSelected = selectedAssets.includes(asset.id)
-                  const existingAllocation = allocations.find(a => a.assetId === asset.id)
-                  const allocatedTo = existingAllocation ? beneficiaries.find(b => b.id === existingAllocation.beneficiaryId) : null
-                  return (
-                    <label
-                      key={asset.id}
-                      className={`flex items-start gap-2 p-2 rounded cursor-pointer transition-colors ${
-                        isSelected ? 'bg-pink-50 border border-pink-200' : existingAllocation ? 'bg-yellow-50 border border-yellow-200' : 'hover:bg-gray-100'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleAsset(asset.id)}
-                        className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 mt-1"
-                      />
-                      {/* NFT Image */}
-                      {asset.imageUrl && (
-                        <div className="flex-shrink-0">
+              <div className={fungibleAssets.length > 0 ? 'mt-2 pt-2 border-t border-gray-300' : ''}>
+                <p className="text-xs font-semibold text-gray-700 mb-1">🖼️ NFTs (Cannot Split)</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                  {nftAssets.map((asset) => {
+                    const isSelected = selectedAssets.includes(asset.id)
+                    const existingAllocation = allocations.find(a => a.assetId === asset.id)
+                    const allocatedTo = existingAllocation ? beneficiaries.find(b => b.id === existingAllocation.beneficiaryId) : null
+                    return (
+                      <label
+                        key={asset.id}
+                        className={`flex items-center gap-2 p-1.5 rounded cursor-pointer transition-colors text-xs ${
+                          isSelected ? 'bg-pink-50 border border-pink-200' : existingAllocation ? 'bg-yellow-50 border border-yellow-200' : 'hover:bg-gray-100'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleAsset(asset.id)}
+                          className="w-3 h-3 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+                        />
+                        {asset.imageUrl && (
                           <img 
                             src={asset.imageUrl.startsWith('ipfs://') 
                               ? asset.imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/')
@@ -446,109 +441,89 @@ export function AllocationPanel({
                               : asset.imageUrl
                             }
                             alt={asset.name || asset.symbol}
-                            className="w-12 h-12 rounded object-cover border border-gray-200"
-                            onError={(e) => {
-                              // Hide image on error
-                              e.currentTarget.style.display = 'none'
-                            }}
+                            className="w-8 h-8 rounded object-cover border border-gray-200 flex-shrink-0"
+                            onError={(e) => e.currentTarget.style.display = 'none'}
                           />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-gray-900">{asset.name || asset.symbol}</span>
-                          {asset.tokenId && (
-                            <span className="text-xs text-gray-500">Token #{asset.tokenId}</span>
-                          )}
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-800">
-                            NFT (Cannot Split)
-                          </span>
-                          {existingAllocation && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800">
-                              → {allocatedTo?.name || 'Allocated'}
-                            </span>
-                          )}
-                        </div>
-                        {asset.walletAddress && (
-                          <p className="text-xs text-gray-500 font-mono mt-1 break-all">
-                            Wallet: {asset.walletAddress}
-                          </p>
                         )}
-                      </div>
-                    </label>
-                  )
-                })}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="font-semibold text-gray-900 truncate">{asset.name || asset.symbol}</span>
+                            {asset.tokenId && <span className="text-gray-500">#{asset.tokenId}</span>}
+                            {existingAllocation && (
+                              <span className="text-yellow-700 text-xs">→ {allocatedTo?.name}</span>
+                            )}
+                          </div>
+                        </div>
+                      </label>
+                    )
+                  })}
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Beneficiary</label>
-          <select
-            value={selectedBeneficiary || ''}
-            onChange={(e) => handleBeneficiaryChange(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
-          >
-            <option value="">Select beneficiary</option>
-            {beneficiaries.map((ben) => (
-              <option key={ben.id} value={ben.id}>
-                {ben.name}
-              </option>
-            ))}
-          </select>
+        {/* Beneficiary and Controls - Compact Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Beneficiary</label>
+            <select
+              value={selectedBeneficiary || ''}
+              onChange={(e) => handleBeneficiaryChange(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+            >
+              <option value="">Select beneficiary</option>
+              {beneficiaries.map((ben) => (
+                <option key={ben.id} value={ben.id}>
+                  {ben.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Allocation controls only for fungible */}
+          {selectedAssets.some(id => {
+            const asset = assets.find(a => a.id === id)
+            return asset && isFungible(asset)
+          }) && (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Type</label>
+                <select
+                  value={allocationType}
+                  onChange={(e) => handleAllocationTypeChange(e.target.value as 'amount' | 'percentage')}
+                  className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="percentage">% (Percentage)</option>
+                  <option value="amount">Amount</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  {allocationType === 'percentage' ? 'Percentage (%)' : 'Amount'}
+                </label>
+                <input
+                  type="number"
+                  value={allocationValue}
+                  onChange={(e) => setAllocationValue(e.target.value)}
+                  placeholder={allocationType === 'percentage' && beneficiaries.length > 0 ? defaultPercentage.toFixed(2) : ''}
+                  className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+                  step={allocationType === 'percentage' ? '0.01' : '0.00000001'}
+                  min="0"
+                  max={allocationType === 'percentage' ? '100' : undefined}
+                />
+              </div>
+            </>
+          )}
         </div>
         
-        {/* Show allocation controls only for fungible tokens */}
-        {selectedAssets.some(id => {
-          const asset = assets.find(a => a.id === id)
-          return asset && isFungible(asset)
-        }) && (
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Type</label>
-              <select
-                value={allocationType}
-                onChange={(e) => handleAllocationTypeChange(e.target.value as 'amount' | 'percentage')}
-                className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
-              >
-                <option value="percentage">% (Percentage)</option>
-                <option value="amount">Amount</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                {allocationType === 'percentage' ? 'Percentage (%)' : 'Amount'}
-                {allocationType === 'percentage' && beneficiaries.length > 0 && (
-                  <span className="text-gray-500 font-normal ml-1">
-                    (default: {defaultPercentage.toFixed(2)}%)
-                  </span>
-                )}
-              </label>
-              <input
-                type="number"
-                value={allocationValue}
-                onChange={(e) => setAllocationValue(e.target.value)}
-                placeholder={allocationType === 'percentage' && beneficiaries.length > 0 ? defaultPercentage.toFixed(2) : ''}
-                className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
-                step={allocationType === 'percentage' ? '0.01' : '0.00000001'}
-                min="0"
-                max={allocationType === 'percentage' ? '100' : undefined}
-              />
-            </div>
-          </div>
-        )}
-        
-        {/* Show NFT warning if NFTs are selected */}
+        {/* NFT warning */}
         {selectedAssets.some(id => {
           const asset = assets.find(a => a.id === id)
           return asset && isNFT(asset)
         }) && (
-          <div className="bg-pink-50 border-2 border-pink-200 rounded-lg p-3">
-            <p className="text-xs font-semibold text-pink-900 mb-1">⚠️ NFT Selected</p>
-            <p className="text-xs text-pink-800">
-              NFTs cannot be split. This NFT will be allocated 100% to the selected beneficiary. If already allocated, it will be reassigned.
-            </p>
+          <div className="bg-pink-50 border-2 border-pink-200 rounded-lg p-2">
+            <p className="text-xs font-semibold text-pink-900">⚠️ NFT Selected - Will be allocated 100% to selected beneficiary</p>
           </div>
         )}
         
@@ -558,97 +533,34 @@ export function AllocationPanel({
           className="w-full rounded-lg bg-blue-600 text-white p-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Add Allocation{selectedAssets.length > 1 ? `s (${selectedAssets.length})` : ''}
-          {allocationType === 'percentage' && !allocationValue && beneficiaries.length > 0 && ` (${defaultPercentage.toFixed(2)}% each)`}
         </button>
-        </div>
-
-        {/* Right Column: Beneficiaries List */}
-        <div className="bg-white rounded-lg border-2 border-gray-200 p-4">
-          <h4 className="font-semibold text-gray-900 text-sm mb-3">Beneficiaries ({beneficiaries.length})</h4>
-          {beneficiaries.length === 0 ? (
-            <p className="text-xs text-gray-500 text-center py-4">No beneficiaries added yet</p>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {beneficiaries.map((ben) => {
-                const beneficiaryAllocations = allocations.filter(a => a.beneficiaryId === ben.id)
-                const nftCount = beneficiaryAllocations.filter(a => {
-                  const asset = assets.find(ast => ast.id === a.assetId)
-                  return asset && isNFT(asset)
-                }).length
-                const fungibleCount = beneficiaryAllocations.filter(a => {
-                  const asset = assets.find(ast => ast.id === a.assetId)
-                  return asset && isFungible(asset)
-                }).length
-                return (
-                  <div key={ben.id} className="bg-blue-50 border border-blue-200 rounded p-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-gray-900">{ben.name}</span>
-                      <span className="text-xs text-gray-600">
-                        {beneficiaryAllocations.length} allocation{beneficiaryAllocations.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    {beneficiaryAllocations.length > 0 && (
-                      <div className="text-xs text-gray-600 mt-1">
-                        {nftCount > 0 && <span className="text-pink-700">{nftCount} NFT{nftCount !== 1 ? 's' : ''}</span>}
-                        {nftCount > 0 && fungibleCount > 0 && <span className="mx-1">•</span>}
-                        {fungibleCount > 0 && <span>{fungibleCount} token{fungibleCount !== 1 ? 's' : ''}</span>}
-                      </div>
-                    )}
-                    {ben.walletAddress && (
-                      <p className="text-xs text-gray-500 font-mono mt-1 break-all">
-                        {ben.walletAddress}
-                      </p>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Quick Allocate Button and Undo */}
+      {/* Quick Allocate and Undo */}
       <div className="flex gap-3">
         {beneficiaries.length > 0 && assets.length > 0 && (
-          <div className="flex-1 bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-blue-900">Quick Allocate</p>
-                <p className="text-xs text-blue-700">
-                  {fungibleAssets.length > 0 && (
-                    <>Distribute {fungibleAssets.length} fungible token{fungibleAssets.length !== 1 ? 's' : ''} evenly ({defaultPercentage.toFixed(2)}% each). </>
-                  )}
-                  {nftAssets.length > 0 && (
-                    <>Assign {nftAssets.length} NFT{nftAssets.length !== 1 ? 's' : ''} to {beneficiaries[0]?.name || 'first beneficiary'} (NFTs cannot be split).</>
-                  )}
-                </p>
-              </div>
-              <button
-                onClick={handleQuickAllocate}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Quick Allocate
-              </button>
-            </div>
-          </div>
+          <button
+            onClick={handleQuickAllocate}
+            className="flex-1 rounded-lg bg-blue-600 text-white p-3 font-semibold hover:bg-blue-700 transition-colors"
+          >
+            Quick Allocate All
+          </button>
         )}
         {allocationHistory.length > 0 && (
           <button
             onClick={handleUnallocateLast}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
-            title="Undo last allocation change"
+            className="px-4 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
           >
             ↶ Undo Last
           </button>
         )}
       </div>
 
-      {/* Allocation Summary - Full Width */}
+      {/* Allocation Summary - Compact Grid */}
       <div className="space-y-2">
         <h4 className="font-semibold text-gray-900 text-sm">Allocation Summary</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-          {allocationSummary.map(({ asset, allocations: assetAllocs, totalPercentage, totalAmount, isOverAllocated, isUnallocated, hasPercentageAllocations, hasAmountAllocations, assetBalance }) => {
-            const assetIsNFT = isNFT(asset)
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {allocationSummary.map(({ asset, allocations: assetAllocs, totalPercentage, totalAmount, isOverAllocated, isUnallocated, assetIsNFT }) => {
             return (
               <div
                 key={asset.id}
@@ -662,146 +574,74 @@ export function AllocationPanel({
                     : 'border-green-200 bg-green-50'
                 }`}
               >
-                <div className="flex items-start gap-3 mb-2">
-                  {/* NFT Image */}
+                <div className="flex items-start gap-2 mb-2">
                   {assetIsNFT && asset.imageUrl && (
-                    <div className="flex-shrink-0">
-                      <img 
-                        src={asset.imageUrl.startsWith('ipfs://') 
-                          ? asset.imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/')
-                          : asset.imageUrl.startsWith('ipfs/')
-                          ? `https://ipfs.io/${asset.imageUrl}`
-                          : asset.imageUrl
-                        }
-                        alt={asset.name || asset.symbol}
-                        className="w-16 h-16 rounded object-cover border-2 border-pink-300"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
-                      />
-                    </div>
+                    <img 
+                      src={asset.imageUrl.startsWith('ipfs://') 
+                        ? asset.imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/')
+                        : asset.imageUrl.startsWith('ipfs/')
+                        ? `https://ipfs.io/${asset.imageUrl}`
+                        : asset.imageUrl
+                      }
+                      alt={asset.name || asset.symbol}
+                      className="w-12 h-12 rounded object-cover border-2 border-pink-300 flex-shrink-0"
+                      onError={(e) => e.currentTarget.style.display = 'none'}
+                    />
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="font-bold text-sm text-gray-900">{asset.name || asset.symbol}</span>
+                    <div className="flex items-center gap-1 flex-wrap mb-1">
+                      <span className="font-bold text-xs text-gray-900 truncate">{asset.name || asset.symbol}</span>
                       {assetIsNFT ? (
-                        <>
-                          {asset.tokenId && (
-                            <span className="text-xs text-gray-600">Token #{asset.tokenId}</span>
-                          )}
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-800">
-                            NFT (Cannot Split)
-                          </span>
-                        </>
+                        <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-800">
+                          NFT
+                        </span>
                       ) : (
-                        <>
-                          <span className="text-xs text-gray-500">
-                            {asset.balanceFormatted}
-                          </span>
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800">
-                            Fungible (Can Split)
-                          </span>
-                        </>
+                        <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800">
+                          {asset.symbol}
+                        </span>
                       )}
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-800">
-                        {asset.chain.toUpperCase()}
-                      </span>
+                      <span className="text-xs text-gray-500">{asset.chain}</span>
                     </div>
                     {asset.walletAddress && (
-                      <p className="text-xs text-gray-500 font-mono break-all">
-                        Wallet: {asset.walletAddress}
+                      <p className="text-xs text-gray-500 font-mono break-all leading-tight">
+                        {asset.walletAddress}
                       </p>
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2 mb-2">
+                
+                {/* Status badges */}
+                <div className="flex gap-1 mb-2 flex-wrap">
                   {assetIsNFT && assetAllocs.length > 0 && (
-                    <span className="text-xs text-pink-700 font-semibold bg-pink-100 px-2 py-0.5 rounded">100% Allocated</span>
+                    <span className="text-xs text-pink-700 font-semibold bg-pink-100 px-1.5 py-0.5 rounded">100%</span>
                   )}
                   {!assetIsNFT && isOverAllocated && (
-                    <span className="text-xs text-red-700 font-semibold bg-red-100 px-2 py-0.5 rounded">⚠️ Over Allocated</span>
+                    <span className="text-xs text-red-700 font-semibold bg-red-100 px-1.5 py-0.5 rounded">⚠️ Over</span>
                   )}
                   {isUnallocated && (
-                    <span className="text-xs text-yellow-700 font-semibold bg-yellow-100 px-2 py-0.5 rounded">⚠️ Unallocated</span>
+                    <span className="text-xs text-yellow-700 font-semibold bg-yellow-100 px-1.5 py-0.5 rounded">⚠️ Unallocated</span>
                   )}
                 </div>
+                
+                {/* Allocations list */}
                 {assetAllocs.length > 0 && (
-                  <div className="space-y-1 mt-2">
+                  <div className="space-y-1 text-xs">
                     {assetAllocs.map((alloc) => {
                       const beneficiary = beneficiaries.find((b) => b.id === alloc.beneficiaryId)
-                      const isEditing = editingAllocation?.assetId === alloc.assetId && editingAllocation?.beneficiaryId === alloc.beneficiaryId
                       return (
-                        <div
-                          key={`${alloc.assetId}-${alloc.beneficiaryId}`}
-                          className="flex items-center justify-between text-xs bg-white rounded p-2"
-                        >
-                          {isEditing ? (
-                            <div className="flex-1 flex items-center gap-2">
-                              <select
-                                value={alloc.beneficiaryId}
-                                onChange={(e) => {
-                                  handleChangeBeneficiary(alloc.assetId, alloc.beneficiaryId, e.target.value)
-                                  setEditingAllocation(null)
-                                }}
-                                className="flex-1 rounded border border-gray-300 p-1 text-xs focus:border-blue-500 focus:outline-none"
-                                autoFocus
-                              >
-                                {beneficiaries.map((ben) => (
-                                  <option key={ben.id} value={ben.id}>
-                                    {ben.name}
-                                  </option>
-                                ))}
-                              </select>
-                              <button
-                                onClick={() => setEditingAllocation(null)}
-                                className="text-gray-600 hover:text-gray-700 px-2 py-0.5 rounded hover:bg-gray-50 transition-colors"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <>
-                              <span className="text-gray-700 flex-1">
-                                <span className="font-semibold">{beneficiary?.name}:</span>{' '}
-                                {assetIsNFT ? (
-                                  <span className="text-pink-700 font-bold">100% (Entire NFT)</span>
-                                ) : alloc.type === 'percentage' ? (
-                                  `${alloc.percentage}% of ${asset.symbol}`
-                                ) : (
-                                  `${alloc.amount} ${asset.symbol}`
-                                )}
-                              </span>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => setEditingAllocation({ assetId: alloc.assetId, beneficiaryId: alloc.beneficiaryId })}
-                                  className="text-blue-600 hover:text-blue-700 font-semibold px-2 py-0.5 rounded hover:bg-blue-50 transition-colors"
-                                  title="Change beneficiary"
-                                >
-                                  ✏️
-                                </button>
-                                <button
-                                  onClick={() => handleRemoveAllocation(alloc.assetId, alloc.beneficiaryId)}
-                                  className="text-red-600 hover:text-red-700 font-semibold px-2 py-0.5 rounded hover:bg-red-50 transition-colors"
-                                  title="Remove allocation"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            </>
-                          )}
+                        <div key={`${alloc.assetId}-${alloc.beneficiaryId}`} className="flex items-center justify-between bg-white rounded p-1">
+                          <span className="text-gray-700 truncate">
+                            {beneficiary?.name}: {assetIsNFT ? '100%' : alloc.type === 'percentage' ? `${alloc.percentage}%` : alloc.amount}
+                          </span>
+                          <button
+                            onClick={() => handleRemoveAllocation(alloc.assetId, alloc.beneficiaryId)}
+                            className="text-red-600 hover:text-red-700 text-xs font-semibold ml-2"
+                          >
+                            ×
+                          </button>
                         </div>
                       )
                     })}
-                    {!assetIsNFT && (
-                      <div className="text-xs text-gray-600 mt-2 pt-2 border-t border-gray-300">
-                        {hasPercentageAllocations && (
-                          <div>Total %: <span className="font-semibold">{totalPercentage.toFixed(2)}%</span> of {asset.symbol}</div>
-                        )}
-                        {hasAmountAllocations && (
-                          <div>Total Amount: <span className="font-semibold">{totalAmount.toFixed(6)} {asset.symbol}</span></div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
