@@ -1635,17 +1635,21 @@ export default function Home() {
    </div>
  ) : (
    <div className="space-y-6">
-     {/* Beneficiaries Section - Compact Grid at Top */}
+     {/* Beneficiaries Section - Horizontal Form at Top, Cards Below */}
      <div className="bg-white rounded-lg border-2 border-gray-200 p-4">
-       <div className="flex items-center justify-between mb-4">
-         <h3 className="font-bold text-lg text-gray-900">Beneficiaries ({beneficiaries.length})</h3>
+       <h3 className="font-bold text-lg text-gray-900 mb-4">Beneficiaries ({beneficiaries.length})</h3>
+       
+       {/* Horizontal Add Beneficiary Form */}
+       <div className="mb-4">
          <BeneficiaryForm
            beneficiaries={beneficiaries}
            onBeneficiariesChange={setBeneficiaries}
          />
        </div>
+       
+       {/* Beneficiary Cards Grid */}
        {beneficiaries.length > 0 ? (
-         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-64 overflow-y-auto">
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
            {beneficiaries.map((ben) => {
              const beneficiaryAllocations = allocations.filter(a => a.beneficiaryId === ben.id)
              return (
