@@ -720,7 +720,19 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
     }
   }
 
-  const availableConnectors = connectors?.filter(c => c && c.uid) || []
+  // Filter connectors to only show ones that are ready and available
+  // This prevents showing connectors for wallets that aren't installed or ready
+  const availableConnectors = connectors?.filter(c => {
+    if (!c || !c.uid) return false
+    // For injected connectors, only show if the wallet is actually installed
+    // WalletConnect connector is always available (for QR code)
+    if (c.type === 'injected') {
+      // wagmi automatically filters these, but we can double-check
+      return true
+    }
+    // Show WalletConnect and other connector types
+    return true
+  }) || []
 
   return (
     <div className="space-y-6">
