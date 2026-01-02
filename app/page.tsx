@@ -2017,8 +2017,17 @@ export default function Home() {
  )}
  {sendError && (
  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
- <p className="text-sm text-red-800">
- <strong>Transaction Failed:</strong> {sendError.message || 'Failed to send payment. Please try again.'}
+ <p className="text-sm text-red-800 mb-2">
+ <strong>Transaction Error:</strong> {sendError.message || 'Failed to send payment'}
+ </p>
+ <p className="text-xs text-red-700">
+ If you're seeing a gas error but have enough ETH, the issue might be gas estimation. Try:
+ <ul className="list-disc list-inside mt-1 space-y-1">
+ <li>Make sure you're on Ethereum Mainnet (not a testnet)</li>
+ <li>Try refreshing the page and reconnecting your wallet</li>
+ <li>If using WalletConnect, try disconnecting and reconnecting via QR code</li>
+ <li>Your wallet should show the actual gas cost - you can adjust it there</li>
+ </ul>
  </p>
  </div>
  )}
@@ -2033,17 +2042,21 @@ export default function Home() {
  return
  }
  try {
- // Let wallet handle gas estimation - don't pre-check balance
- // Wallets are better at estimating gas and will show the actual cost
+ // Clear any previous errors
+ setError(null)
+ 
+ // Send transaction - let wallet handle gas estimation
+ // If gas estimation fails, the wallet will show the error
  sendTransaction({
  to: paymentRecipientAddress,
  value: parseEther('0.00025'),
- // Don't specify gas - let wallet estimate automatically
+ // Don't specify gas parameters - let wallet estimate
+ // This allows wallet to show gas options and let user adjust
  })
  } catch (error: any) {
  console.error('Error sending payment:', error)
- // Show wallet's error message - it will handle gas estimation
- setError(error?.message || 'Failed to send payment. Please check your wallet for details.')
+ // Don't set error here - wagmi's sendError will handle it
+ // This catch is mainly for unexpected errors
  }
  }}
  disabled={isSendingPayment || isConfirming || !paymentRecipientAddress}
