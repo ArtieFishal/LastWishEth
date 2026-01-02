@@ -46,7 +46,7 @@ export default function GuidePage() {
                       <li>Click on the <strong>"Connect"</strong> step (Step 1) in the progress bar at the top</li>
                       <li>Choose your wallet type:
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
-                          <li><strong>EVM Wallets</strong> (Ethereum, Base, Arbitrum, Polygon): Click "WalletConnect" to open a QR code that works with any compatible wallet (MetaMask, Coinbase Wallet, Rainbow, Trust Wallet, etc.)</li>
+                          <li><strong>EVM Wallets</strong> (Ethereum, Base, Arbitrum, Polygon): Click "WalletConnect" to open a QR code that works with any WalletConnect-compatible wallet</li>
                           <li><strong>Bitcoin Wallets</strong>: Click "Connect Xverse Wallet" (if using Xverse) OR manually enter your Bitcoin address in the field below the button</li>
                         </ul>
                       </li>
