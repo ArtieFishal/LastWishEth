@@ -723,14 +723,27 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
   }
 
   // Filter and sort connectors - WalletConnect first, then only top 3 injected wallets
+  // Deduplicate by name to prevent showing the same wallet twice
   const top3Wallets = ['MetaMask', 'Coinbase Wallet', 'Rainbow']
-  const availableConnectors = (connectors?.filter(c => {
+  const filteredConnectors = (connectors?.filter(c => {
     if (!c || !c.uid) return false
     // Only show WalletConnect and top 3 injected wallets
     if (c.name === 'WalletConnect') return true
     if (c.type === 'injected' && top3Wallets.includes(c.name)) return true
     return false
-  }) || []).sort((a, b) => {
+  }) || [])
+  
+  // Deduplicate by connector name - keep first occurrence of each wallet
+  const seenNames = new Set<string>()
+  const deduplicatedConnectors = filteredConnectors.filter(c => {
+    if (seenNames.has(c.name)) {
+      return false // Skip duplicate
+    }
+    seenNames.add(c.name)
+    return true
+  })
+  
+  const availableConnectors = deduplicatedConnectors.sort((a, b) => {
     // WalletConnect first, then top 3 wallets in order
     if (a.name === 'WalletConnect') return -1
     if (b.name === 'WalletConnect') return 1
