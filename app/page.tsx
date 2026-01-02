@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAccount, useDisconnect, useSignMessage } from 'wagmi'
-import { createPublicClient, http } from 'viem'
+import { useAccount, useDisconnect, useSignMessage, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi'
+import { createPublicClient, http, parseEther, isAddress } from 'viem'
 import { mainnet } from 'viem/chains'
 import { WalletConnect } from '@/components/WalletConnect'
 import { AssetList } from '@/components/AssetList'
@@ -25,7 +25,7 @@ const steps: Array<{ id: Step; label: string; number: number }> = [
 ]
 
 export default function Home() {
- const { address: evmAddress, isConnected } = useAccount()
+ const { address: evmAddress, isConnected, chain } = useAccount()
  const { disconnect } = useDisconnect()
  const { signMessageAsync } = useSignMessage({
  mutation: {
@@ -33,6 +33,13 @@ export default function Home() {
  console.error('Sign message error:', error)
  }
  }
+ })
+ 
+ // Payment transaction hooks
+ const [paymentRecipientAddress, setPaymentRecipientAddress] = useState<`0x${string}` | null>(null)
+ const { data: sendTxHash, sendTransaction, isPending: isSendingPayment, error: sendError } = useSendTransaction()
+ const { isLoading: isConfirming, isSuccess: isPaymentSent } = useWaitForTransactionReceipt({
+ hash: sendTxHash,
  })
  const [step, setStep] = useState<Step>('connect')
  const [btcAddress, setBtcAddress] = useState<string | null>(null)
@@ -381,6 +388,60 @@ export default function Home() {
  const timeoutId = setTimeout(resolveExecutorENS, 500)
  return () => clearTimeout(timeoutId)
  }, [executorAddress])
+
+ // Resolve payment recipient address when on payment step
+ useEffect(() => {
+ const resolvePaymentAddress = async () => {
+ if (step === 'payment' && !paymentRecipientAddress) {
+ try {
+ const publicClient = createPublicClient({
+ chain: mainnet,
+ transport: http(),
+ })
+ const address = await publicClient.getEnsAddress({ name: 'lastwish.eth' })
+ if (address) {
+ setPaymentRecipientAddress(address as `0x${string}`)
+ console.log('Resolved lastwish.eth to:', address)
+ } else {
+ setError('Failed to resolve lastwish.eth address')
+ }
+ } catch (error) {
+ console.error('Error resolving payment address:', error)
+ setError('Failed to resolve payment recipient address')
+ }
+ }
+ }
+ resolvePaymentAddress()
+ }, [step, paymentRecipientAddress])
+
+ // Auto-verify payment after transaction is confirmed
+ useEffect(() => {
+ if (isPaymentSent && sendTxHash && evmAddress) {
+ // Wait a moment for the transaction to be indexed
+ setTimeout(async () => {
+ setVerifyingPayment(true)
+ setError(null)
+ try {
+ const response = await axios.post('/api/invoice/status', {
+ invoiceId,
+ fromAddress: evmAddress,
+ })
+ if (response.data.status === 'paid') {
+ setPaymentVerified(true)
+ setStep('download')
+ setError(null)
+ } else {
+ setError('Payment sent but not yet confirmed. Please wait a moment and click Verify Payment.')
+ }
+ } catch (error: any) {
+ console.error('Error verifying payment:', error)
+ setError('Payment sent but verification failed. Please click Verify Payment manually.')
+ } finally {
+ setVerifyingPayment(false)
+ }
+ }, 3000) // Wait 3 seconds for indexing
+ }
+ }, [isPaymentSent, sendTxHash, evmAddress, invoiceId])
 
  // Load assets from a specific wallet address
  const loadAssetsFromWallet = async (walletAddress: string, append = false) => {
@@ -1871,13 +1932,95 @@ export default function Home() {
  <p className="text-sm text-gray-600 mb-1">Recipient</p>
  <p className="text-lg font-mono text-gray-900 break-all">lastwish.eth</p>
  </div>
- <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
- <p className="text-sm text-yellow-800">
-                  <strong>Note:</strong> Send exactly 0.00025 ETH on Ethereum mainnet to the address above. After sending, click "Verify Payment" below.
+ {isConnected && chain?.id === mainnet.id && paymentRecipientAddress && (
+ <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+ <p className="text-sm text-green-800">
+ <strong>✓ Ready to Pay:</strong> Click "Send Payment" below to send 0.00025 ETH directly from your connected wallet. No need to leave this page!
  </p>
  </div>
+ )}
+ {!isConnected && (
+ <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+ <p className="text-sm text-red-800">
+ <strong>Connect Wallet Required:</strong> Please connect your wallet to send payment directly from this page.
+ </p>
  </div>
- <div className="mt-6 flex gap-4">
+ )}
+ {isConnected && chain?.id !== mainnet.id && (
+ <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+ <p className="text-sm text-orange-800">
+ <strong>Wrong Network:</strong> Please switch to Ethereum Mainnet to send payment.
+ </p>
+ </div>
+ )}
+ {isSendingPayment && (
+ <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+ <p className="text-sm text-blue-800">
+ <strong>Sending Payment...</strong> Please confirm the transaction in your wallet.
+ </p>
+ </div>
+ )}
+ {isConfirming && (
+ <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+ <p className="text-sm text-yellow-800">
+ <strong>Transaction Pending...</strong> Waiting for confirmation. This may take a few moments.
+ </p>
+ </div>
+ )}
+ {isPaymentSent && (
+ <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+ <p className="text-sm text-green-800">
+ <strong>✓ Payment Sent!</strong> Transaction confirmed. Verifying payment...
+ </p>
+ </div>
+ )}
+ {sendError && (
+ <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+ <p className="text-sm text-red-800">
+ <strong>Transaction Failed:</strong> {sendError.message || 'Failed to send payment. Please try again.'}
+ </p>
+ </div>
+ )}
+ </div>
+ <div className="mt-6 flex flex-col gap-4">
+ {isConnected && chain?.id === mainnet.id && paymentRecipientAddress ? (
+ <button
+ onClick={async () => {
+ if (!paymentRecipientAddress) {
+ setError('Payment address not resolved. Please wait a moment.')
+ return
+ }
+ try {
+ sendTransaction({
+ to: paymentRecipientAddress,
+ value: parseEther('0.00025'),
+ })
+ } catch (error: any) {
+ console.error('Error sending payment:', error)
+ setError(error?.message || 'Failed to send payment')
+ }
+ }}
+ disabled={isSendingPayment || isConfirming || !paymentRecipientAddress}
+ className="w-full rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-lg"
+ >
+ {isSendingPayment ? 'Confirm in Wallet...' : isConfirming ? 'Confirming Transaction...' : '💳 Send Payment (0.00025 ETH)'}
+ </button>
+ ) : !isConnected ? (
+ <div className="bg-gray-50 border-2 border-gray-300 rounded-lg p-4 text-center">
+ <p className="text-sm text-gray-700 mb-2">Connect your wallet to send payment directly from this page</p>
+ <button
+ onClick={() => setStep('connect')}
+ className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+ >
+ Go to Connect Wallet
+ </button>
+ </div>
+ ) : chain?.id !== mainnet.id ? (
+ <div className="bg-orange-50 border-2 border-orange-300 rounded-lg p-4 text-center">
+ <p className="text-sm text-orange-800 mb-2">Please switch to Ethereum Mainnet to send payment</p>
+ </div>
+ ) : null}
+ <div className="flex gap-4">
               <button
               onClick={async () => {
                 // Use payment wallet address (first verified wallet) if available, otherwise fall back to connected wallet
