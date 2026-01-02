@@ -1439,6 +1439,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
         <button
           onClick={async () => {
             if (btcAddress) {
+              setSelectedWalletForLoading(null) // Clear EVM selection so Bitcoin filtering works
               await loadAssets(true, false) // append=true, loadFromAllWallets=false
               setStep('assets') // Navigate to assets step after loading
             }
@@ -1482,6 +1483,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
                 setSelectedWalletForLoading(null) // Clear EVM selection when Bitcoin is connected
                 setError(null)
                 // Automatically load Bitcoin assets after connection
+                setSelectedWalletForLoading(null) // Clear EVM selection so Bitcoin filtering works
                 try {
                   await loadAssets(true, false) // append=true, loadFromAllWallets=false
                   setStep('assets') // Navigate to assets step to show Bitcoin assets
