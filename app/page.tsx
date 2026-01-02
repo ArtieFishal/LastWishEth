@@ -651,7 +651,8 @@ export default function Home() {
  }
 
  const handleDiscountCode = () => {
- const code = discountCode.trim().toLowerCase()
+ const code = discountCode.trim().toLowerCase().replace(/[^a-z0-9]/g, '') // Remove special chars for flexible matching
+ // Accept common variations: nofomo, no-fomo, no_fomo, etc.
  if (code === 'nofomo') {
  setDiscountApplied(true)
  setError(null)
