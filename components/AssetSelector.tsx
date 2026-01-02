@@ -30,6 +30,23 @@ const getAssetCategory = (asset: Asset): string => {
   return 'Other'
 }
 
+// Helper to normalize wallet provider names for display
+const getWalletProviderName = (provider?: string): string => {
+  if (!provider || provider === 'Unknown') return 'Unknown'
+  // Normalize common provider names
+  const normalized = provider.toLowerCase()
+  if (normalized.includes('metamask')) return 'MetaMask'
+  if (normalized.includes('coinbase')) return 'Coinbase Wallet'
+  if (normalized.includes('phantom')) return 'Phantom'
+  if (normalized.includes('rainbow')) return 'Rainbow'
+  if (normalized.includes('trust')) return 'Trust Wallet'
+  if (normalized.includes('okx')) return 'OKX Wallet'
+  if (normalized.includes('xverse')) return 'Xverse'
+  if (normalized.includes('walletconnect')) return 'WalletConnect'
+  // Return as-is if no match (capitalize first letter)
+  return provider.charAt(0).toUpperCase() + provider.slice(1)
+}
+
 export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: AssetSelectorProps) {
   const [filter, setFilter] = useState<'all' | 'currencies' | 'nfts' | 'other'>('all')
   const [sortBy, setSortBy] = useState<'chain' | 'type' | 'value' | 'wallet'>('type')
@@ -53,12 +70,13 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
       } else if (sortBy === 'type') {
         return getAssetCategory(a).localeCompare(getAssetCategory(b))
       } else if (sortBy === 'wallet') {
-        // Sort by wallet address (group assets by wallet)
-        const aWallet = a.walletAddress || 'unknown'
-        const bWallet = b.walletAddress || 'unknown'
-        const walletCompare = aWallet.localeCompare(bWallet)
-        if (walletCompare !== 0) return walletCompare
-        // If same wallet, sort by chain then type
+        // Sort by wallet provider (MetaMask, Coinbase, Phantom, etc.)
+        // Normalize provider names for consistent sorting
+        const aProvider = getWalletProviderName(a.walletProvider)
+        const bProvider = getWalletProviderName(b.walletProvider)
+        const providerCompare = aProvider.localeCompare(bProvider)
+        if (providerCompare !== 0) return providerCompare
+        // If same provider, sort by chain then type
         const chainCompare = a.chain.localeCompare(b.chain)
         if (chainCompare !== 0) return chainCompare
         return getAssetCategory(a).localeCompare(getAssetCategory(b))
@@ -196,7 +214,7 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
                           className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <span className="font-bold text-lg text-gray-900">{asset.symbol}</span>
                             <span className={`text-xs font-semibold uppercase px-2 py-0.5 rounded ${getChainColor(asset.chain)}`}>
                               {asset.chain}
@@ -204,6 +222,11 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
                             {asset.type === 'erc721' || asset.type === 'erc1155' ? (
                               <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-semibold">
                                 NFT
+                              </span>
+                            ) : null}
+                            {asset.walletProvider && asset.walletProvider !== 'Unknown' ? (
+                              <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-medium">
+                                {getWalletProviderName(asset.walletProvider)}
                               </span>
                             ) : null}
                           </div>
