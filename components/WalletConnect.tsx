@@ -732,32 +732,6 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
           Each wallet requires signature verification to prove ownership before assets can be loaded.
         </p>
-        <div className="mb-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 border-2 border-amber-300 dark:border-amber-700 rounded-lg shadow-sm">
-          <div className="flex items-start gap-3">
-            <span className="text-2xl flex-shrink-0">📱</span>
-            <div>
-              <p className="text-sm font-bold text-amber-900 dark:text-amber-100 mb-2">
-                Mobile Wallet Support
-              </p>
-              <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
-                Clicking <strong className="font-bold">"WalletConnect"</strong> shows a QR code that works with <strong className="font-bold">any</strong> compatible wallet app on your phone:
-              </p>
-              <ul className="text-sm text-amber-800 dark:text-amber-200 mt-2 ml-4 list-disc space-y-1">
-                <li>MetaMask</li>
-                <li>Trust Wallet</li>
-                <li>Rainbow</li>
-                <li>Coinbase Wallet</li>
-                <li>And many more!</li>
-              </ul>
-              <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 mt-2">
-                💡 Tip: Make sure to allow camera permissions when prompted to scan the QR code!
-              </p>
-              <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 mt-1">
-                Just scan the QR code with your wallet app!
-              </p>
-            </div>
-          </div>
-        </div>
         {availableConnectors.length > 0 ? (
           <div className="space-y-3">
             {availableConnectors.map((connector) => {
