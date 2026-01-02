@@ -1,7 +1,7 @@
 'use client'
 
 import { useAccount, useConnect, useDisconnect, useConnectorClient } from 'wagmi'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface WalletConnectProps {
   onBitcoinConnect?: (address: string, provider?: string) => void
@@ -110,6 +110,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
   const [btcAddress, setBtcAddress] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const manualBtcInputRef = useRef<HTMLInputElement>(null)
 
   // Prevent hydration mismatch by only rendering after mount
   useEffect(() => {
@@ -372,9 +373,9 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
               
               if (address) {
                 console.log('[Xverse Detection] 🎉 SUCCESS! Connected address:', address)
-                setBtcAddress(address)
                 setConnecting(false)
-                onBitcoinConnect?.(address)
+                setBtcAddress(address) // Set local state for UI
+                onBitcoinConnect?.(address) // Notify parent - this should trigger asset loading
                 return
               } else {
                 console.log('[Xverse Detection] ⚠️ Could not extract address from account:', account)
@@ -1006,6 +1007,55 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             </svg>
           )}
         </button>
+        
+        {/* Manual address entry - always visible as fallback */}
+        <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <p className="text-xs font-semibold text-gray-600 mb-2">Or enter Bitcoin address manually:</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Enter Bitcoin address (1, 3, or bc1...)"
+              className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const input = e.currentTarget as HTMLInputElement
+                  const address = input.value.trim()
+                  if (address) {
+                    const btcAddressRegex = /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/
+                    if (btcAddressRegex.test(address)) {
+                      setBtcAddress(address)
+                      onBitcoinConnect?.(address)
+                      input.value = ''
+                    } else {
+                      alert('Invalid Bitcoin address format. Please enter a valid address (starts with 1, 3, or bc1).')
+                    }
+                  }
+                }
+              }}
+            />
+            <button
+              onClick={() => {
+                const input = document.querySelector('input[placeholder*="Bitcoin address"]') as HTMLInputElement
+                if (input) {
+                  const address = input.value.trim()
+                  if (address) {
+                    const btcAddressRegex = /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/
+                    if (btcAddressRegex.test(address)) {
+                      setBtcAddress(address)
+                      onBitcoinConnect?.(address)
+                      input.value = ''
+                    } else {
+                      alert('Invalid Bitcoin address format. Please enter a valid address (starts with 1, 3, or bc1).')
+                    }
+                  }
+                }
+              }}
+              className="px-4 py-2 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors"
+            >
+              Add
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
