@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Providers } from "./providers";
+import dynamic from "next/dynamic";
+
+// Dynamically import Providers to prevent SSR - wagmi/WalletConnect uses indexedDB
+const Providers = dynamic(() => import("./providers").then(mod => ({ default: mod.Providers })), {
+  ssr: false,
+  loading: () => <div style={{ minHeight: '100vh' }} />, // Prevent layout shift
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

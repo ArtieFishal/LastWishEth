@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
-import { config } from '@/lib/wagmi'
+import { getConfig } from '@/lib/wagmi'
 import { useState, useEffect } from 'react'
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -15,6 +15,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
       },
     },
   }))
+  
+  // Get config only on client side (async)
+  const [config, setConfig] = useState<Awaited<ReturnType<typeof getConfig>> | null>(null)
+  
+  // Initialize config on mount (client-side only)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      getConfig().then(setConfig)
+    }
+  }, [])
 
   // Suppress WalletConnect internal console errors
   useEffect(() => {
@@ -49,6 +59,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }
     }
   }, [])
+
+  // Don't render until config is ready (client-side only)
+  if (!config || typeof window === 'undefined') {
+    return <>{children}</>
+  }
 
   return (
     <WagmiProvider config={config}>

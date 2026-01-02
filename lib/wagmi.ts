@@ -1,15 +1,25 @@
 import { createConfig, http } from 'wagmi'
 import { base, arbitrum, polygon, mainnet } from 'wagmi/chains'
-import { walletConnect } from 'wagmi/connectors'
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || ''
 
-// Build connectors array
-const buildConnectors = () => {
+// Build connectors array - only on client side
+// This function must only be called from client components
+// Dynamically import walletConnect to prevent indexedDB access during SSR
+const buildConnectors = async () => {
+  // Guard against SSR - indexedDB is not available on server
+  if (typeof window === 'undefined' || typeof indexedDB === 'undefined') {
+    return []
+  }
+  
   const connectors: any[] = []
   
   if (projectId && projectId.length > 0) {
     try {
+      // Dynamically import walletConnect only on client to prevent SSR indexedDB access
+      const { walletConnect } = await import('wagmi/connectors')
+      
+      // Only create WalletConnect connector on client where indexedDB is available
       connectors.push(
         walletConnect({
           projectId,
@@ -17,8 +27,8 @@ const buildConnectors = () => {
           metadata: {
             name: 'LastWish.eth',
             description: 'Crypto Inheritance Instructions Generator',
-            url: typeof window !== 'undefined' ? window.location.origin : 'https://lastwish.eth',
-            icons: typeof window !== 'undefined' ? [`${window.location.origin}/favicon.ico`] : [],
+            url: window.location.origin,
+            icons: [`${window.location.origin}/favicon.ico`],
           },
           qrModalOptions: {
             themeMode: 'light',
@@ -44,16 +54,51 @@ const buildConnectors = () => {
   return connectors
 }
 
-// Create config
-export const config = createConfig({
-  chains: [mainnet, base, arbitrum, polygon],
-  connectors: buildConnectors(),
-  transports: {
-    [mainnet.id]: http(),
-    [base.id]: http(),
-    [arbitrum.id]: http(),
-    [polygon.id]: http(),
-  },
-  ssr: false,
-})
+// Lazy config creation - only create on client side
+let _config: ReturnType<typeof createConfig> | null = null
+let _configPromise: Promise<ReturnType<typeof createConfig>> | null = null
+
+export const getConfig = async () => {
+  if (typeof window === 'undefined') {
+    // Return a minimal config for SSR that won't access indexedDB
+    if (!_config) {
+      _config = createConfig({
+        chains: [mainnet, base, arbitrum, polygon],
+        connectors: [], // Empty connectors during SSR
+        transports: {
+          [mainnet.id]: http(),
+          [base.id]: http(),
+          [arbitrum.id]: http(),
+          [polygon.id]: http(),
+        },
+        ssr: false,
+      })
+    }
+    return _config
+  }
+  
+  // Create full config with connectors only on client (async to load walletConnect)
+  if (!_configPromise) {
+    _configPromise = (async () => {
+      const connectors = await buildConnectors()
+      _config = createConfig({
+        chains: [mainnet, base, arbitrum, polygon],
+        connectors,
+        transports: {
+          [mainnet.id]: http(),
+          [base.id]: http(),
+          [arbitrum.id]: http(),
+          [polygon.id]: http(),
+        },
+        ssr: false,
+      })
+      return _config
+    })()
+  }
+  
+  return await _configPromise
+}
+
+// Don't export config directly - use getConfig() instead to prevent SSR evaluation
+// This ensures indexedDB is only accessed on the client
 
