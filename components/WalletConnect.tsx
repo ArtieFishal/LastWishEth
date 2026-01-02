@@ -149,7 +149,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
           </div>
         </div>
         <div className="border-t dark:border-gray-700 pt-6">
-          <h3 className="text-2xl font-bold text-gray-950 dark:text-white mb-4">Bitcoin/Sat's Wallet</h3>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Bitcoin/Sat's Wallet</h3>
           <div className="rounded-lg border-2 border-gray-300 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
             <div className="animate-pulse">
               <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
@@ -754,10 +754,10 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
     <div className="space-y-6">
       {/* Always show connection options - don't show wagmi connected status here, parent manages that */}
       <div>
-        <h3 className="text-xl font-bold text-gray-950 mb-4">
-          Connect EVM Wallet (Ethereum, Base, Arbitrum, Polygon)
+        <h3 className="text-xl font-bold text-gray-900 mb-2">
+          Connect Any Certified EVM Wallet (Ethereum, Base, Arbitrum, Polygon)
         </h3>
-        <p className="text-sm text-gray-600 mb-4">
+        <p className="text-sm text-gray-600 mb-6">
           Each wallet requires signature verification to prove ownership before assets can be loaded.
         </p>
         
@@ -825,7 +825,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
       </div>
 
       <div className="border-t dark:border-gray-700 pt-6">
-        <h3 className="text-2xl font-bold text-gray-950 dark:text-white mb-4">
+        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
           {btcAddress ? 'Connect Another Bitcoin/Sat\'s Wallet' : 'Bitcoin/Sat\'s Wallet'}
         </h3>
         <button
