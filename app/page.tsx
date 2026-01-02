@@ -15,7 +15,7 @@ import { generatePDF } from '@/lib/pdf-generator'
 
 type Step = 'connect' | 'assets' | 'allocate' | 'details' | 'payment' | 'download'
 
-const steps = [
+const steps: Array<{ id: Step; label: string; number: number }> = [
  { id: 'connect', label: 'Connect', number: 1 },
  { id: 'assets', label: 'Assets', number: 2 },
  { id: 'allocate', label: 'Allocate', number: 3 },
