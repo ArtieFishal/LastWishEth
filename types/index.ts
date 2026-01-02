@@ -39,11 +39,12 @@ export interface UserData {
   ownerState: string
   ownerZipCode: string
   ownerPhone: string
-  ownerEmail: string
   executorName: string
   executorAddress: string
   executorPhone?: string
   executorEmail?: string
+  executorTwitter?: string
+  executorLinkedIn?: string
   beneficiaries: Beneficiary[]
   allocations: Allocation[]
   keyInstructions: string

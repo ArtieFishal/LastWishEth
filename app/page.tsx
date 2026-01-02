@@ -48,11 +48,14 @@ export default function Home() {
  const [ownerState, setOwnerState] = useState('')
  const [ownerZipCode, setOwnerZipCode] = useState('')
  const [ownerPhone, setOwnerPhone] = useState('')
- const [ownerEmail, setOwnerEmail] = useState('')
  const [executorName, setExecutorName] = useState('')
  const [executorAddress, setExecutorAddress] = useState('')
  const [executorPhone, setExecutorPhone] = useState('')
  const [executorEmail, setExecutorEmail] = useState('')
+ const [executorTwitter, setExecutorTwitter] = useState('')
+ const [executorLinkedIn, setExecutorLinkedIn] = useState('')
+ const [executorEnsName, setExecutorEnsName] = useState<string | null>(null)
+ const [executorResolvedAddress, setExecutorResolvedAddress] = useState<string | null>(null)
  const [keyInstructions, setKeyInstructions] = useState('')
  const [walletNames, setWalletNames] = useState<Record<string, string>>({})
  const [resolvedEnsNames, setResolvedEnsNames] = useState<Record<string, string>>({})
@@ -88,11 +91,12 @@ export default function Home() {
  if (parsed.ownerState) setOwnerState(parsed.ownerState)
  if (parsed.ownerZipCode) setOwnerZipCode(parsed.ownerZipCode)
  if (parsed.ownerPhone) setOwnerPhone(parsed.ownerPhone)
- if (parsed.ownerEmail) setOwnerEmail(parsed.ownerEmail)
  if (parsed.executorName) setExecutorName(parsed.executorName)
  if (parsed.executorAddress) setExecutorAddress(parsed.executorAddress)
  if (parsed.executorPhone) setExecutorPhone(parsed.executorPhone)
  if (parsed.executorEmail) setExecutorEmail(parsed.executorEmail)
+ if (parsed.executorTwitter) setExecutorTwitter(parsed.executorTwitter)
+ if (parsed.executorLinkedIn) setExecutorLinkedIn(parsed.executorLinkedIn)
  if (parsed.keyInstructions) setKeyInstructions(parsed.keyInstructions)
  if (parsed.resolvedEnsNames) setResolvedEnsNames(parsed.resolvedEnsNames)
  if (parsed.paymentWalletAddress) setPaymentWalletAddress(parsed.paymentWalletAddress)
@@ -124,11 +128,12 @@ export default function Home() {
  ownerState,
  ownerZipCode,
  ownerPhone,
- ownerEmail,
  executorName,
  executorAddress,
  executorPhone,
  executorEmail,
+ executorTwitter,
+ executorLinkedIn,
  keyInstructions,
  resolvedEnsNames,
  paymentWalletAddress,
@@ -155,11 +160,12 @@ export default function Home() {
  ownerState,
  ownerZipCode,
  ownerPhone,
- ownerEmail,
  executorName,
  executorAddress,
  executorPhone,
  executorEmail,
+ executorTwitter,
+ executorLinkedIn,
  keyInstructions,
  resolvedEnsNames,
  paymentWalletAddress,
@@ -305,6 +311,71 @@ export default function Home() {
  }
  }
  }, [evmAddress, connectedEVMAddresses, verifiedAddresses, selectedWalletForLoading])
+
+ // Resolve ENS name for executor wallet address
+ useEffect(() => {
+ const resolveExecutorENS = async () => {
+ if (!executorAddress || executorAddress.trim().length === 0) {
+ setExecutorEnsName(null)
+ setExecutorResolvedAddress(null)
+ return
+ }
+
+ const input = executorAddress.trim()
+ setExecutorEnsName(null)
+ setExecutorResolvedAddress(null)
+
+ try {
+ const publicClient = createPublicClient({
+ chain: mainnet,
+ transport: http(),
+ })
+
+ // Check if input is an ENS name (ends with .eth)
+ if (input.endsWith('.eth')) {
+ // Forward lookup: ENS name -> address
+ const address = await publicClient.getEnsAddress({ name: input })
+ if (address) {
+ setExecutorResolvedAddress(address)
+ setExecutorEnsName(input) // Keep the ENS name
+ // Store in resolvedEnsNames for PDF generation
+ setResolvedEnsNames(prev => ({ ...prev, [address.toLowerCase()]: input }))
+ console.log(`Resolved executor ENS "${input}" to address: ${address}`)
+ } else {
+ setExecutorEnsName(null)
+ setExecutorResolvedAddress(null)
+ }
+ } 
+ // Check if input is an Ethereum address (starts with 0x and is 42 chars)
+ else if (input.startsWith('0x') && input.length === 42) {
+ // Reverse lookup: address -> ENS name
+ const resolved = await publicClient.getEnsName({ address: input as `0x${string}` })
+ if (resolved) {
+ setExecutorEnsName(resolved)
+ setExecutorResolvedAddress(input.toLowerCase())
+ // Store in resolvedEnsNames for PDF generation
+ setResolvedEnsNames(prev => ({ ...prev, [input.toLowerCase()]: resolved }))
+ console.log(`Resolved executor address "${input}" to ENS: ${resolved}`)
+ } else {
+ setExecutorEnsName(null)
+ setExecutorResolvedAddress(input.toLowerCase())
+ }
+ } else {
+ // Not a valid ENS name or address
+ setExecutorEnsName(null)
+ setExecutorResolvedAddress(null)
+ }
+ } catch (error) {
+ console.error('Error resolving executor ENS:', error)
+ setExecutorEnsName(null)
+ setExecutorResolvedAddress(null)
+ }
+ }
+
+ // Debounce ENS resolution
+ const timeoutId = setTimeout(resolveExecutorENS, 500)
+ return () => clearTimeout(timeoutId)
+ }, [executorAddress])
 
  // Load assets from a specific wallet address
  const loadAssetsFromWallet = async (walletAddress: string, append = false) => {
@@ -538,11 +609,12 @@ export default function Home() {
  ownerState,
  ownerZipCode,
  ownerPhone,
- ownerEmail,
  executorName,
- executorAddress,
+ executorAddress: executorResolvedAddress || executorAddress, // Use resolved address if available
  executorPhone: executorPhone || undefined,
  executorEmail: executorEmail || undefined,
+ executorTwitter: executorTwitter || undefined,
+ executorLinkedIn: executorLinkedIn || undefined,
  beneficiaries,
  allocations,
  keyInstructions,
@@ -611,9 +683,10 @@ export default function Home() {
  ownerState.trim() &&
  ownerZipCode.trim() &&
  ownerPhone.trim() &&
- ownerEmail.trim() &&
  executorName.trim() &&
  executorAddress.trim() &&
+ executorPhone.trim() &&
+ executorEmail.trim() &&
  beneficiaries.length > 0 &&
  selectedAssetAllocations.length > 0 &&
  keyInstructions.trim() &&
@@ -1383,7 +1456,6 @@ export default function Home() {
  placeholder="37203"
  />
  </div>
- <div className="grid grid-cols-2 gap-4">
  <div>
  <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number *</label>
  <input
@@ -1393,17 +1465,6 @@ export default function Home() {
  className="w-full rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors"
  placeholder="(615) 555-1234"
  />
- </div>
- <div>
- <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address *</label>
- <input
- type="email"
- value={ownerEmail}
- onChange={(e) => setOwnerEmail(e.target.value)}
- className="w-full rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors"
- placeholder="john@example.com"
- />
- </div>
  </div>
  </div>
  </div>
@@ -1430,10 +1491,21 @@ export default function Home() {
  className="w-full rounded-lg border-2 border-gray-300 p-3 font-mono text-sm focus:border-blue-500 focus:outline-none transition-colors"
  placeholder="0x... or name.eth"
  />
+ {executorEnsName && executorResolvedAddress && (
+ <div className="mt-2 text-sm text-green-600">
+ <span className="font-semibold">{executorEnsName}</span>
+ <span className="text-gray-500 ml-2 font-mono">({executorResolvedAddress.slice(0, 6)}...{executorResolvedAddress.slice(-4)})</span>
+ </div>
+ )}
+ {!executorEnsName && executorResolvedAddress && (
+ <div className="mt-2 text-sm text-gray-600 font-mono">
+ {executorResolvedAddress}
+ </div>
+ )}
  </div>
  <div className="grid grid-cols-2 gap-4">
  <div>
- <label className="block text-sm font-semibold text-gray-700 mb-2">Executor Phone (Optional)</label>
+ <label className="block text-sm font-semibold text-gray-700 mb-2">Executor Phone *</label>
  <input
  type="tel"
  value={executorPhone}
@@ -1443,13 +1515,35 @@ export default function Home() {
  />
  </div>
  <div>
- <label className="block text-sm font-semibold text-gray-700 mb-2">Executor Email (Optional)</label>
+ <label className="block text-sm font-semibold text-gray-700 mb-2">Executor Email *</label>
  <input
  type="email"
  value={executorEmail}
  onChange={(e) => setExecutorEmail(e.target.value)}
  className="w-full rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors"
  placeholder="jane@example.com"
+ />
+ </div>
+ </div>
+ <div className="grid grid-cols-2 gap-4">
+ <div>
+ <label className="block text-sm font-semibold text-gray-700 mb-2">Twitter / X (Optional)</label>
+ <input
+ type="text"
+ value={executorTwitter}
+ onChange={(e) => setExecutorTwitter(e.target.value)}
+ className="w-full rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors"
+ placeholder="@username"
+ />
+ </div>
+ <div>
+ <label className="block text-sm font-semibold text-gray-700 mb-2">LinkedIn (Optional)</label>
+ <input
+ type="text"
+ value={executorLinkedIn}
+ onChange={(e) => setExecutorLinkedIn(e.target.value)}
+ className="w-full rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors"
+ placeholder="linkedin.com/in/username"
  />
  </div>
  </div>
@@ -1467,7 +1561,7 @@ export default function Home() {
  value={keyInstructions}
  onChange={(e) => setKeyInstructions(e.target.value)}
  className="w-full rounded-lg border-2 border-gray-300 p-3 h-40 focus:border-blue-500 focus:outline-none transition-colors resize-none"
- placeholder="Example: The seed phrase is stored in a safety deposit box at First National Bank, box #123. The key is with my attorney, John Smith, at 456 Legal Ave. The hardware wallet is in my home safe, combination is..."
+ placeholder="Example: The seed phrase is stored in a safety deposit box at First National Bank, box #123. The key is with my attorney, John Smith, at 456 Legal Ave. The hardware wallet is in my home safe, combination is also in that box."
  />
  </div>
  <div>

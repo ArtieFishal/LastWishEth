@@ -228,8 +228,6 @@ export async function generatePDF(userData: UserData, assets: Asset[]): Promise<
   yPosition -= lineHeight
   yPosition = addText(`Phone: ${userData.ownerPhone}`, margin, yPosition, 12)
   yPosition -= lineHeight
-  yPosition = addText(`Email: ${userData.ownerEmail}`, margin, yPosition, 12)
-  yPosition -= lineHeight
   addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 30, colors.header, 0.1)
   yPosition = addText('CONNECTED WALLETS & VERIFICATION STATUS', margin, yPosition, 14, true, colors.header)
   yPosition -= lineHeight
@@ -311,20 +309,33 @@ export async function generatePDF(userData: UserData, assets: Asset[]): Promise<
   }
 
   // Executor with colored header
-  checkNewPage(90)
+  checkNewPage(120)
   addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 25, colors.header, 0.1)
   yPosition = addText('EXECUTOR INFORMATION', margin, yPosition, 14, true, colors.header)
   yPosition -= lineHeight
   yPosition = addText(`Full Name: ${userData.executorName}`, margin, yPosition, 12, false, rgb(0.2, 0.2, 0.2))
   yPosition -= lineHeight
-  yPosition = addText(`Wallet Address: ${userData.executorAddress}`, margin, yPosition, 12, false, rgb(0.3, 0.3, 0.5))
-  if (userData.executorPhone) {
+  
+  // Show executor wallet with ENS name if available
+  const executorEnsName = userData.resolvedEnsNames?.[userData.executorAddress.toLowerCase()]
+  if (executorEnsName) {
+    yPosition = addText(`ENS Name: ${executorEnsName}`, margin, yPosition, 12, true, colors.ens)
     yPosition -= lineHeight
-    yPosition = addText(`Phone: ${userData.executorPhone}`, margin, yPosition, 12, false, rgb(0.2, 0.2, 0.2))
+    yPosition = addText(`Wallet Address: ${userData.executorAddress}`, margin, yPosition, 12, false, rgb(0.3, 0.3, 0.5))
+  } else {
+    yPosition = addText(`Wallet Address: ${userData.executorAddress}`, margin, yPosition, 12, false, rgb(0.3, 0.3, 0.5))
   }
-  if (userData.executorEmail) {
+  yPosition -= lineHeight
+  yPosition = addText(`Phone: ${userData.executorPhone || 'Not provided'}`, margin, yPosition, 12, false, rgb(0.2, 0.2, 0.2))
+  yPosition -= lineHeight
+  yPosition = addText(`Email: ${userData.executorEmail || 'Not provided'}`, margin, yPosition, 12, false, rgb(0.2, 0.2, 0.2))
+  if (userData.executorTwitter) {
     yPosition -= lineHeight
-    yPosition = addText(`Email: ${userData.executorEmail}`, margin, yPosition, 12, false, rgb(0.2, 0.2, 0.2))
+    yPosition = addText(`Twitter/X: ${userData.executorTwitter}`, margin, yPosition, 12, false, rgb(0.2, 0.2, 0.2))
+  }
+  if (userData.executorLinkedIn) {
+    yPosition -= lineHeight
+    yPosition = addText(`LinkedIn: ${userData.executorLinkedIn}`, margin, yPosition, 12, false, rgb(0.2, 0.2, 0.2))
   }
   yPosition -= sectionSpacing
 
