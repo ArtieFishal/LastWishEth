@@ -280,9 +280,7 @@ export async function generatePDF(
   yPosition -= 50
 
   // Main Title - Large and Centered
-  yPosition = addCenteredText('CRYPTO ASSET', yPosition, 32, true, colors.title)
-  yPosition -= 10
-  yPosition = addCenteredText('INHERITANCE INSTRUCTIONS', yPosition, 32, true, colors.title)
+  yPosition = addCenteredText('LASTWISH INSTRUCTIONS', yPosition, 32, true, colors.title)
   yPosition -= 60
 
   // Decorative line
@@ -305,24 +303,11 @@ export async function generatePDF(
   }
   yPosition -= 50
 
-  // Document details box with professional styling
+  // Document details - no boxes, just text
   const boxY = yPosition - 100
-  const boxHeight = 120 // Reduced since we removed document number
+  const boxHeight = 120
   const boxWidth = page.getWidth() - 2 * margin - 100
   const boxX = margin + 50
-
-  // Outer border
-  page.drawRectangle({
-    x: boxX,
-    y: boxY - boxHeight,
-    width: boxWidth,
-    height: boxHeight,
-    borderColor: colors.title,
-    borderWidth: 2,
-  })
-
-  // Inner background
-  addColoredBox(boxX + 2, boxY + 2, boxWidth - 4, boxHeight - 4, rgb(0.98, 0.98, 0.98), 0.5)
 
   let detailY = boxY - 20
   detailY = addText('Date Generated:', boxX + 20, detailY, 11, false, rgb(0.4, 0.4, 0.4))
@@ -343,28 +328,18 @@ export async function generatePDF(
 
   yPosition = boxY - boxHeight - 50
 
-  // Confidential notice with professional styling
+  // Confidential notice - no boxes
   const noticeY = yPosition - 50
-  addColoredBox(margin, noticeY + 5, page.getWidth() - 2 * margin, 50, colors.warning, 0.15)
-  page.drawRectangle({
-    x: margin,
-    y: noticeY - 45,
-    width: page.getWidth() - 2 * margin,
-    height: 50,
-    borderColor: colors.warning,
-    borderWidth: 1.5,
-  })
-  
   let noticeTextY = noticeY
-  noticeTextY = addText('CONFIDENTIAL DOCUMENT', margin + 20, noticeTextY, 13, true, colors.warning)
+  noticeTextY = addText('CONFIDENTIAL DOCUMENT', margin, noticeTextY, 13, true, rgb(0.1, 0.1, 0.1))
   noticeTextY -= lineHeight
   noticeTextY = addText(
     'This document contains sensitive financial information. Keep secure and share only with authorized parties.',
-    margin + 20,
+    margin,
     noticeTextY,
     10,
     false,
-    rgb(0.4, 0.4, 0.4)
+    rgb(0.3, 0.3, 0.3)
   )
 
   yPosition = noticeY - 60
@@ -380,17 +355,8 @@ export async function generatePDF(
   currentPageNumber++
   yPosition = 750
 
-  addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 35, colors.header, 0.15)
-  page.drawRectangle({
-    x: margin - 5,
-    y: yPosition - 30,
-    width: page.getWidth() - 2 * margin + 10,
-    height: 35,
-    borderColor: colors.header,
-    borderWidth: 1,
-  })
-  yPosition = addText('TABLE OF CONTENTS', margin, yPosition, 18, true, colors.header)
-  yPosition -= lineHeight * 2
+  yPosition = addText('TABLE OF CONTENTS', margin, yPosition, 18, true, rgb(0.1, 0.1, 0.1))
+  yPosition -= lineHeight * 3
 
   // TOC sections (page numbers will be approximate)
   const tocSections = [
@@ -408,15 +374,15 @@ export async function generatePDF(
 
   tocSections.forEach((section) => {
     checkNewPage(25)
-    const titleWidth = font.widthOfTextAtSize(section.title, 11)
+    const titleWidth = font.widthOfTextAtSize(section.title, 12)
     const pageNumText = section.page.toString()
-    const pageNumWidth = font.widthOfTextAtSize(pageNumText, 11)
+    const pageNumWidth = font.widthOfTextAtSize(pageNumText, 12)
     
     // Draw title
     page.drawText(section.title, {
       x: margin,
       y: yPosition,
-      size: 11,
+      size: 12,
       font: font,
       color: rgb(0.1, 0.1, 0.1),
     })
@@ -427,11 +393,10 @@ export async function generatePDF(
     const availableWidth = dotsEndX - dotsStartX
     const dotCount = Math.max(1, Math.floor(availableWidth / 6))
     const dots = '.'.repeat(dotCount)
-    const dotsWidth = font.widthOfTextAtSize(dots, 11)
     page.drawText(dots, {
       x: dotsStartX,
       y: yPosition,
-      size: 11,
+      size: 12,
       font: font,
       color: rgb(0.6, 0.6, 0.6),
     })
@@ -440,12 +405,12 @@ export async function generatePDF(
     page.drawText(pageNumText, {
       x: page.getWidth() - margin - pageNumWidth,
       y: yPosition,
-      size: 11,
+      size: 12,
       font: font,
       color: rgb(0.1, 0.1, 0.1),
     })
     
-    yPosition -= lineHeight * 1.8
+    yPosition -= lineHeight * 2.2
   })
 
   addPageNumber(2)
@@ -454,16 +419,7 @@ export async function generatePDF(
   // LEGAL DISCLAIMER
   // ============================================
   checkNewPage(60)
-  addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 30, colors.warning, 0.12)
-  page.drawRectangle({
-    x: margin - 5,
-    y: yPosition - 25,
-    width: page.getWidth() - 2 * margin + 10,
-    height: 30,
-    borderColor: colors.warning,
-    borderWidth: 1,
-  })
-  yPosition = addText('LEGAL DISCLAIMER AND IMPORTANT NOTICE', margin, yPosition, 14, true, colors.warning)
+  yPosition = addText('LEGAL DISCLAIMER AND IMPORTANT NOTICE', margin, yPosition, 14, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight * 1.5
   yPosition = addText(
     'This document is provided for informational purposes only and does not constitute legal, financial, or tax advice. The information contained herein is intended to assist the executor and beneficiaries in locating and accessing digital assets, but does not create any legal obligations or guarantees. The owner of these assets is solely responsible for ensuring the accuracy of the information provided. LastWish.eth is not a legal service provider, custodian, or executor of these instructions. Consult with qualified legal, financial, and tax professionals before taking any action based on this document. This document should be kept in a secure location and shared only with trusted parties.',
@@ -479,16 +435,7 @@ export async function generatePDF(
   // OWNER INFORMATION
   // ============================================
   checkNewPage(140)
-  addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 30, colors.header, 0.12)
-  page.drawRectangle({
-    x: margin - 5,
-    y: yPosition - 25,
-    width: page.getWidth() - 2 * margin + 10,
-    height: 30,
-    borderColor: colors.header,
-    borderWidth: 1,
-  })
-  yPosition = addText('OWNER INFORMATION', margin, yPosition, 16, true, colors.header)
+  yPosition = addText('OWNER INFORMATION', margin, yPosition, 16, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight * 1.5
   yPosition = addText(`Full Legal Name: ${userData.ownerFullName || userData.ownerName}`, margin, yPosition, 12)
   yPosition -= lineHeight
@@ -504,16 +451,7 @@ export async function generatePDF(
   yPosition -= lineHeight * 1.5
 
   // Connected Wallets Section
-  addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 30, colors.header, 0.12)
-  page.drawRectangle({
-    x: margin - 5,
-    y: yPosition - 25,
-    width: page.getWidth() - 2 * margin + 10,
-    height: 30,
-    borderColor: colors.header,
-    borderWidth: 1,
-  })
-  yPosition = addText('CONNECTED WALLETS & VERIFICATION STATUS', margin, yPosition, 14, true, colors.header)
+  yPosition = addText('CONNECTED WALLETS & VERIFICATION STATUS', margin, yPosition, 14, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight
   yPosition = addText('All wallet addresses used in this document with signature verification status:', margin, yPosition, 10, false, rgb(0.3, 0.3, 0.3))
   yPosition -= lineHeight * 2
@@ -531,33 +469,10 @@ export async function generatePDF(
       checkNewPage(60)
       const ensName = userData.resolvedEnsNames?.[addr.toLowerCase()]
       const walletName = userData.walletNames?.[addr] || ensName
-      const walletColor = colors.walletColors[index % colors.walletColors.length]
       
-      // Add colored background for wallet section with border
-      addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 50, walletColor, 0.12)
-      page.drawRectangle({
-        x: margin - 5,
-        y: yPosition - 45,
-        width: page.getWidth() - 2 * margin + 10,
-        height: 50,
-        borderColor: walletColor,
-        borderWidth: 1,
-      })
-      
-      yPosition = addText(`Wallet ${index + 1} (EVM) - VERIFIED`, margin, yPosition, 13, true, walletColor)
+      yPosition = addText(`Wallet ${index + 1} (EVM) - VERIFIED`, margin, yPosition, 13, true, rgb(0.1, 0.1, 0.1))
       yPosition -= lineHeight
-      
-      // Show verification badge
-      addColoredBox(margin + 15, yPosition - 2, 120, 14, colors.success, 0.25)
-      page.drawRectangle({
-        x: margin + 15,
-        y: yPosition - 14,
-        width: 120,
-        height: 14,
-        borderColor: colors.success,
-        borderWidth: 0.5,
-      })
-      yPosition = addText('✓ Signature Verified', margin + 20, yPosition, 10, true, colors.success)
+      yPosition = addText('✓ Signature Verified', margin + 20, yPosition, 10, true, rgb(0.1, 0.7, 0.3))
       yPosition -= lineHeight * 1.5
       
       // Show address format: "Hex Address Resolves to 'eth address'"
@@ -577,16 +492,7 @@ export async function generatePDF(
   // Show Bitcoin wallet if present
   if (userData.connectedWallets.btc) {
     checkNewPage(35)
-    addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 30, colors.bitcoin, 0.12)
-    page.drawRectangle({
-      x: margin - 5,
-      y: yPosition - 25,
-      width: page.getWidth() - 2 * margin + 10,
-      height: 30,
-      borderColor: colors.bitcoin,
-      borderWidth: 1,
-    })
-    yPosition = addText(`Bitcoin Wallet:`, margin, yPosition, 13, true, colors.bitcoin)
+    yPosition = addText(`Bitcoin Wallet:`, margin, yPosition, 13, true, rgb(0.1, 0.1, 0.1))
     yPosition -= lineHeight
     yPosition = addText(`   Address: ${userData.connectedWallets.btc}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
     yPosition -= lineHeight
@@ -597,16 +503,7 @@ export async function generatePDF(
   const beneficiaryWallets = userData.beneficiaries.filter(b => b.walletAddress && b.walletAddress.startsWith('0x'))
   if (beneficiaryWallets.length > 0) {
     checkNewPage(80)
-    addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 30, colors.header, 0.12)
-    page.drawRectangle({
-      x: margin - 5,
-      y: yPosition - 25,
-      width: page.getWidth() - 2 * margin + 10,
-      height: 30,
-      borderColor: colors.header,
-      borderWidth: 1,
-    })
-    yPosition = addText('BENEFICIARY WALLETS (ENS)', margin, yPosition, 14, true, colors.header)
+    yPosition = addText('BENEFICIARY WALLETS (ENS)', margin, yPosition, 14, true, rgb(0.1, 0.1, 0.1))
     yPosition -= lineHeight
     yPosition = addText('All beneficiary Ethereum wallet addresses with ENS names:', margin, yPosition, 10, false, rgb(0.3, 0.3, 0.3))
     yPosition -= lineHeight * 2
@@ -632,16 +529,7 @@ export async function generatePDF(
   // EXECUTOR INFORMATION
   // ============================================
   checkNewPage(130)
-  addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 30, colors.header, 0.12)
-  page.drawRectangle({
-    x: margin - 5,
-    y: yPosition - 25,
-    width: page.getWidth() - 2 * margin + 10,
-    height: 30,
-    borderColor: colors.header,
-    borderWidth: 1,
-  })
-  yPosition = addText('EXECUTOR INFORMATION', margin, yPosition, 16, true, colors.header)
+  yPosition = addText('EXECUTOR INFORMATION', margin, yPosition, 16, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight * 1.5
   yPosition = addText(`Full Name: ${userData.executorName}`, margin, yPosition, 12, false, rgb(0.2, 0.2, 0.2))
   yPosition -= lineHeight
@@ -673,22 +561,11 @@ export async function generatePDF(
   // BENEFICIARIES
   // ============================================
   checkNewPage(80)
-  addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 30, colors.header, 0.12)
-  page.drawRectangle({
-    x: margin - 5,
-    y: yPosition - 25,
-    width: page.getWidth() - 2 * margin + 10,
-    height: 30,
-    borderColor: colors.header,
-    borderWidth: 1,
-  })
-  yPosition = addText('BENEFICIARIES', margin, yPosition, 16, true, colors.header)
+  yPosition = addText('BENEFICIARIES', margin, yPosition, 16, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight * 1.5
   userData.beneficiaries.forEach((ben, index) => {
     checkNewPage(55)
-    // Add subtle background for each beneficiary
-    addColoredBox(margin, yPosition - 2, page.getWidth() - 2 * margin, 50, rgb(0.95, 0.95, 0.95), 0.3)
-    yPosition = addText(`${index + 1}. ${ben.name}`, margin + 10, yPosition, 13, true, rgb(0.1, 0.1, 0.1))
+    yPosition = addText(`${index + 1}. ${ben.name}`, margin, yPosition, 13, true, rgb(0.1, 0.1, 0.1))
     yPosition -= lineHeight
     
     // Show ENS name prominently if available
@@ -719,16 +596,7 @@ export async function generatePDF(
   // EXECUTIVE SUMMARY: ASSET ALLOCATIONS
   // ============================================
   checkNewPage(100)
-  addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 35, colors.title, 0.15)
-  page.drawRectangle({
-    x: margin - 5,
-    y: yPosition - 30,
-    width: page.getWidth() - 2 * margin + 10,
-    height: 35,
-    borderColor: colors.title,
-    borderWidth: 1.5,
-  })
-  yPosition = addText('EXECUTIVE SUMMARY: ASSET ALLOCATIONS BY WALLET & CHAIN', margin, yPosition, 15, true, colors.title)
+  yPosition = addText('EXECUTIVE SUMMARY: ASSET ALLOCATIONS BY WALLET & CHAIN', margin, yPosition, 15, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight * 2
   
   // Group assets by wallet address first, then by chain
@@ -794,18 +662,9 @@ export async function generatePDF(
     const walletProvider = chainGroups[0]?.provider || 'Unknown Wallet'
     
     checkNewPage(70)
-    addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 60, walletColor, 0.12)
-    page.drawRectangle({
-      x: margin - 5,
-      y: yPosition - 55,
-      width: page.getWidth() - 2 * margin + 10,
-      height: 60,
-      borderColor: walletColor,
-      borderWidth: 1.5,
-    })
-    yPosition = addText(`WALLET ${walletIndex + 1}`, margin, yPosition, 14, true, walletColor)
+    yPosition = addText(`WALLET ${walletIndex + 1}`, margin, yPosition, 14, true, rgb(0.1, 0.1, 0.1))
     yPosition -= lineHeight
-    yPosition = addText(`Wallet App: ${walletProvider}`, margin + 20, yPosition, 12, true, walletColor)
+    yPosition = addText(`Wallet App: ${walletProvider}`, margin + 20, yPosition, 12, true, rgb(0.1, 0.1, 0.1))
     yPosition -= lineHeight
     // Show address format: "Hex Address Resolves to 'eth address'"
     if (walletEnsName && walletEnsName !== walletAddr && walletAddr.startsWith('0x')) {
@@ -818,18 +677,8 @@ export async function generatePDF(
     yPosition -= lineHeight * 1.5
     
     for (const chainGroup of chainGroups) {
-      const chainColor = colors.walletColors[walletGroups[walletAddr].indexOf(chainGroup) % colors.walletColors.length]
       checkNewPage(45)
-      addColoredBox(margin + 15, yPosition + 3, page.getWidth() - 2 * margin - 30, 25, chainColor, 0.12)
-      page.drawRectangle({
-        x: margin + 15,
-        y: yPosition - 22,
-        width: page.getWidth() - 2 * margin - 30,
-        height: 25,
-        borderColor: chainColor,
-        borderWidth: 1,
-      })
-      yPosition = addText(`  CHAIN: ${chainGroup.chain.toUpperCase()}`, margin + 20, yPosition, 12, true, chainColor)
+      yPosition = addText(`CHAIN: ${chainGroup.chain.toUpperCase()}`, margin + 20, yPosition, 12, true, rgb(0.1, 0.1, 0.1))
       yPosition -= lineHeight
       
       for (const asset of chainGroup.assets) {
@@ -839,30 +688,15 @@ export async function generatePDF(
         const isNFT = asset.type === 'erc721' || asset.type === 'erc1155'
         checkNewPage(isNFT ? 100 : 35)
         
-        // Determine asset color
-        let assetColor = colors.currency
-        let assetBgColor = colors.currency
+        // Determine asset color (for text only, no boxes)
+        let assetColor = rgb(0.1, 0.1, 0.1)
         if (isNFT) {
-          assetColor = colors.nft
-          assetBgColor = colors.nft
+          assetColor = rgb(0.1, 0.1, 0.1)
         } else if (asset.type === 'native') {
-          assetColor = colors.native
-          assetBgColor = colors.native
+          assetColor = rgb(0.1, 0.1, 0.1)
         } else if (asset.type === 'btc') {
-          assetColor = colors.bitcoin
-          assetBgColor = colors.bitcoin
+          assetColor = rgb(0.1, 0.1, 0.1)
         }
-        
-        // Add colored background for asset with border
-        addColoredBox(margin + 25, yPosition + 2, page.getWidth() - 2 * margin - 50, isNFT ? 90 : 30, assetBgColor, 0.1)
-        page.drawRectangle({
-          x: margin + 25,
-          y: yPosition - (isNFT ? 88 : 28),
-          width: page.getWidth() - 2 * margin - 50,
-          height: isNFT ? 90 : 30,
-          borderColor: assetBgColor,
-          borderWidth: 0.5,
-        })
         
         // For NFTs, try to embed and display the image
         if (isNFT && asset.imageUrl) {
@@ -1039,16 +873,7 @@ export async function generatePDF(
   // DETAILED ASSET ALLOCATIONS
   // ============================================
   checkNewPage(80)
-  addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 30, colors.header, 0.12)
-  page.drawRectangle({
-    x: margin - 5,
-    y: yPosition - 25,
-    width: page.getWidth() - 2 * margin + 10,
-    height: 30,
-    borderColor: colors.header,
-    borderWidth: 1,
-  })
-  yPosition = addText('DETAILED ASSET ALLOCATIONS (BY CHAIN)', margin, yPosition, 15, true, colors.header)
+  yPosition = addText('DETAILED ASSET ALLOCATIONS (BY CHAIN)', margin, yPosition, 15, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight * 1.5
 
   // Group allocations by chain
@@ -1056,17 +881,7 @@ export async function generatePDF(
   for (const chain of chains) {
     const chainAssets = assets.filter((a) => a.chain === chain)
     checkNewPage(55)
-    const chainColor = colors.walletColors[chains.indexOf(chain) % colors.walletColors.length]
-    addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 25, chainColor, 0.12)
-    page.drawRectangle({
-      x: margin - 5,
-      y: yPosition - 20,
-      width: page.getWidth() - 2 * margin + 10,
-      height: 25,
-      borderColor: chainColor,
-      borderWidth: 1,
-    })
-    yPosition = addText(`Chain: ${chain.toUpperCase()}`, margin, yPosition, 13, true, chainColor)
+    yPosition = addText(`Chain: ${chain.toUpperCase()}`, margin, yPosition, 13, true, rgb(0.1, 0.1, 0.1))
     yPosition -= lineHeight
 
     for (const asset of chainAssets) {
@@ -1075,31 +890,9 @@ export async function generatePDF(
 
       checkNewPage(40)
       
-      // Determine asset color
-      let assetColor = colors.currency
-      let assetBgColor = colors.currency
+      // Determine asset color (for text only, no boxes)
+      let assetColor = rgb(0.1, 0.1, 0.1)
       const isNFT = asset.type === 'erc721' || asset.type === 'erc1155'
-      if (isNFT) {
-        assetColor = colors.nft
-        assetBgColor = colors.nft
-      } else if (asset.type === 'native') {
-        assetColor = colors.native
-        assetBgColor = colors.native
-      } else if (asset.type === 'btc') {
-        assetColor = colors.bitcoin
-        assetBgColor = colors.bitcoin
-      }
-      
-      // Add colored background for asset
-      addColoredBox(margin + 15, yPosition + 3, page.getWidth() - 2 * margin - 30, 35, assetBgColor, 0.08)
-      page.drawRectangle({
-        x: margin + 15,
-        y: yPosition - 32,
-        width: page.getWidth() - 2 * margin - 30,
-        height: 35,
-        borderColor: assetBgColor,
-        borderWidth: 0.5,
-      })
       
       // Show wallet address for this asset
       const walletAddr = asset.walletAddress || asset.contractAddress || 'Unknown'
@@ -1189,16 +982,7 @@ export async function generatePDF(
   // INSTRUCTIONS FOR EXECUTOR
   // ============================================
   checkNewPage(110)
-  addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 30, colors.header, 0.12)
-  page.drawRectangle({
-    x: margin - 5,
-    y: yPosition - 25,
-    width: page.getWidth() - 2 * margin + 10,
-    height: 30,
-    borderColor: colors.header,
-    borderWidth: 1,
-  })
-  yPosition = addText('INSTRUCTIONS FOR EXECUTOR', margin, yPosition, 16, true, colors.header)
+  yPosition = addText('INSTRUCTIONS FOR EXECUTOR', margin, yPosition, 16, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight * 1.5
   yPosition = addText(
     'The executor named above should already be aware of this document and know where to find it. The following instructions provide details for locating and accessing the crypto assets described in this document.',
@@ -1215,9 +999,7 @@ export async function generatePDF(
   const instructionParagraphs = instructions.split('\n').filter(p => p.trim())
   instructionParagraphs.forEach((paragraph) => {
     checkNewPage(35)
-    // Add subtle background for each paragraph
-    addColoredBox(margin, yPosition - 2, page.getWidth() - 2 * margin, 25, rgb(0.98, 0.98, 0.98), 0.3)
-    yPosition = addText(paragraph.trim(), margin + 10, yPosition, 11, false, rgb(0.1, 0.1, 0.1))
+    yPosition = addText(paragraph.trim(), margin, yPosition, 11, false, rgb(0.1, 0.1, 0.1))
     yPosition -= lineHeight * 1.5
   })
   yPosition -= sectionSpacing * 2
@@ -1226,16 +1008,7 @@ export async function generatePDF(
   // ACKNOWLEDGMENT AND NOTARIZATION
   // ============================================
   checkNewPage(260)
-  addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 35, colors.header, 0.12)
-  page.drawRectangle({
-    x: margin - 5,
-    y: yPosition - 30,
-    width: page.getWidth() - 2 * margin + 10,
-    height: 35,
-    borderColor: colors.header,
-    borderWidth: 1.5,
-  })
-  yPosition = addText('ACKNOWLEDGMENT AND NOTARIZATION', margin, yPosition, 16, true, colors.header)
+  yPosition = addText('ACKNOWLEDGMENT AND NOTARIZATION', margin, yPosition, 16, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight * 2
   
   const state = userData.ownerState || 'STATE'
@@ -1260,58 +1033,29 @@ export async function generatePDF(
   yPosition = addText('WITNESS my hand and official seal.', margin, yPosition, 12, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight * 4
   
-  // Signature blocks with professional styling
-  addColoredBox(margin, yPosition + 5, page.getWidth() - 2 * margin, 80, rgb(0.97, 0.97, 0.97), 0.5)
-  page.drawRectangle({
-    x: margin,
-    y: yPosition - 75,
-    width: page.getWidth() - 2 * margin,
-    height: 80,
-    borderColor: colors.header,
-    borderWidth: 1,
-  })
-  
-  yPosition = addText('OWNER ACKNOWLEDGMENT', margin + 20, yPosition, 12, true, colors.header)
+  // Signature blocks
+  yPosition = addText('OWNER ACKNOWLEDGMENT', margin, yPosition, 12, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight * 2
-  yPosition = addText('Date: _________________', margin + 20, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
+  yPosition = addText('Date: _________________', margin, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
   yPosition -= lineHeight * 2
-  yPosition = addText('Owner Signature: _________________', margin + 20, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
+  yPosition = addText('Owner Signature: _________________', margin, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
   yPosition -= lineHeight * 2
-  yPosition = addText(`Printed Name: ${ownerNameForNotary}`, margin + 20, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
+  yPosition = addText(`Printed Name: ${ownerNameForNotary}`, margin, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
   yPosition -= lineHeight * 3
   
-  addColoredBox(margin, yPosition + 5, page.getWidth() - 2 * margin, 100, rgb(0.97, 0.97, 0.97), 0.5)
-  page.drawRectangle({
-    x: margin,
-    y: yPosition - 95,
-    width: page.getWidth() - 2 * margin,
-    height: 100,
-    borderColor: colors.header,
-    borderWidth: 1,
-  })
-  
-  yPosition = addText('NOTARY PUBLIC ACKNOWLEDGMENT', margin + 20, yPosition, 12, true, colors.header)
+  yPosition = addText('NOTARY PUBLIC ACKNOWLEDGMENT', margin, yPosition, 12, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight * 2
-  yPosition = addText('Notary Public Signature: _________________', margin + 20, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
+  yPosition = addText('Notary Public Signature: _________________', margin, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
   yPosition -= lineHeight * 2
-  yPosition = addText('Notary Printed Name: _________________', margin + 20, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
+  yPosition = addText('Notary Printed Name: _________________', margin, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
   yPosition -= lineHeight * 2
-  yPosition = addText('Notary Commission Number: _________________', margin + 20, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
+  yPosition = addText('Notary Commission Number: _________________', margin, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
   yPosition -= lineHeight * 2
-  yPosition = addText('Notary Commission Expires: _________________', margin + 20, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
+  yPosition = addText('Notary Commission Expires: _________________', margin, yPosition, 11, false, rgb(0.2, 0.2, 0.2))
   yPosition -= lineHeight * 3
   
-  // Notary seal area with professional styling
-  addColoredBox(margin - 5, yPosition + 5, page.getWidth() - 2 * margin + 10, 90, rgb(0.95, 0.95, 0.95), 0.4)
-  page.drawRectangle({
-    x: margin - 5,
-    y: yPosition - 85,
-    width: page.getWidth() - 2 * margin + 10,
-    height: 90,
-    borderColor: colors.header,
-    borderWidth: 2,
-  })
-  yPosition = addText('NOTARY STAMP / SEAL AREA', margin, yPosition, 13, true, colors.header)
+  // Notary seal area
+  yPosition = addText('NOTARY STAMP / SEAL AREA', margin, yPosition, 13, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight * 2
   yPosition = addText('(Place notary stamp or seal in this area)', margin, yPosition, 10, false, rgb(0.5, 0.5, 0.5))
   yPosition -= lineHeight * 2
