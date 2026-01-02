@@ -12,6 +12,7 @@ export interface Asset {
   collectionName?: string
   decimals?: number
   walletAddress?: string // Wallet address this asset belongs to
+  walletProvider?: string // Wallet provider name (MetaMask, Rainbow, WalletConnect, Xverse, etc.)
   imageUrl?: string // NFT image URL
   metadata?: any // Full NFT metadata
 }
@@ -35,6 +36,7 @@ export interface QueuedWalletSession {
   id: string // Unique ID for this session
   walletAddress: string
   walletType: 'evm' | 'btc'
+  walletProvider?: string // Wallet provider name (MetaMask, Rainbow, WalletConnect, Xverse, etc.)
   ensName?: string // Resolved ENS name if available
   assets: Asset[]
   allocations: Allocation[] // Allocations for assets in this wallet

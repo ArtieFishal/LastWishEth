@@ -70,6 +70,7 @@ export default function Home() {
  const [keyInstructions, setKeyInstructions] = useState('')
  const [walletNames, setWalletNames] = useState<Record<string, string>>({})
  const [resolvedEnsNames, setResolvedEnsNames] = useState<Record<string, string>>({})
+ const [walletProviders, setWalletProviders] = useState<Record<string, string>>({}) // Track wallet provider (MetaMask, Rainbow, etc.)
  const [connectedEVMAddresses, setConnectedEVMAddresses] = useState<Set<string>>(new Set())
  const [mounted, setMounted] = useState(false)
  const [invoiceId, setInvoiceId] = useState<string | null>(null)
@@ -462,9 +463,16 @@ export default function Home() {
  })
  if (evmResponse.data?.assets && Array.isArray(evmResponse.data.assets)) {
  const existingIds = new Set(assets.map(a => a.id))
- const uniqueAssets = evmResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
+ const walletProvider = walletProviders[walletAddress] || 'Unknown'
+ const uniqueAssets = evmResponse.data.assets
+ .filter((a: Asset) => !existingIds.has(a.id))
+ .map((a: Asset) => ({
+ ...a,
+ walletAddress: walletAddress,
+ walletProvider: walletProvider, // Track which wallet provider was used
+ }))
  newAssets.push(...uniqueAssets)
- console.log(`Loaded ${uniqueAssets.length} new assets from wallet`)
+ console.log(`Loaded ${uniqueAssets.length} new assets from wallet (${walletProvider})`)
  }
  } catch (err) {
  console.error('Error loading EVM assets:', err)
@@ -784,6 +792,7 @@ export default function Home() {
  id: `${walletAddress.toLowerCase()}-${Date.now()}`,
  walletAddress: walletAddress.toLowerCase(),
  walletType: evmAddress ? 'evm' : 'btc',
+ walletProvider: evmAddress ? (walletProviders[evmAddress] || 'Unknown') : 'Xverse',
  ensName: evmAddress ? (resolvedEnsNames[evmAddress.toLowerCase()] || undefined) : undefined,
  assets: sessionAssets,
  allocations: sessionAllocations,
@@ -1389,7 +1398,7 @@ export default function Home() {
  await loadAssets(true, false) // append=true, loadFromAllWallets=false
  }
  }}
- onEvmConnect={async (addr) => {
+ onEvmConnect={async (addr, provider) => {
  if (addr && !connectedEVMAddresses.has(addr)) {
  // Check wallet limit (20 wallets max including queued)
  if (connectedEVMAddresses.size + queuedSessions.length >= 20) {
@@ -1397,6 +1406,10 @@ export default function Home() {
  return
  }
  setConnectedEVMAddresses(prev => new Set([...prev, addr]))
+ // Track wallet provider
+ if (provider) {
+ setWalletProviders(prev => ({ ...prev, [addr]: provider }))
+ }
  // Set as selected if it's the first wallet or no wallet is selected
  if (selectedWalletForLoading === null) {
  setSelectedWalletForLoading(addr)

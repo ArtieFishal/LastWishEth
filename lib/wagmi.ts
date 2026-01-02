@@ -14,43 +14,8 @@ const buildConnectors = async () => {
   
   const connectors: any[] = []
   
-  // Add injected connectors - these automatically detect installed browser extensions
-  // This will show MetaMask, Coinbase Wallet, Rainbow, Trust Wallet, OKX, etc. if installed
-  try {
-    const { injected } = await import('wagmi/connectors')
-    
-    // Add specific injected connectors for common wallets
-    // wagmi will only show the ones that are actually installed in the user's browser
-    // Order matters - add most common first
-    const commonWallets = [
-      'metaMask',      // Most common, add first
-      'coinbaseWallet', 
-      'rainbow',
-      'trust',
-      'okxWallet',
-      'phantom',
-    ]
-    
-    // Add connectors for each common wallet type with explicit names
-    // This ensures each connector is properly identified and doesn't conflict
-    commonWallets.forEach(target => {
-      try {
-        const connector = injected({ target: target as any })
-        // Ensure connector has proper name matching our UI expectations
-        connectors.push(connector)
-      } catch (e) {
-        // Skip if specific wallet connector fails
-      }
-    })
-  } catch (error) {
-    // Silently fail if injected connectors can't be loaded
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('Injected connectors not available:', error)
-    }
-  }
-  
-  // Add WalletConnect connector LAST for mobile wallets and QR code support
-  // This ensures injected wallets are tried first, then WalletConnect for mobile
+  // Add WalletConnect connector FIRST - this is the primary option for QR code connections
+  // Users want QR code by default, injected wallets are secondary
   if (projectId && projectId.length > 0) {
     try {
       // Dynamically import walletConnect only on client to prevent SSR indexedDB access
@@ -85,6 +50,39 @@ const buildConnectors = async () => {
       if (process.env.NODE_ENV === 'development') {
         console.warn('WalletConnect not configured. Add NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID to .env.local')
       }
+    }
+  }
+  
+  // Add injected connectors AFTER WalletConnect - these are secondary options
+  // Only show if wallet is actually installed and ready
+  try {
+    const { injected } = await import('wagmi/connectors')
+    
+    // Add specific injected connectors for common wallets
+    // wagmi will only show the ones that are actually installed in the user's browser
+    const commonWallets = [
+      'metaMask',
+      'coinbaseWallet', 
+      'rainbow',
+      'trust',
+      'okxWallet',
+      'phantom',
+    ]
+    
+    // Add connectors for each common wallet type
+    // These will only appear if the wallet extension is actually installed
+    commonWallets.forEach(target => {
+      try {
+        const connector = injected({ target: target as any })
+        connectors.push(connector)
+      } catch (e) {
+        // Skip if specific wallet connector fails
+      }
+    })
+  } catch (error) {
+    // Silently fail if injected connectors can't be loaded
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Injected connectors not available:', error)
     }
   }
   

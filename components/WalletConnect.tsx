@@ -1,6 +1,6 @@
 'use client'
 
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, useConnectorClient } from 'wagmi'
 import { useState, useEffect } from 'react'
 
 interface WalletConnectProps {
@@ -104,7 +104,7 @@ const extractBitcoinAddress = (account: any): string | null => {
 }
 
 export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectProps) {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected, connector } = useAccount()
   const { connect, connectors, isPending, error: connectError } = useConnect()
   const { disconnect } = useDisconnect()
   const [btcAddress, setBtcAddress] = useState<string | null>(null)
@@ -118,10 +118,12 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
 
   // Call onEvmConnect when EVM wallet connects
   useEffect(() => {
-    if (isConnected && address) {
-      onEvmConnect?.(address)
+    if (isConnected && address && connector) {
+      // Get the connector name to track wallet provider
+      const provider = connector.name || 'Unknown'
+      onEvmConnect?.(address, provider)
     }
-  }, [isConnected, address, onEvmConnect])
+  }, [isConnected, address, connector, onEvmConnect])
 
   useEffect(() => {
     if (connectError) {
@@ -720,19 +722,17 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
     }
   }
 
-  // Filter connectors to only show ones that are ready and available
-  // This prevents showing connectors for wallets that aren't installed or ready
-  const availableConnectors = connectors?.filter(c => {
+  // Filter and sort connectors - WalletConnect first (for QR code), then injected wallets
+  // Only show injected wallets if they're actually installed and ready
+  const availableConnectors = (connectors?.filter(c => {
     if (!c || !c.uid) return false
-    // For injected connectors, only show if the wallet is actually installed
-    // WalletConnect connector is always available (for QR code)
-    if (c.type === 'injected') {
-      // wagmi automatically filters these, but we can double-check
-      return true
-    }
-    // Show WalletConnect and other connector types
     return true
-  }) || []
+  }) || []).sort((a, b) => {
+    // WalletConnect first (for QR code), then injected wallets
+    if (a.name === 'WalletConnect') return -1
+    if (b.name === 'WalletConnect') return 1
+    return 0
+  })
 
   return (
     <div className="space-y-6">
@@ -756,21 +756,51 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                       // Explicitly use the clicked connector - don't let wagmi auto-select
                       console.log('Connecting with connector:', connector.name, connector.uid, connector.type)
                       
-                      // Check if connector is ready before connecting
-                      if (connector.type === 'injected') {
-                        // For injected connectors, verify the wallet is actually available
-                        const isAvailable = await connector.getAccounts?.().catch(() => null)
-                        if (!isAvailable && connector.name !== 'WalletConnect') {
-                          console.warn(`${connector.name} may not be installed or ready`)
+                      // For injected connectors, check if wallet is actually available
+                      // If not, fall back to WalletConnect QR code
+                      if (connector.type === 'injected' && connector.name !== 'WalletConnect') {
+                        try {
+                          // Try to check if wallet is available
+                          const accounts = await connector.getAccounts?.().catch(() => [])
+                          if (!accounts || accounts.length === 0) {
+                            // Wallet not available, use WalletConnect QR instead
+                            const walletConnectConnector = connectors?.find(c => c.name === 'WalletConnect')
+                            if (walletConnectConnector) {
+                              console.log(`${connector.name} not available, using WalletConnect QR instead`)
+                              await connect({ connector: walletConnectConnector })
+                              return
+                            }
+                          }
+                        } catch (e) {
+                          // If check fails, try WalletConnect QR as fallback
+                          const walletConnectConnector = connectors?.find(c => c.name === 'WalletConnect')
+                          if (walletConnectConnector) {
+                            console.log(`${connector.name} check failed, using WalletConnect QR instead`)
+                            await connect({ connector: walletConnectConnector })
+                            return
+                          }
                         }
                       }
                       
-                      // Connect with the specific connector - this should prevent fallback
+                      // Connect with the specific connector
                       await connect({ connector })
                     } catch (error: any) {
                       // Don't show error for user rejection
                       if (error?.name !== 'UserRejectedRequestError' && error?.message !== 'User rejected the request.') {
                         console.error('Error connecting to', connector.name, ':', error)
+                        // If injected wallet fails, try WalletConnect QR as fallback
+                        if (connector.type === 'injected' && connector.name !== 'WalletConnect') {
+                          const walletConnectConnector = connectors?.find(c => c.name === 'WalletConnect')
+                          if (walletConnectConnector) {
+                            try {
+                              console.log('Falling back to WalletConnect QR')
+                              await connect({ connector: walletConnectConnector })
+                              return
+                            } catch (fallbackError) {
+                              // Fallback also failed
+                            }
+                          }
+                        }
                         alert(`Failed to connect ${connector.name}. Please make sure the wallet extension is installed and unlocked.`)
                       }
                     }
