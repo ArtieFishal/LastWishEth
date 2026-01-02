@@ -989,6 +989,12 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Enter your Bankr wallet address (starts with 0x). This is the address linked to your X account.
             </p>
+            {/* Debug: Show button state */}
+            {process.env.NODE_ENV === 'development' && (
+              <p className="text-xs text-gray-400 mt-1">
+                Debug: Address length: {bankrAddress.length}, Button enabled: {bankrAddress.trim().length > 0 ? 'Yes' : 'No'}
+              </p>
+            )}
           </div>
 
           {/* Optional: X Handle Input (for future OAuth integration) */}
@@ -1087,7 +1093,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                 setConnectingBankr(false)
               }
             }}
-            disabled={connectingBankr || !bankrAddress.trim()}
+            disabled={connectingBankr || bankrAddress.trim().length === 0}
             className="w-full rounded-xl border-2 p-4 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between group"
             style={{
               borderColor: walletConfig.Bankr.color,
