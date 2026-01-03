@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Asset } from '@/types'
 
 interface AssetSearchProps {
@@ -45,9 +45,9 @@ export function AssetSearch({ assets, onFilteredAssetsChange, className = '' }: 
     })
 
   // Notify parent of filtered results
-  useState(() => {
+  useEffect(() => {
     onFilteredAssetsChange(filteredAssets)
-  })
+  }, [filteredAssets, onFilteredAssetsChange])
 
   return (
     <div className={`space-y-4 ${className}`}>
