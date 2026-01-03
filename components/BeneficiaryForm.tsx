@@ -6,6 +6,7 @@ import { createPublicClient, http } from 'viem'
 import { mainnet } from 'viem/chains'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { QRCodeDisplay } from '@/components/ui/QRCodeDisplay'
+import { sanitizeInput, isValidEthereumAddress, isValidENSName } from '@/lib/security'
 
 interface BeneficiaryFormProps {
   beneficiaries: Beneficiary[]
@@ -85,7 +86,10 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
   }, [walletAddress])
 
   const handleAdd = () => {
-    if (!name.trim() || !walletAddress.trim()) {
+    const sanitizedName = sanitizeInput(name.trim())
+    const sanitizedAddress = sanitizeInput(walletAddress.trim())
+    
+    if (!sanitizedName || !sanitizedAddress) {
       alert('Please fill in both name and wallet address')
       return
     }
@@ -95,10 +99,10 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
     }
 
     // Use resolved address if available (from ENS lookup), otherwise use input
-    const finalAddress = resolvedAddress || walletAddress.trim()
+    const finalAddress = resolvedAddress || sanitizedAddress
     
     // Validate address format
-    if (!finalAddress.startsWith('0x') || finalAddress.length !== 42) {
+    if (!isValidEthereumAddress(finalAddress) && !isValidENSName(sanitizedAddress)) {
       alert('Invalid wallet address. Please enter a valid Ethereum address (0x...) or ENS name (.eth)')
       return
     }

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { generatePDF } from '@/lib/pdf-generator'
 import { SuccessAnimation } from '@/components/ui/SuccessAnimation'
 import { ExportOptions } from '@/components/ExportOptions'
+import { PDFPreview } from '@/components/PDFPreview'
 import { ExportData } from '@/lib/exportUtils'
 import { UserData, QueuedWalletSession, Asset } from '@/types'
 import { analytics } from '@/lib/analytics'
@@ -248,15 +249,34 @@ export function DownloadStep({
             Your document has been generated and is ready to download
           </p>
         </div>
-        <button
-          onClick={handleDownloadPDF}
-          className="w-full rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg mb-4"
-        >
-          {pdfGenerated ? 'Download PDF Again' : 'Download PDF'}
-        </button>
+        <div className="flex gap-3 mb-4">
+          <button
+            onClick={handleDownloadPDF}
+            className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg"
+          >
+            {pdfGenerated ? 'Download PDF Again' : 'Download PDF'}
+          </button>
+          <button
+            onClick={() => setShowPreview(!showPreview)}
+            className="flex-1 rounded-lg bg-gray-600 text-white p-4 font-semibold hover:bg-gray-700 transition-colors shadow-lg"
+          >
+            {showPreview ? 'Hide Preview' : 'Preview PDF'}
+          </button>
+        </div>
         <p className="text-xs text-gray-500 mb-4">
           Print this document and have it notarized. Keep it in a safe place.
         </p>
+
+        {/* PDF Preview */}
+        {showPreview && (
+          <div className="mt-6 mb-6">
+            <PDFPreview
+              userData={userDataForPDF}
+              assets={allQueuedAssets}
+              walletProviderMap={walletProviderMap}
+            />
+          </div>
+        )}
 
         {/* Export Options */}
         <div className="mt-6 pt-6 border-t border-green-200">
