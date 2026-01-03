@@ -76,6 +76,8 @@ export default function Home() {
  const [executorLinkedIn, setExecutorLinkedIn] = useState('')
  const [executorEnsName, setExecutorEnsName] = useState<string | null>(null)
  const [executorResolvedAddress, setExecutorResolvedAddress] = useState<string | null>(null)
+ const [ownerResolvedAddress, setOwnerResolvedAddress] = useState<string | null>(null)
+ const [ownerEnsResolvedName, setOwnerEnsResolvedName] = useState<string | null>(null)
  const [keyInstructions, setKeyInstructions] = useState('')
  const [walletNames, setWalletNames] = useState<Record<string, string>>({})
  const [resolvedEnsNames, setResolvedEnsNames] = useState<Record<string, string>>({})
@@ -416,6 +418,82 @@ export default function Home() {
  const timeoutId = setTimeout(resolveExecutorENS, 500)
  return () => clearTimeout(timeoutId)
  }, [executorAddress])
+
+ // Resolve ENS name for owner wallet address (supports .eth, .base.eth, etc.)
+ useEffect(() => {
+ const resolveOwnerENS = async () => {
+ if (!ownerEnsName || ownerEnsName.trim().length === 0) {
+ setOwnerEnsResolvedName(null)
+ setOwnerResolvedAddress(null)
+ return
+ }
+
+ const input = ownerEnsName.trim()
+ setOwnerEnsResolvedName(null)
+ setOwnerResolvedAddress(null)
+
+ try {
+ const publicClient = createPublicClient({
+ chain: mainnet,
+ transport: http(),
+ })
+
+ // Check if input is an ENS name (ends with .eth, .base.eth, etc.)
+ // Support: .eth, .base.eth, and other ENS-compatible TLDs
+ const isENSName = /\.(eth|base\.eth)$/i.test(input) || input.includes('.')
+ 
+ if (isENSName) {
+ // Forward lookup: ENS name -> address
+ // Note: .sol and .btc are not ENS-compatible and would need different resolvers
+ // For now, we'll try ENS resolution for .eth and .base.eth
+ const address = await publicClient.getEnsAddress({ name: input })
+ if (address) {
+ setOwnerResolvedAddress(address)
+ setOwnerEnsResolvedName(input) // Keep the ENS name
+ // Store in resolvedEnsNames for PDF generation
+ setResolvedEnsNames(prev => ({ ...prev, [address.toLowerCase()]: input }))
+ console.log(`Resolved owner ENS "${input}" to address: ${address}`)
+ } else {
+ // If resolution fails, still keep the name but no address
+ setOwnerEnsResolvedName(input)
+ setOwnerResolvedAddress(null)
+ console.warn(`Could not resolve owner ENS name "${input}"`)
+ }
+ } 
+ // Check if input is an Ethereum address (starts with 0x and is 42 chars)
+ else if (input.startsWith('0x') && input.length === 42) {
+ // Reverse lookup: address -> ENS name
+ const resolved = await publicClient.getEnsName({ address: input as `0x${string}` })
+ if (resolved) {
+ setOwnerEnsResolvedName(resolved)
+ setOwnerResolvedAddress(input.toLowerCase())
+ // Store in resolvedEnsNames for PDF generation
+ setResolvedEnsNames(prev => ({ ...prev, [input.toLowerCase()]: resolved }))
+ console.log(`Resolved owner address "${input}" to ENS: ${resolved}`)
+ } else {
+ setOwnerEnsResolvedName(null)
+ setOwnerResolvedAddress(input.toLowerCase())
+ }
+ } else {
+ // Not a valid ENS name or address - could be .sol, .btc, or other
+ // Keep the input as-is but don't try to resolve
+ setOwnerEnsResolvedName(input.includes('.') ? input : null)
+ setOwnerResolvedAddress(null)
+ }
+ } catch (error) {
+ console.error('Error resolving owner ENS:', error)
+ // On error, keep the input as-is if it looks like a name
+ if (ownerEnsName && typeof ownerEnsName === 'string' && ownerEnsName.includes('.')) {
+ setOwnerEnsResolvedName(ownerEnsName.trim())
+ }
+ setOwnerResolvedAddress(null)
+ }
+ }
+
+ // Debounce ENS resolution
+ const timeoutId = setTimeout(resolveOwnerENS, 500)
+ return () => clearTimeout(timeoutId)
+ }, [ownerEnsName])
 
  // Resolve payment recipient address when on payment step
  useEffect(() => {
@@ -1372,13 +1450,21 @@ setError('Failed to load Bitcoin assets. Please try again.')
            {/* Full address display - NO truncation */}
            <div className="mt-2">
              {ensName && ensName !== addr && (
-               <p className="text-sm font-semibold text-gray-900 mb-1 break-all">
-                 {ensName}
+               <div className="mb-1">
+                 <p className="text-sm font-semibold text-green-600 break-all">
+                   <span className="mr-1">✓</span>
+                   {ensName}
+                 </p>
+                 <p className="text-xs font-mono text-gray-500 break-all">
+                   ({addr})
+                 </p>
+               </div>
+             )}
+             {(!ensName || ensName === addr) && (
+               <p className="text-xs font-mono text-gray-700 break-all bg-gray-50 p-2 rounded border">
+                 {addr}
                </p>
              )}
-             <p className="text-xs font-mono text-gray-700 break-all bg-gray-50 p-2 rounded border">
-               {addr}
-             </p>
            </div>
          </div>
          
@@ -1895,9 +1981,19 @@ onSelectionChange={setSelectedAssetIds}
                    </button>
                  </div>
                  {ben.ensName && ben.ensName !== ben.walletAddress && (
-                   <p className="text-xs text-blue-700 font-semibold mb-1">{ben.ensName}</p>
+                   <div className="mb-1">
+                     <p className="text-xs text-green-600 font-semibold">
+                       <span className="mr-1">✓</span>
+                       {ben.ensName}
+                     </p>
+                     {ben.walletAddress && (
+                       <p className="text-xs font-mono text-gray-500 break-all leading-tight">
+                         ({ben.walletAddress})
+                       </p>
+                     )}
+                   </div>
                  )}
-                 {ben.walletAddress && (
+                 {(!ben.ensName || ben.ensName === ben.walletAddress) && ben.walletAddress && (
                    <p className="text-xs font-mono text-gray-600 break-all leading-tight mb-1">
                      {ben.walletAddress}
                    </p>
@@ -2034,6 +2130,23 @@ onSelectionChange={setSelectedAssetIds}
               className="w-full rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors"
               placeholder="yourname.eth, yourname.base.eth, yourname.sol, yourname.btc"
             />
+            {ownerEnsResolvedName && ownerResolvedAddress && (
+              <div className="mt-2 text-sm text-green-600">
+                <span className="font-semibold">✓ {ownerEnsResolvedName}</span>
+                <span className="text-gray-500 ml-2 font-mono">({ownerResolvedAddress})</span>
+              </div>
+            )}
+            {ownerEnsResolvedName && !ownerResolvedAddress && (
+              <div className="mt-2 text-sm text-yellow-600">
+                <span className="font-semibold">⚠ {ownerEnsResolvedName}</span>
+                <span className="text-gray-500 ml-2">(Could not resolve - may be .sol, .btc, or other naming system)</span>
+              </div>
+            )}
+            {!ownerEnsResolvedName && ownerResolvedAddress && (
+              <div className="mt-2 text-sm text-gray-600 font-mono">
+                {ownerResolvedAddress}
+              </div>
+            )}
             <p className="text-xs text-gray-500 mt-1">Supports .eth, .base.eth, .sol, .btc, and other naming systems</p>
           </div>
  <div>

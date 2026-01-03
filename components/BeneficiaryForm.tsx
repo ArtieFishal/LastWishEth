@@ -154,13 +154,15 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
             <p className="text-xs text-gray-500 mt-1">Resolving ENS...</p>
           )}
           {ensName && resolvedAddress && (
-            <div className="mt-1 p-1.5 bg-green-50 border border-green-200 rounded text-xs">
-              <p className="text-green-800 font-semibold">✓ {ensName}</p>
+            <div className="mt-1 text-sm text-green-600">
+              <span className="font-semibold">✓ {ensName}</span>
+              <span className="text-gray-500 ml-2 font-mono text-xs">({resolvedAddress})</span>
             </div>
           )}
           {!ensName && resolvedAddress && (
-            <div className="mt-1 p-1.5 bg-blue-50 border border-blue-200 rounded text-xs">
-              <p className="text-blue-800 font-semibold">✓ Valid Address</p>
+            <div className="mt-1 text-sm text-green-600">
+              <span className="font-semibold">✓ Valid Address</span>
+              <span className="text-gray-500 ml-2 font-mono text-xs">({resolvedAddress})</span>
             </div>
           )}
         </div>
