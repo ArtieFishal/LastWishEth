@@ -2,6 +2,8 @@
 
 import { BeneficiaryForm } from '@/components/BeneficiaryForm'
 import { AllocationPanel } from '@/components/AllocationPanel'
+import { AllocationTemplates } from '@/components/AllocationTemplates'
+import { CopyButton } from '@/components/ui/CopyButton'
 import { Asset, Beneficiary, Allocation, QueuedWalletSession, Step } from '@/types'
 
 interface AllocateStepProps {
@@ -86,14 +88,17 @@ export function AllocateStep({
                           ×
                         </button>
                       </div>
-                      {ben.ensName && ben.ensName !== ben.walletAddress && (
-                        <p className="text-xs text-blue-700 font-semibold mb-1">{ben.ensName}</p>
-                      )}
-                      {ben.walletAddress && (
-                        <p className="text-xs font-mono text-gray-600 break-all leading-tight mb-1">
-                          {ben.walletAddress}
-                        </p>
-                      )}
+                {ben.ensName && ben.ensName !== ben.walletAddress && (
+                  <p className="text-xs text-blue-700 font-semibold mb-1">{ben.ensName}</p>
+                )}
+                {ben.walletAddress && (
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <p className="text-xs font-mono text-gray-600 break-all leading-tight flex-1 min-w-0">
+                      {ben.walletAddress}
+                    </p>
+                    <CopyButton text={ben.walletAddress} size="sm" />
+                  </div>
+                )}
                       {ben.phone && (
                         <p className="text-xs text-gray-600 mb-1">📞 {ben.phone}</p>
                       )}
@@ -118,6 +123,33 @@ export function AllocateStep({
               </div>
             )}
           </div>
+
+          {/* Allocation Templates */}
+          {beneficiaries.length > 0 && (
+            <div className="bg-white rounded-lg border-2 border-gray-200 p-4 mb-6">
+              <AllocationTemplates
+                beneficiaries={beneficiaries}
+                onApplyTemplate={(templateAllocations) => {
+                  // Apply template allocations to selected assets
+                  const newAllocations: Allocation[] = []
+                  selectedAssets.forEach(asset => {
+                    Object.entries(templateAllocations).forEach(([beneficiaryId, percentage]) => {
+                      newAllocations.push({
+                        assetId: asset.id,
+                        beneficiaryId,
+                        percentage,
+                        type: 'percentage',
+                      })
+                    })
+                  })
+                  // Merge with existing allocations (don't overwrite, just add missing ones)
+                  const existingKeys = new Set(allocations.map(a => `${a.assetId}-${a.beneficiaryId}`))
+                  const toAdd = newAllocations.filter(a => !existingKeys.has(`${a.assetId}-${a.beneficiaryId}`))
+                  onAllocationsChange([...allocations, ...toAdd])
+                }}
+              />
+            </div>
+          )}
 
           {/* Allocation Panel */}
           {beneficiaries.length > 0 ? (

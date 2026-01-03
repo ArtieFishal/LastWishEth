@@ -1,7 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { AssetSelector } from '@/components/AssetSelector'
+import { AssetSearch } from '@/components/AssetSearch'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { ProgressBar } from '@/components/ui/ProgressBar'
+import { CopyButton } from '@/components/ui/CopyButton'
+import { QRCodeDisplay } from '@/components/ui/QRCodeDisplay'
 import { Asset, Step } from '@/types'
 
 interface AssetsStepProps {
@@ -29,6 +34,8 @@ export function AssetsStep({
   walletProviders,
   onStepChange,
 }: AssetsStepProps) {
+  const [searchFilteredAssets, setSearchFilteredAssets] = useState<Asset[]>([])
+
   // Filter assets based on selected wallet
   const getFilteredAssets = () => {
     let filtered = assets
@@ -40,7 +47,9 @@ export function AssetsStep({
     return filtered
   }
 
-  const filteredAssets = getFilteredAssets()
+  const walletFilteredAssets = getFilteredAssets()
+  // Use search-filtered assets if available, otherwise use wallet-filtered
+  const filteredAssets = searchFilteredAssets.length > 0 ? searchFilteredAssets : walletFilteredAssets
 
   return (
     <div>
@@ -81,22 +90,52 @@ export function AssetsStep({
           {/* Show which wallet's assets are being displayed */}
           {(selectedWalletForLoading || btcAddress) && (
             <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
-              <p className="text-sm font-semibold text-blue-900 mb-1">
-                Currently Viewing Assets From:
-              </p>
-              {selectedWalletForLoading && (
-                <p className="text-xs text-blue-700 font-mono break-all">
-                  {resolvedEnsNames[selectedWalletForLoading.toLowerCase()] || walletNames[selectedWalletForLoading] || selectedWalletForLoading}
-                  {walletProviders[selectedWalletForLoading] && (
-                    <span className="ml-2 text-blue-600">({walletProviders[selectedWalletForLoading]})</span>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-blue-900 mb-2">
+                    Currently Viewing Assets From:
+                  </p>
+                  {selectedWalletForLoading && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs text-blue-700 font-mono break-all">
+                          {resolvedEnsNames[selectedWalletForLoading.toLowerCase()] || walletNames[selectedWalletForLoading] || selectedWalletForLoading}
+                        </p>
+                        {walletProviders[selectedWalletForLoading] && (
+                          <span className="text-xs text-blue-600">({walletProviders[selectedWalletForLoading]})</span>
+                        )}
+                        <CopyButton text={selectedWalletForLoading} size="sm" />
+                        <div className="hidden md:block">
+                          <QRCodeDisplay data={selectedWalletForLoading} size={80} />
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </p>
-              )}
-              {btcAddress && (
-                <p className="text-xs text-blue-700 font-mono break-all">
-                  {btcAddress} (Bitcoin Wallet)
-                </p>
-              )}
+                  {btcAddress && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs text-blue-700 font-mono break-all">
+                          {btcAddress} (Bitcoin Wallet)
+                        </p>
+                        <CopyButton text={btcAddress} size="sm" />
+                        <div className="hidden md:block">
+                          <QRCodeDisplay data={btcAddress} size={80} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Asset Search and Filtering */}
+          {walletFilteredAssets.length > 0 && (
+            <div className="mb-6">
+              <AssetSearch
+                assets={walletFilteredAssets}
+                onFilteredAssetsChange={setSearchFilteredAssets}
+              />
             </div>
           )}
 

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useENSResolution } from '@/components/hooks/useENSResolution'
 import { useFormValidation } from '@/components/hooks/useFormValidation'
+import { CopyButton } from '@/components/ui/CopyButton'
+import { QRCodeDisplay } from '@/components/ui/QRCodeDisplay'
 import { QueuedWalletSession, Step } from '@/types'
 
 interface DetailsStepProps {
@@ -261,24 +263,43 @@ export function DetailsStep({
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Executor Wallet Address *</label>
-              <input
-                type="text"
-                value={executorAddress}
-                onChange={(e) => onExecutorAddressChange(e.target.value)}
-                className="w-full rounded-lg border-2 border-gray-300 p-3 font-mono text-sm focus:border-blue-500 focus:outline-none transition-colors"
-                placeholder="0x... or name.eth"
-              />
-              {executorEnsName && executorResolvedAddress && (
-                <div className="mt-2 text-sm text-green-600">
-                  <span className="font-semibold">{executorEnsName}</span>
-                  <span className="text-gray-500 ml-2 font-mono">({executorResolvedAddress})</span>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={executorAddress}
+                    onChange={(e) => onExecutorAddressChange(e.target.value)}
+                    className="flex-1 rounded-lg border-2 border-gray-300 p-3 font-mono text-sm focus:border-blue-500 focus:outline-none transition-colors"
+                    placeholder="0x... or name.eth"
+                  />
+                  {executorAddress && (
+                    <CopyButton text={executorAddress} size="md" />
+                  )}
                 </div>
-              )}
-              {!executorEnsName && executorResolvedAddress && (
-                <div className="mt-2 text-sm text-gray-600 font-mono">
-                  {executorResolvedAddress}
-                </div>
-              )}
+                {executorEnsName && executorResolvedAddress && (
+                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-semibold text-green-800">{executorEnsName}</span>
+                      <CopyButton text={executorResolvedAddress} size="sm" />
+                    </div>
+                    <p className="text-xs text-gray-600 font-mono break-all">{executorResolvedAddress}</p>
+                    <div className="mt-2 hidden md:block">
+                      <QRCodeDisplay data={executorResolvedAddress} size={120} />
+                    </div>
+                  </div>
+                )}
+                {!executorEnsName && executorResolvedAddress && (
+                  <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <p className="text-sm text-gray-600 font-mono break-all flex-1">{executorResolvedAddress}</p>
+                      <CopyButton text={executorResolvedAddress} size="sm" />
+                    </div>
+                    <div className="mt-2 hidden md:block">
+                      <QRCodeDisplay data={executorResolvedAddress} size={120} />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { Beneficiary } from '@/types'
 import { createPublicClient, http } from 'viem'
 import { mainnet } from 'viem/chains'
+import { CopyButton } from '@/components/ui/CopyButton'
+import { QRCodeDisplay } from '@/components/ui/QRCodeDisplay'
 
 interface BeneficiaryFormProps {
   beneficiaries: Beneficiary[]
@@ -154,13 +156,27 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
             <p className="text-xs text-gray-500 mt-1">Resolving ENS...</p>
           )}
           {ensName && resolvedAddress && (
-            <div className="mt-1 p-1.5 bg-green-50 border border-green-200 rounded text-xs">
-              <p className="text-green-800 font-semibold">✓ {ensName}</p>
+            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-green-800 font-semibold flex-1">✓ {ensName}</p>
+                <CopyButton text={resolvedAddress} size="sm" />
+              </div>
+              <p className="text-gray-600 font-mono text-xs break-all mb-2">{resolvedAddress}</p>
+              <div className="hidden md:block">
+                <QRCodeDisplay data={resolvedAddress} size={80} />
+              </div>
             </div>
           )}
           {!ensName && resolvedAddress && (
-            <div className="mt-1 p-1.5 bg-blue-50 border border-blue-200 rounded text-xs">
-              <p className="text-blue-800 font-semibold">✓ Valid Address</p>
+            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-blue-800 font-semibold flex-1">✓ Valid Address</p>
+                <CopyButton text={resolvedAddress} size="sm" />
+              </div>
+              <p className="text-gray-600 font-mono text-xs break-all mb-2">{resolvedAddress}</p>
+              <div className="hidden md:block">
+                <QRCodeDisplay data={resolvedAddress} size={80} />
+              </div>
             </div>
           )}
         </div>

@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { WalletConnect } from '@/components/WalletConnect'
 import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { ProgressBar } from '@/components/ui/ProgressBar'
+import { CopyButton } from '@/components/ui/CopyButton'
+import { QRCodeDisplay } from '@/components/ui/QRCodeDisplay'
 import { useWalletConnection } from '@/components/hooks/useWalletConnection'
 import { useAssetLoading } from '@/components/hooks/useAssetLoading'
 import { useENSResolution } from '@/components/hooks/useENSResolution'
@@ -389,9 +392,17 @@ export function ConnectStep({
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
                         Bitcoin Address
                       </p>
-                      <p className="text-sm font-mono text-gray-700 break-all bg-gray-50 p-2 rounded border">
-                        {btcAddress}
-                      </p>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-mono text-gray-700 break-all bg-gray-50 p-2 rounded border flex-1 min-w-0">
+                            {btcAddress}
+                          </p>
+                          <CopyButton text={btcAddress} size="sm" />
+                        </div>
+                        <div className="hidden md:block">
+                          <QRCodeDisplay data={btcAddress} size={100} />
+                        </div>
+                      </div>
                     </div>
                     <div className="mt-3 pt-3 border-t border-gray-200">
                       <p className="text-xs text-gray-500">
@@ -509,7 +520,12 @@ export function ConnectStep({
       {/* Loading Progress */}
       {loading && loadingProgress.total > 0 && (
         <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
-          <LoadingSpinner size="sm" text={`Loading assets... (${loadingProgress.current}/${loadingProgress.total})`} />
+          <ProgressBar
+            current={loadingProgress.current}
+            total={loadingProgress.total}
+            label={`Loading assets from ${loadingProgress.wallet || 'wallets'}...`}
+          />
+          <LoadingSpinner size="sm" text={`Processing wallet ${loadingProgress.current} of ${loadingProgress.total}...`} className="mt-4" />
         </div>
       )}
 
