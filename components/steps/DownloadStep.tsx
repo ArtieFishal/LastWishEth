@@ -1,7 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { generatePDF } from '@/lib/pdf-generator'
+import { SuccessAnimation } from '@/components/ui/SuccessAnimation'
+import { ExportOptions } from '@/components/ExportOptions'
+import { ExportData } from '@/lib/exportUtils'
 import { UserData, QueuedWalletSession, Asset } from '@/types'
+import { analytics } from '@/lib/analytics'
 
 interface DownloadStepProps {
   paymentVerified: boolean
@@ -162,12 +167,45 @@ export function DownloadStep({
         if (iframe.parentNode) {
           iframe.parentNode.removeChild(iframe)
         }
-        URL.revokeObjectURL(url)
-      }, 5000)
+      URL.revokeObjectURL(url)
+    }, 5000)
+
+    // Track success
+    setPdfGenerated(true)
+    setShowSuccess(true)
+    analytics.trackPDFGeneration()
     } catch (error) {
       console.error('Error generating PDF:', error)
       onError('Failed to generate PDF. Please try again.')
+      analytics.trackError('PDF generation failed', { step: 'download' })
     }
+  }
+
+  // Prepare export data
+  const exportData: ExportData = {
+    version: '1.0.0',
+    timestamp: Date.now(),
+    ownerData: {
+      ownerName,
+      ownerFullName,
+      ownerEnsName,
+      ownerAddress,
+      ownerCity,
+      ownerState,
+      ownerZipCode,
+      ownerPhone,
+    },
+    executorData: {
+      executorName,
+      executorAddress: executorResolvedAddress || executorAddress,
+      executorPhone,
+      executorEmail,
+      executorTwitter,
+      executorLinkedIn,
+    },
+    beneficiaries,
+    queuedSessions,
+    keyInstructions,
   }
 
   if (!paymentVerified && !discountApplied) {
@@ -214,12 +252,24 @@ export function DownloadStep({
           onClick={handleDownloadPDF}
           className="w-full rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg mb-4"
         >
-          Download PDF
+          {pdfGenerated ? 'Download PDF Again' : 'Download PDF'}
         </button>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-500 mb-4">
           Print this document and have it notarized. Keep it in a safe place.
         </p>
+
+        {/* Export Options */}
+        <div className="mt-6 pt-6 border-t border-green-200">
+          <ExportOptions exportData={exportData} />
+        </div>
       </div>
+
+      {/* Success Animation */}
+      <SuccessAnimation
+        show={showSuccess}
+        message="PDF Generated Successfully!"
+        onComplete={() => setShowSuccess(false)}
+      />
     </div>
   )
 }
