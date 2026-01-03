@@ -2,21 +2,37 @@
   command = "npm run build"
   publish = ".next"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
-
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
 
-# Cache headers to ensure CSS updates are picked up
-[[headers]]
-  for = "/*.css"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+# Next.js plugin configuration
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 
-[[headers]]
-  for = "/*.js"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+# Branch-specific builds
+[[context.branch-deploy]]
+  command = "npm run build"
+  publish = ".next"
 
+[[context.deploy-preview]]
+  command = "npm run build"
+  publish = ".next"
+
+# Production build
+[context.production]
+  command = "npm run build"
+  publish = ".next"
+
+# Environment variables (set these in Netlify dashboard)
+# NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID = "your-project-id"
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
