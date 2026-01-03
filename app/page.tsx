@@ -750,7 +750,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  ownerZipCode,
  ownerPhone,
  executorName,
- executorAddress: executorResolvedAddress || executorAddress, // Use resolved address if available
+ executorAddress: executorResolvedAddress || executorAddress || undefined, // Use resolved address if available, optional
  executorPhone: executorPhone || undefined,
  executorEmail: executorEmail || undefined,
  executorTwitter: executorTwitter || undefined,

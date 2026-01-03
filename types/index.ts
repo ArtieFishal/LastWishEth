@@ -57,7 +57,7 @@ export interface UserData {
   ownerZipCode: string
   ownerPhone: string
   executorName: string
-  executorAddress: string
+  executorAddress?: string // Optional - can be empty if executor doesn't have a wallet
   executorPhone?: string
   executorEmail?: string
   executorTwitter?: string

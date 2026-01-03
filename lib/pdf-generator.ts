@@ -534,16 +534,21 @@ export async function generatePDF(
   yPosition = addText(`Full Name: ${userData.executorName}`, margin, yPosition, 12, false, rgb(0.2, 0.2, 0.2))
   yPosition -= lineHeight
   
-  // Show executor wallet with ENS name if available
-  const executorEnsName = userData.resolvedEnsNames?.[userData.executorAddress.toLowerCase()]
-  if (executorEnsName) {
-    yPosition = addText(`ENS Name: ${executorEnsName}`, margin, yPosition, 12, true, colors.ens)
+  // Show executor wallet with ENS name if available (executorAddress is optional)
+  if (userData.executorAddress) {
+    const executorEnsName = userData.resolvedEnsNames?.[userData.executorAddress.toLowerCase()]
+    if (executorEnsName) {
+      yPosition = addText(`ENS Name: ${executorEnsName}`, margin, yPosition, 12, true, colors.ens)
+      yPosition -= lineHeight
+      yPosition = addText(`Wallet Address: ${userData.executorAddress}`, margin, yPosition, 12, false, rgb(0.3, 0.3, 0.5))
+    } else {
+      yPosition = addText(`Wallet Address: ${userData.executorAddress}`, margin, yPosition, 12, false, rgb(0.3, 0.3, 0.5))
+    }
     yPosition -= lineHeight
-    yPosition = addText(`Wallet Address: ${userData.executorAddress}`, margin, yPosition, 12, false, rgb(0.3, 0.3, 0.5))
   } else {
-    yPosition = addText(`Wallet Address: ${userData.executorAddress}`, margin, yPosition, 12, false, rgb(0.3, 0.3, 0.5))
+    yPosition = addText(`Wallet Address: Not provided`, margin, yPosition, 12, false, rgb(0.5, 0.5, 0.5))
+    yPosition -= lineHeight
   }
-  yPosition -= lineHeight
   yPosition = addText(`Phone: ${userData.executorPhone || 'Not provided'}`, margin, yPosition, 12, false, rgb(0.2, 0.2, 0.2))
   yPosition -= lineHeight
   yPosition = addText(`Email: ${userData.executorEmail || 'Not provided'}`, margin, yPosition, 12, false, rgb(0.2, 0.2, 0.2))
