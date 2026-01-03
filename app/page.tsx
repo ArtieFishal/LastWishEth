@@ -1048,7 +1048,12 @@ setError('Failed to load Bitcoin assets. Please try again.')
  const isFreeNavigationStep = index < 4
  const canNavigate = isFreeNavigationStep || isActive || isCompleted || (() => {
    switch(s.id) {
-     case 'payment': return invoiceId !== null || discountApplied
+     case 'payment': 
+       // Allow navigation to payment if:
+       // 1. Invoice already exists, OR
+       // 2. Discount is applied, OR
+       // 3. Details step is completed (user can go back to payment)
+       return invoiceId !== null || discountApplied || (currentIndex >= 3) // Details step is index 3
      case 'download': return paymentVerified || discountApplied
      default: return false
    }
@@ -2124,6 +2129,23 @@ onSelectionChange={setSelectedAssetIds}
  title={!canProceedToPayment() ? `Missing: ${getPaymentValidationErrors().join(', ')}` : ''}
  >
               {discountApplied ? 'Unlock & Generate (FREE)' : 'Unlock & Generate (0.000025 ETH)'} →
+ </button>
+ </div>
+ </div>
+ )}
+
+ {step === 'payment' && !invoiceId && !discountApplied && (
+ <div className="max-w-2xl mx-auto text-center">
+ <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-8">
+ <h2 className="text-2xl font-bold text-yellow-900 mb-4">Invoice Required</h2>
+ <p className="text-yellow-800 mb-4">
+ Please go back to the Details step and click "Unlock & Generate" to create an invoice.
+ </p>
+ <button
+ onClick={() => setStep('details')}
+ className="px-6 py-3 bg-yellow-600 text-white font-semibold rounded-lg hover:bg-yellow-700 transition-colors"
+ >
+ ← Go to Details Step
  </button>
  </div>
  </div>
