@@ -1631,6 +1631,8 @@ setError('Failed to load Bitcoin assets. Please try again.')
  <p className="text-gray-600 mb-8">
  {selectedWalletForLoading || btcAddress 
    ? 'Assets from the currently selected wallet'
+   : queuedSessions.length > 0 && assets.length === 0
+   ? 'Queued assets from your saved wallets'
    : 'Review all assets across your connected wallets'}
  </p>
  {loading ? (
@@ -1639,7 +1641,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  <p className="mt-4 text-gray-600 font-semibold">Loading assets, be patient...</p>
  <p className="mt-2 text-sm text-gray-500">This may take a few seconds as we fetch data from the blockchain</p>
  </div>
- ) : assets.length === 0 ? (
+ ) : assets.length === 0 && queuedSessions.length === 0 ? (
  <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
    <div className="max-w-md mx-auto">
      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1661,8 +1663,19 @@ setError('Failed to load Bitcoin assets. Please try again.')
  </div>
  ) : (
  <>
+ {/* Show queued assets message */}
+ {assets.length === 0 && queuedSessions.length > 0 && (
+   <div className="mb-4 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+     <p className="text-sm font-semibold text-green-900 mb-1">
+       ✓ Showing Queued Assets ({queuedSessions.flatMap(s => s.assets).length} total from {queuedSessions.length} wallet{queuedSessions.length !== 1 ? 's' : ''})
+     </p>
+     <p className="text-xs text-green-700">
+       These assets are from wallets you've already saved to the queue. You can select them to modify allocations or add more assets from additional wallets.
+     </p>
+   </div>
+ )}
  {/* Show which wallet's assets are being displayed */}
- {(selectedWalletForLoading || btcAddress) && (
+ {(selectedWalletForLoading || btcAddress) && assets.length > 0 && (
    <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
      <p className="text-sm font-semibold text-blue-900 mb-1">
        Currently Viewing Assets From:
@@ -1684,15 +1697,18 @@ setError('Failed to load Bitcoin assets. Please try again.')
  )}
 <AssetSelector
 assets={(() => {
-  let filtered = assets
+  // If no current assets but we have queued sessions, show queued assets
+  let assetsToShow = assets.length > 0 ? assets : queuedSessions.flatMap(s => s.assets)
+  
+  let filtered = assetsToShow
   if (selectedWalletForLoading) {
-    filtered = assets.filter(a => a.walletAddress?.toLowerCase() === selectedWalletForLoading.toLowerCase())
+    filtered = assetsToShow.filter(a => a.walletAddress?.toLowerCase() === selectedWalletForLoading.toLowerCase())
   } else if (btcAddress) {
-    filtered = assets.filter(a => a.chain === 'bitcoin' && (a.walletAddress === btcAddress || a.contractAddress === btcAddress))
+    filtered = assetsToShow.filter(a => a.chain === 'bitcoin' && (a.walletAddress === btcAddress || a.contractAddress === btcAddress))
     console.log('[Assets Step] Filtering Bitcoin assets:', {
       btcAddress,
-      allAssets: assets.length,
-      bitcoinAssets: assets.filter(a => a.chain === 'bitcoin').length,
+      allAssets: assetsToShow.length,
+      bitcoinAssets: assetsToShow.filter(a => a.chain === 'bitcoin').length,
       filtered: filtered.length,
       filteredAssets: filtered
     })
@@ -1833,9 +1849,26 @@ onSelectionChange={setSelectedAssetIds}
      {/* Allocation Panel - Full Width */}
      {beneficiaries.length > 0 ? (
        <AllocationPanel
-         assets={assets.filter(a => selectedAssetIds.includes(a.id))}
+         assets={(() => {
+           // Use queued assets if current assets are empty
+           const assetsToUse = assets.length > 0 ? assets : queuedSessions.flatMap(s => s.assets)
+           return assetsToUse.filter(a => selectedAssetIds.includes(a.id))
+         })()}
          beneficiaries={beneficiaries}
-         allocations={allocations}
+         allocations={(() => {
+           // Merge allocations from queued sessions with current allocations
+           const queuedAllocations = queuedSessions.flatMap(s => s.allocations)
+           // Combine and deduplicate by assetId
+           const allAllocations = [...allocations, ...queuedAllocations]
+           const uniqueAllocations = allAllocations.reduce((acc, curr) => {
+             const existing = acc.find(a => a.assetId === curr.assetId)
+             if (!existing) {
+               acc.push(curr)
+             }
+             return acc
+           }, [] as Allocation[])
+           return uniqueAllocations
+         })()}
          onAllocationChange={setAllocations}
        />
      ) : (
