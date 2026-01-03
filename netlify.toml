@@ -11,11 +11,11 @@
   package = "@netlify/plugin-nextjs"
 
 # Branch-specific builds
-[[context.branch-deploy]]
+[context.branch-deploy]
   command = "npm run build"
   publish = ".next"
 
-[[context.deploy-preview]]
+[context.deploy-preview]
   command = "npm run build"
   publish = ".next"
 
