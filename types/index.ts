@@ -83,3 +83,12 @@ export interface Invoice {
   createdAt: string
 }
 
+// Step type for navigation
+export type Step = 'connect' | 'assets' | 'allocate' | 'details' | 'payment' | 'download'
+
+// Step configuration
+export interface StepConfig {
+  id: Step
+  label: string
+  number: number
+}
