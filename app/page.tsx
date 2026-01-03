@@ -441,6 +441,17 @@ export default function Home() {
  setStep('download')
  setError(null)
  
+ // Auto-select queued assets when navigating to Allocate step
+ useEffect(() => {
+   if (step === 'allocate' && selectedAssetIds.length === 0 && assets.length === 0) {
+     const queuedAssets = queuedSessions.flatMap(s => s.assets)
+     if (queuedAssets.length > 0) {
+       const queuedAssetIds = queuedAssets.map(a => a.id)
+       setSelectedAssetIds(queuedAssetIds)
+     }
+   }
+ }, [step, queuedSessions, selectedAssetIds.length, assets.length])
+
  // Still try to verify via API in background (for logging/analytics)
  setTimeout(async () => {
  try {
@@ -1763,27 +1774,79 @@ onSelectionChange={setSelectedAssetIds}
  Assign your assets to beneficiaries. You can allocate by percentage or specific amounts.
  </p>
  
- {selectedAssetIds.length === 0 ? (
-   <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-     <div className="max-w-md mx-auto">
-       <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-         <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-         </svg>
+ {(() => {
+   // Get all available assets (current or queued)
+   const allAvailableAssets = assets.length > 0 ? assets : queuedSessions.flatMap(s => s.assets)
+   const hasAssets = allAvailableAssets.length > 0
+   const hasSelected = selectedAssetIds.length > 0
+   
+   // Show "No Assets Selected" only if there are truly no assets available
+   if (!hasAssets) {
+     return (
+       <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+         <div className="max-w-md mx-auto">
+           <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+             </svg>
+           </div>
+           <h3 className="text-xl font-bold text-gray-900 mb-2">No Assets Available</h3>
+           <p className="text-gray-600 mb-6">
+             Go back to the Assets step to load and select assets for allocation.
+           </p>
+           <button
+             onClick={() => setStep('assets')}
+             className="inline-flex items-center px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-lg"
+           >
+             ← Go to Assets
+           </button>
+         </div>
        </div>
-       <h3 className="text-xl font-bold text-gray-900 mb-2">No Assets Selected</h3>
-       <p className="text-gray-600 mb-6">
-         Go back to the Assets step to select which assets you want to allocate to beneficiaries.
-       </p>
-       <button
-         onClick={() => setStep('assets')}
-         className="inline-flex items-center px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-lg"
-       >
-         ← Go to Assets
-       </button>
-     </div>
-   </div>
- ) : (
+     )
+   }
+   
+   // If we have assets but none selected, show message with option to select all
+   if (!hasSelected) {
+     return (
+       <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+         <div className="max-w-md mx-auto">
+           <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+             </svg>
+           </div>
+           <h3 className="text-xl font-bold text-gray-900 mb-2">No Assets Selected</h3>
+           <p className="text-gray-600 mb-6">
+             {queuedSessions.length > 0 
+               ? `You have ${allAvailableAssets.length} queued assets. Select them to allocate to beneficiaries.`
+               : 'Go back to the Assets step to select which assets you want to allocate to beneficiaries.'}
+           </p>
+           {queuedSessions.length > 0 && (
+             <button
+               onClick={() => {
+                 const allIds = allAvailableAssets.map(a => a.id)
+                 setSelectedAssetIds(allIds)
+               }}
+               className="inline-flex items-center px-6 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-lg mb-3"
+             >
+               ✓ Select All Queued Assets ({allAvailableAssets.length})
+             </button>
+           )}
+           <button
+             onClick={() => setStep('assets')}
+             className="inline-flex items-center px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-lg"
+           >
+             ← Go to Assets
+           </button>
+         </div>
+       </div>
+     )
+   }
+   
+   return null
+ })()}
+ 
+ {selectedAssetIds.length > 0 && (
    <div className="space-y-6">
      {/* Beneficiaries Section - Horizontal Form at Top, Cards Below */}
      <div className="bg-white rounded-lg border-2 border-gray-200 p-4">
