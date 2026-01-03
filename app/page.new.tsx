@@ -16,6 +16,10 @@ import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog'
 import { useLocalStorage } from '@/components/hooks/useLocalStorage'
 import { usePaymentVerification } from '@/components/hooks/usePaymentVerification'
 import { useENSResolution } from '@/components/hooks/useENSResolution'
+import { useKeyboardShortcuts } from '@/components/hooks/useKeyboardShortcuts'
+import { SkipToContent } from '@/components/ui/SkipToContent'
+import { errorTracker } from '@/lib/errorTracking'
+import { analytics } from '@/lib/analytics'
 import { Step, StepConfig, QueuedWalletSession, Beneficiary, Allocation, Asset } from '@/types'
 
 const steps: StepConfig[] = [
@@ -64,9 +68,54 @@ export default function Home() {
   const paymentVerification = usePaymentVerification()
   const ensResolution = useENSResolution()
 
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onStepChange: (newStep) => {
+      if (canNavigateToStep(newStep)) {
+        setStep(newStep)
+        analytics.trackStepChange(newStep)
+      }
+    },
+    onNext: () => {
+      const currentIndex = steps.findIndex(s => s.id === step)
+      if (currentIndex < steps.length - 1) {
+        const nextStep = steps[currentIndex + 1]
+        if (canNavigateToStep(nextStep.id)) {
+          setStep(nextStep.id)
+          analytics.trackStepChange(nextStep.id)
+        }
+      }
+    },
+    onPrevious: () => {
+      const currentIndex = steps.findIndex(s => s.id === step)
+      if (currentIndex > 0) {
+        const prevStep = steps[currentIndex - 1]
+        setStep(prevStep.id)
+        analytics.trackStepChange(prevStep.id)
+      }
+    },
+    onSave: () => {
+      // Save current state (already persisted via useLocalStorage)
+      analytics.track({ name: 'manual_save' })
+    },
+  })
+
   useEffect(() => {
     setMounted(true)
+    analytics.track({ name: 'page_load' })
   }, [])
+
+  // Error boundary
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      errorTracker.trackError(new Error(event.message), {
+        step,
+        component: 'main',
+      })
+    }
+    window.addEventListener('error', handleError)
+    return () => window.removeEventListener('error', handleError)
+  }, [step])
 
   // Resolve executor ENS
   useEffect(() => {
@@ -115,6 +164,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-200 to-gray-300">
+      <SkipToContent />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <header className="text-center mb-12 relative">
           <div className="absolute top-0 right-0">
