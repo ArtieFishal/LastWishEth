@@ -405,7 +405,7 @@ export default function Home() {
  } catch (error) {
  console.error('Error resolving executor ENS:', error)
  // On error, keep the input as-is if it looks like a name
- if (executorAddress.includes('.')) {
+ if (executorAddress && typeof executorAddress === 'string' && executorAddress.includes('.')) {
  setExecutorEnsName(executorAddress.trim())
  }
  setExecutorResolvedAddress(null)
@@ -659,9 +659,9 @@ setError('Failed to load Bitcoin assets. Please try again.')
  try {
  setError(null)
  const response = await axios.post('/api/invoice/create', {
- discountCode: discountCode.trim().toLowerCase(),
+ discountCode: (discountCode || '').trim().toLowerCase(),
  })
- if (response.data?.invoice?.id) {
+ if (response?.data?.invoice?.id) {
  setInvoiceId(response.data.invoice.id)
  if (response.data.discountApplied) {
  setDiscountApplied(true)
@@ -677,9 +677,10 @@ setError('Failed to load Bitcoin assets. Please try again.')
  } else {
  setError('Failed to create invoice')
  }
- } catch (error) {
+ } catch (error: any) {
  console.error('Error creating invoice:', error)
- setError('Failed to create invoice. Please try again.')
+ const errorMessage = error?.response?.data?.error || error?.message || 'Unknown error'
+ setError(`Failed to create invoice: ${errorMessage}. Please try again.`)
  }
  }
 
@@ -2095,12 +2096,16 @@ onSelectionChange={setSelectedAssetIds}
  <select
  value=""
  onChange={(e) => {
+ try {
  const selectedBeneficiary = beneficiaries.find(b => b.id === e.target.value)
  if (selectedBeneficiary) {
- setExecutorName(selectedBeneficiary.name)
+ setExecutorName(selectedBeneficiary.name || '')
  setExecutorAddress(selectedBeneficiary.walletAddress || '')
  setExecutorPhone(selectedBeneficiary.phone || '')
  setExecutorEmail(selectedBeneficiary.email || '')
+ }
+ } catch (err) {
+ console.error('Error selecting beneficiary:', err)
  }
  }}
  className="w-full rounded-lg border-2 border-blue-300 bg-blue-50 p-2 text-sm focus:border-blue-500 focus:outline-none transition-colors"
@@ -2108,7 +2113,7 @@ onSelectionChange={setSelectedAssetIds}
  <option value="">Select from beneficiaries...</option>
  {beneficiaries.map((ben) => (
  <option key={ben.id} value={ben.id}>
- {ben.name} {ben.ensName ? `(${ben.ensName})` : ben.walletAddress ? `(${ben.walletAddress.slice(0, 6)}...${ben.walletAddress.slice(-4)})` : ''}
+ {ben.name || 'Unnamed'} {ben.ensName ? `(${ben.ensName})` : ben.walletAddress ? `(${ben.walletAddress.slice(0, 6)}...${ben.walletAddress.slice(-4)})` : ''}
  </option>
  ))}
  </select>
