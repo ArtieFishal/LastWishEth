@@ -1498,6 +1498,20 @@ setError('Failed to load Bitcoin assets. Please try again.')
  setError('Maximum 20 wallets allowed (including queued). Please disconnect a wallet or remove from queue first.')
  return
  }
+ 
+ // IMPORTANT: Disconnect previous wagmi connection before adding new wallet
+ // This prevents WalletConnect session limits and wagmi state conflicts
+ if (isConnected && evmAddress && evmAddress !== addr) {
+ try {
+ await disconnect()
+ // Small delay to ensure disconnect completes
+ await new Promise(resolve => setTimeout(resolve, 100))
+ } catch (err) {
+ console.warn('Error disconnecting previous wallet:', err)
+ // Continue anyway - the address is already captured
+ }
+ }
+ 
  setConnectedEVMAddresses(prev => new Set([...prev, addr]))
  // Track wallet provider
  if (provider) {
