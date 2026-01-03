@@ -37,3 +37,98 @@ button[style*="borderColor"] span.font-semibold,
 button[style*="borderColor"] svg {
   color: inherit !important;
 }
+
+/* WalletConnect QR Code Modal Improvements */
+/* Make the QR code larger and clearer */
+w3m-modal,
+w3m-modal *,
+[data-testid="qr-code"],
+canvas[data-testid="qr-code"],
+img[data-testid="qr-code"],
+svg[data-testid="qr-code"] {
+  max-width: 100% !important;
+}
+
+/* Improve QR code container */
+w3m-modal [class*="qr"],
+w3m-modal [class*="QR"],
+w3m-modal canvas,
+w3m-modal img[alt*="QR"],
+w3m-modal img[alt*="qr"] {
+  width: 400px !important;
+  height: 400px !important;
+  min-width: 400px !important;
+  min-height: 400px !important;
+  max-width: 400px !important;
+  max-height: 400px !important;
+  image-rendering: -webkit-optimize-contrast !important;
+  image-rendering: crisp-edges !important;
+  image-rendering: pixelated !important;
+  background: white !important;
+  padding: 20px !important;
+  border: 4px solid #000 !important;
+  border-radius: 8px !important;
+}
+
+/* Ensure QR code is visible and high contrast */
+w3m-modal canvas,
+w3m-modal img[alt*="QR"],
+w3m-modal img[alt*="qr"] {
+  filter: contrast(1.2) brightness(1.1) !important;
+  -webkit-filter: contrast(1.2) brightness(1.1) !important;
+}
+
+/* Improve modal container */
+w3m-modal {
+  z-index: 9999 !important;
+}
+
+/* WalletConnect v2 modal improvements */
+#w3m-modal,
+.w3m-modal,
+[data-w3m-modal] {
+  z-index: 9999 !important;
+}
+
+#w3m-modal canvas,
+#w3m-modal img[alt*="QR"],
+#w3m-modal img[alt*="qr"],
+.w3m-modal canvas,
+.w3m-modal img[alt*="QR"],
+.w3m-modal img[alt*="qr"] {
+  width: 400px !important;
+  height: 400px !important;
+  min-width: 400px !important;
+  min-height: 400px !important;
+  max-width: 400px !important;
+  max-height: 400px !important;
+  image-rendering: -webkit-optimize-contrast !important;
+  image-rendering: crisp-edges !important;
+  background: white !important;
+  padding: 20px !important;
+  border: 4px solid #000 !important;
+  border-radius: 8px !important;
+  filter: contrast(1.2) brightness(1.1) !important;
+  -webkit-filter: contrast(1.2) brightness(1.1) !important;
+}
+
+/* Reown AppKit (WalletConnect v3) modal improvements */
+reown-appkit-modal,
+reown-appkit-qr-code,
+[data-testid="qr-code"],
+canvas[data-testid="qr-code"] {
+  width: 400px !important;
+  height: 400px !important;
+  min-width: 400px !important;
+  min-height: 400px !important;
+  max-width: 400px !important;
+  max-height: 400px !important;
+  image-rendering: -webkit-optimize-contrast !important;
+  image-rendering: crisp-edges !important;
+  background: white !important;
+  padding: 20px !important;
+  border: 4px solid #000 !important;
+  border-radius: 8px !important;
+  filter: contrast(1.2) brightness(1.1) !important;
+  -webkit-filter: contrast(1.2) brightness(1.1) !important;
+}

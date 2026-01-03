@@ -42,6 +42,15 @@ const buildConnectors = async () => {
               '1ae92b26df02f0abca6304df07debccd18262fdf5fe82daa81593582dac9a122', // Rainbow
               'a797aa35c0fadbfc1a53e7f67567ed348c5293fa12515bd01d60061c4fb574a8', // Phantom
             ],
+            // Improve QR code quality
+            qrCodeOptions: {
+              size: 400, // Larger QR code
+              margin: 2,
+              color: {
+                dark: '#000000',
+                light: '#FFFFFF',
+              },
+            },
           },
         })
       )
