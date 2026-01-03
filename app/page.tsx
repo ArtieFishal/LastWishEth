@@ -786,6 +786,14 @@ setError('Failed to load Bitcoin assets. Please try again.')
  }
  URL.revokeObjectURL(url)
  }, 5000)
+ 
+ // Reset payment state after successful PDF generation
+ // This locks the document again, requiring payment/discount for next generation
+ setPaymentVerified(false)
+ setDiscountApplied(false)
+ setDiscountCode('')
+ setInvoiceId(null)
+ 
  } catch (error) {
  console.error('Error generating PDF:', error)
  setError('Failed to generate PDF. Please try again.')
