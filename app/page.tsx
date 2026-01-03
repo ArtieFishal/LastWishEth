@@ -431,15 +431,21 @@ export default function Home() {
  setPaymentRecipientAddress(address as `0x${string}`)
  console.log('Resolved lastwish.eth to:', address)
  } else {
- setError('Failed to resolve lastwish.eth address')
+ // Don't set error here - just log it, payment can still proceed with manual entry
+ console.warn('Failed to resolve lastwish.eth address, but payment can still proceed')
  }
- } catch (error) {
+ } catch (error: any) {
  console.error('Error resolving payment address:', error)
- setError('Failed to resolve payment recipient address')
+ // Don't block payment flow - just log the error
+ // Payment can still proceed if user knows the address
  }
  }
  }
+ 
+ // Only resolve if we're on payment step and don't have address yet
+ if (step === 'payment' && !paymentRecipientAddress) {
  resolvePaymentAddress()
+ }
  }, [step, paymentRecipientAddress])
 
  // Auto-verify payment after transaction is confirmed
