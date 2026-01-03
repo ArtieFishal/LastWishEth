@@ -211,7 +211,7 @@ export default function Home() {
           canNavigateToStep={canNavigateToStep}
         />
 
-        <main className="bg-gray-100 rounded-xl shadow-xl p-8 md:p-12">
+        <main id="main-content" className="bg-gray-100 rounded-xl shadow-xl p-8 md:p-12" role="main" aria-label="LastWish.eth application">
           <ErrorMessage message={error || ''} onDismiss={() => setError(null)} />
 
           {step === 'connect' && (

@@ -167,14 +167,17 @@ export function AssetsStep({
           <div className="mt-8 flex gap-4">
             <button
               onClick={() => onStepChange('connect')}
-              className="flex-1 rounded-lg border-2 border-blue-300 bg-blue-50 text-blue-700 p-4 font-semibold hover:bg-blue-100 transition-colors"
+              className="flex-1 rounded-lg border-2 border-blue-300 bg-blue-50 text-blue-700 p-4 font-semibold hover:bg-blue-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              aria-label="Go back to connect wallets step"
             >
               ← Add More Wallets
             </button>
             <button
               onClick={() => onStepChange('allocate')}
               disabled={selectedAssetIds.length === 0}
-              className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
+              className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              aria-label={`Continue to allocation step with ${selectedAssetIds.length} selected asset${selectedAssetIds.length !== 1 ? 's' : ''}`}
+              aria-disabled={selectedAssetIds.length === 0}
             >
               Continue to Allocation ({selectedAssetIds.length} selected) →
             </button>

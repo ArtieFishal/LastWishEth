@@ -54,7 +54,7 @@ export function ProgressSteps({ steps, currentStep, onStepClick, canNavigateToSt
                     }
                   }}
                   disabled={!canNavigate}
-                  className={`text-xs mt-2 font-medium transition-colors ${
+                  className={`text-xs mt-2 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded px-2 py-1 ${
                     isActive
                       ? 'text-blue-600 cursor-default'
                       : isCompleted
@@ -64,6 +64,8 @@ export function ProgressSteps({ steps, currentStep, onStepClick, canNavigateToSt
                       : 'text-gray-400 cursor-not-allowed'
                   }`}
                   title={canNavigate ? `Go to ${s.label}` : 'Complete previous steps first'}
+                  aria-label={`${s.label} step${isActive ? ' (current)' : isCompleted ? ' (completed)' : ''}`}
+                  aria-current={isActive ? 'step' : undefined}
                 >
                   {s.label}
                 </button>

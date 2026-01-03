@@ -252,13 +252,16 @@ export function DownloadStep({
         <div className="flex gap-3 mb-4">
           <button
             onClick={handleDownloadPDF}
-            className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg"
+            className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            aria-label={pdfGenerated ? 'Download PDF document again' : 'Download PDF document'}
           >
             {pdfGenerated ? 'Download PDF Again' : 'Download PDF'}
           </button>
           <button
             onClick={() => setShowPreview(!showPreview)}
-            className="flex-1 rounded-lg bg-gray-600 text-white p-4 font-semibold hover:bg-gray-700 transition-colors shadow-lg"
+            className="flex-1 rounded-lg bg-gray-600 text-white p-4 font-semibold hover:bg-gray-700 transition-colors shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            aria-label={showPreview ? 'Hide PDF preview' : 'Show PDF preview'}
+            aria-expanded={showPreview}
           >
             {showPreview ? 'Hide Preview' : 'Preview PDF'}
           </button>

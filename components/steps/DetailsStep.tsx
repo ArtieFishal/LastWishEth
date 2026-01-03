@@ -411,19 +411,27 @@ export function DetailsStep({
       <div className="mt-8 flex gap-4">
         <button
           onClick={() => onStepChange('allocate')}
-          className="flex-1 rounded-lg border-2 border-gray-300 p-4 font-semibold hover:bg-gray-50 transition-colors"
+          className="flex-1 rounded-lg border-2 border-gray-300 p-4 font-semibold hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          aria-label="Go back to allocation step"
         >
           ← Back
         </button>
         <button
           onClick={onCreateInvoice}
           disabled={!canProceedToPayment()}
-          className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           title={!canProceedToPayment() ? `Missing: ${getPaymentValidationErrors().join(', ')}` : ''}
+          aria-label={discountApplied ? 'Unlock and generate PDF for free' : 'Unlock and generate PDF for 0.000025 ETH'}
+          aria-describedby={!canProceedToPayment() ? 'payment-validation-errors' : undefined}
         >
           {discountApplied ? 'Unlock & Generate (FREE)' : 'Unlock & Generate (0.000025 ETH)'} →
         </button>
       </div>
+      {!canProceedToPayment() && (
+        <div id="payment-validation-errors" className="sr-only">
+          Missing required fields: {getPaymentValidationErrors().join(', ')}
+        </div>
+      )}
     </div>
   )
 }
