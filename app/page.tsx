@@ -341,7 +341,7 @@ export default function Home() {
  }
  }, [evmAddress, connectedEVMAddresses, verifiedAddresses, selectedWalletForLoading])
 
- // Resolve ENS name for executor wallet address
+ // Resolve ENS name for executor wallet address (supports .eth, .base.eth, etc.)
  useEffect(() => {
  const resolveExecutorENS = async () => {
  if (!executorAddress || executorAddress.trim().length === 0) {
@@ -360,9 +360,14 @@ export default function Home() {
  transport: http(),
  })
 
- // Check if input is an ENS name (ends with .eth)
- if (input.endsWith('.eth')) {
+ // Check if input is an ENS name (ends with .eth, .base.eth, etc.)
+ // Support: .eth, .base.eth, and other ENS-compatible TLDs
+ const isENSName = /\.(eth|base\.eth)$/i.test(input) || input.includes('.')
+ 
+ if (isENSName) {
  // Forward lookup: ENS name -> address
+ // Note: .sol and .btc are not ENS-compatible and would need different resolvers
+ // For now, we'll try ENS resolution for .eth and .base.eth
  const address = await publicClient.getEnsAddress({ name: input })
  if (address) {
  setExecutorResolvedAddress(address)
@@ -371,8 +376,10 @@ export default function Home() {
  setResolvedEnsNames(prev => ({ ...prev, [address.toLowerCase()]: input }))
  console.log(`Resolved executor ENS "${input}" to address: ${address}`)
  } else {
- setExecutorEnsName(null)
+ // If resolution fails, still keep the name but no address
+ setExecutorEnsName(input)
  setExecutorResolvedAddress(null)
+ console.warn(`Could not resolve ENS name "${input}"`)
  }
  } 
  // Check if input is an Ethereum address (starts with 0x and is 42 chars)
@@ -390,13 +397,17 @@ export default function Home() {
  setExecutorResolvedAddress(input.toLowerCase())
  }
  } else {
- // Not a valid ENS name or address
- setExecutorEnsName(null)
+ // Not a valid ENS name or address - could be .sol, .btc, or other
+ // Keep the input as-is but don't try to resolve
+ setExecutorEnsName(input.includes('.') ? input : null)
  setExecutorResolvedAddress(null)
  }
  } catch (error) {
  console.error('Error resolving executor ENS:', error)
- setExecutorEnsName(null)
+ // On error, keep the input as-is if it looks like a name
+ if (executorAddress.includes('.')) {
+ setExecutorEnsName(executorAddress.trim())
+ }
  setExecutorResolvedAddress(null)
  }
  }
@@ -915,7 +926,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
 
  // Check required executor fields
  if (!executorName.trim()) errors.push('Executor name')
- if (!executorAddress.trim()) errors.push('Executor address')
+ // Executor address is now optional
  if (!executorPhone.trim()) errors.push('Executor phone')
  if (!executorEmail.trim()) errors.push('Executor email')
 
@@ -2014,8 +2025,9 @@ onSelectionChange={setSelectedAssetIds}
               value={ownerEnsName}
               onChange={(e) => setOwnerEnsName(e.target.value)}
               className="w-full rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors"
-              placeholder="yourname.eth"
+              placeholder="yourname.eth, yourname.base.eth, yourname.sol, yourname.btc"
             />
+            <p className="text-xs text-gray-500 mt-1">Supports .eth, .base.eth, .sol, .btc, and other naming systems</p>
           </div>
  <div>
  <label className="block text-sm font-semibold text-gray-700 mb-2">Street Address *</label>
@@ -2078,6 +2090,30 @@ onSelectionChange={setSelectedAssetIds}
  <div className="space-y-4">
  <div>
  <label className="block text-sm font-semibold text-gray-700 mb-2">Executor Full Name *</label>
+ {beneficiaries.length > 0 && (
+ <div className="mb-2">
+ <select
+ value=""
+ onChange={(e) => {
+ const selectedBeneficiary = beneficiaries.find(b => b.id === e.target.value)
+ if (selectedBeneficiary) {
+ setExecutorName(selectedBeneficiary.name)
+ setExecutorAddress(selectedBeneficiary.walletAddress || '')
+ setExecutorPhone(selectedBeneficiary.phone || '')
+ setExecutorEmail(selectedBeneficiary.email || '')
+ }
+ }}
+ className="w-full rounded-lg border-2 border-blue-300 bg-blue-50 p-2 text-sm focus:border-blue-500 focus:outline-none transition-colors"
+ >
+ <option value="">Select from beneficiaries...</option>
+ {beneficiaries.map((ben) => (
+ <option key={ben.id} value={ben.id}>
+ {ben.name} {ben.ensName ? `(${ben.ensName})` : ben.walletAddress ? `(${ben.walletAddress.slice(0, 6)}...${ben.walletAddress.slice(-4)})` : ''}
+ </option>
+ ))}
+ </select>
+ </div>
+ )}
  <input
  type="text"
  value={executorName}
@@ -2085,20 +2121,29 @@ onSelectionChange={setSelectedAssetIds}
  className="w-full rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors"
  placeholder="Jane Marie Doe"
  />
+ {beneficiaries.length > 0 && (
+ <p className="text-xs text-gray-500 mt-1">Select from beneficiaries above or type a name manually</p>
+ )}
  </div>
  <div>
- <label className="block text-sm font-semibold text-gray-700 mb-2">Executor Wallet Address *</label>
+ <label className="block text-sm font-semibold text-gray-700 mb-2">Executor Wallet Address (Optional)</label>
  <input
  type="text"
  value={executorAddress}
  onChange={(e) => setExecutorAddress(e.target.value)}
  className="w-full rounded-lg border-2 border-gray-300 p-3 font-mono text-sm focus:border-blue-500 focus:outline-none transition-colors"
- placeholder="0x... or name.eth"
+ placeholder="0x... or name.eth, name.base.eth, name.sol, name.btc"
  />
  {executorEnsName && executorResolvedAddress && (
  <div className="mt-2 text-sm text-green-600">
- <span className="font-semibold">{executorEnsName}</span>
+ <span className="font-semibold">✓ {executorEnsName}</span>
  <span className="text-gray-500 ml-2 font-mono">({executorResolvedAddress})</span>
+ </div>
+ )}
+ {executorEnsName && !executorResolvedAddress && (
+ <div className="mt-2 text-sm text-yellow-600">
+ <span className="font-semibold">⚠ {executorEnsName}</span>
+ <span className="text-gray-500 ml-2">(Could not resolve - may be .sol, .btc, or other naming system)</span>
  </div>
  )}
  {!executorEnsName && executorResolvedAddress && (
@@ -2106,6 +2151,7 @@ onSelectionChange={setSelectedAssetIds}
  {executorResolvedAddress}
  </div>
  )}
+ <p className="text-xs text-gray-500 mt-1">Supports .eth, .base.eth, .sol, .btc, and other naming systems</p>
  </div>
  <div className="grid grid-cols-2 gap-4">
  <div>
