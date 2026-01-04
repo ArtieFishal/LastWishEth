@@ -22,6 +22,8 @@ export function AllocationPanel({
   const [allocationValue, setAllocationValue] = useState('')
   const [editingAllocation, setEditingAllocation] = useState<{ assetId: string; beneficiaryId: string } | null>(null)
   const [allocationHistory, setAllocationHistory] = useState<Allocation[][]>([]) // Track history for undo
+  const [sortBy, setSortBy] = useState<'name' | 'status' | 'chain' | 'type'>('name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
   // Helper to check if asset is NFT (non-fungible)
   const isNFT = (asset: Asset) => asset.type === 'erc721' || asset.type === 'erc1155'
@@ -398,33 +400,49 @@ export function AllocationPanel({
               </button>
             </div>
           </div>
-          <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1 bg-gray-50">
+          <div className="max-h-[600px] overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50">
             {fungibleAssets.length > 0 && (
               <div className="mb-2">
                 <p className="text-xs font-semibold text-gray-700 mb-1">💰 Fungible Tokens (Can Split)</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {fungibleAssets.map((asset) => {
                     const isSelected = selectedAssets.includes(asset.id)
+                    const assetBalance = asset.balance ? parseFloat(asset.balance) / Math.pow(10, asset.decimals || 18) : 0
                     return (
                       <label
                         key={asset.id}
-                        className={`flex items-center gap-2 p-1.5 rounded cursor-pointer transition-colors text-xs ${
-                          isSelected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-100'
+                        className={`flex items-start gap-3 p-2.5 rounded cursor-pointer transition-colors text-xs border ${
+                          isSelected ? 'bg-blue-50 border-blue-300 shadow-sm' : 'hover:bg-gray-100 border-gray-200'
                         }`}
                       >
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleAsset(asset.id)}
-                          className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-0.5"
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <span className="font-semibold text-gray-900">{asset.symbol}</span>
-                            <span className="text-gray-500">({asset.chain})</span>
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="font-bold text-sm text-gray-900">{asset.symbol}</span>
+                            <span className="text-gray-500 text-xs">({asset.chain})</span>
+                            {asset.walletProvider && (
+                              <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-700">
+                                {asset.walletProvider}
+                              </span>
+                            )}
                           </div>
-                          {asset.walletProvider && (
-                            <p className="text-xs text-gray-500">{asset.walletProvider}</p>
+                          {asset.name && asset.name !== asset.symbol && (
+                            <p className="text-xs text-gray-600 mb-1">{asset.name}</p>
+                          )}
+                          {assetBalance > 0 && (
+                            <p className="text-xs font-mono text-gray-700">
+                              Balance: {assetBalance.toLocaleString()} {asset.symbol}
+                            </p>
+                          )}
+                          {asset.contractAddress && (
+                            <p className="text-xs font-mono text-gray-500 truncate mt-1">
+                              {asset.contractAddress.slice(0, 10)}...{asset.contractAddress.slice(-8)}
+                            </p>
                           )}
                         </div>
                       </label>
@@ -436,7 +454,7 @@ export function AllocationPanel({
             {nftAssets.length > 0 && (
               <div className={fungibleAssets.length > 0 ? 'mt-2 pt-2 border-t border-gray-300' : ''}>
                 <p className="text-xs font-semibold text-gray-700 mb-1">🖼️ NFTs (Cannot Split)</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {nftAssets.map((asset) => {
                     const isSelected = selectedAssets.includes(asset.id)
                     const existingAllocation = allocations.find(a => a.assetId === asset.id)
@@ -444,15 +462,15 @@ export function AllocationPanel({
                     return (
                       <label
                         key={asset.id}
-                        className={`flex items-center gap-2 p-1.5 rounded cursor-pointer transition-colors text-xs ${
-                          isSelected ? 'bg-pink-50 border border-pink-200' : existingAllocation ? 'bg-yellow-50 border border-yellow-200' : 'hover:bg-gray-100'
+                        className={`flex items-start gap-3 p-2.5 rounded cursor-pointer transition-colors text-xs border ${
+                          isSelected ? 'bg-pink-50 border-pink-300 shadow-sm' : existingAllocation ? 'bg-yellow-50 border-yellow-300' : 'hover:bg-gray-100 border-gray-200'
                         }`}
                       >
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleAsset(asset.id)}
-                          className="w-3 h-3 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+                          className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 mt-0.5"
                         />
                         {asset.imageUrl && (
                           <img 
@@ -463,18 +481,29 @@ export function AllocationPanel({
                               : asset.imageUrl
                             }
                             alt={asset.name || asset.symbol}
-                            className="w-8 h-8 rounded object-cover border border-gray-200 flex-shrink-0"
+                            className="w-16 h-16 rounded object-cover border-2 border-gray-300 flex-shrink-0"
                             onError={(e) => e.currentTarget.style.display = 'none'}
                           />
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <span className="font-semibold text-gray-900 truncate">{asset.name || asset.symbol}</span>
-                            {asset.tokenId && <span className="text-gray-500">#{asset.tokenId}</span>}
-                            {existingAllocation && (
-                              <span className="text-yellow-700 text-xs">→ {allocatedTo?.name}</span>
-                            )}
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="font-bold text-sm text-gray-900 truncate">{asset.name || asset.symbol}</span>
+                            {asset.tokenId && <span className="text-gray-500 text-xs">#{asset.tokenId}</span>}
+                            <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-700">NFT</span>
                           </div>
+                          {asset.chain && (
+                            <p className="text-xs text-gray-500 mb-1">Chain: {asset.chain}</p>
+                          )}
+                          {asset.contractAddress && (
+                            <p className="text-xs font-mono text-gray-500 truncate mb-1">
+                              Contract: {asset.contractAddress.slice(0, 10)}...{asset.contractAddress.slice(-8)}
+                            </p>
+                          )}
+                          {existingAllocation && (
+                            <p className="text-xs text-yellow-700 font-semibold mt-1">
+                              → Allocated to: {allocatedTo?.name}
+                            </p>
+                          )}
                         </div>
                       </label>
                     )
@@ -607,119 +636,181 @@ export function AllocationPanel({
         )}
       </div>
 
-      {/* Allocation Summary - Compact Grid */}
-      <div className="space-y-2">
-        <h4 className="font-semibold text-gray-900 text-sm">Allocation Summary</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {allocationSummary.map(({ asset, allocations: assetAllocs, totalPercentage, totalAmount, isOverAllocated, isUnallocated, assetIsNFT }) => {
-            return (
-              <div
-                key={asset.id}
-                className={`rounded-lg border-2 p-3 ${
-                  assetIsNFT
-                    ? 'border-pink-300 bg-pink-50'
-                    : isOverAllocated 
-                    ? 'border-red-300 bg-red-50' 
-                    : isUnallocated 
-                    ? 'border-yellow-300 bg-yellow-50' 
-                    : 'border-green-200 bg-green-50'
-                }`}
-              >
-                <div className="flex items-start gap-2 mb-2">
-                  {assetIsNFT && asset.imageUrl && (
-                    <img 
-                      src={asset.imageUrl.startsWith('ipfs://') 
-                        ? asset.imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/')
-                        : asset.imageUrl.startsWith('ipfs/')
-                        ? `https://ipfs.io/${asset.imageUrl}`
-                        : asset.imageUrl
-                      }
-                      alt={asset.name || asset.symbol}
-                      className="w-12 h-12 rounded object-cover border-2 border-pink-300 flex-shrink-0"
-                      onError={(e) => e.currentTarget.style.display = 'none'}
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1 flex-wrap mb-1">
-                      <span className="font-bold text-xs text-gray-900 truncate">{asset.name || asset.symbol}</span>
-                      {assetIsNFT ? (
-                        <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-800">
-                          NFT
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800">
-                          {asset.symbol}
+      {/* Allocation Summary - Enhanced with Sorting */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="font-semibold text-gray-900 text-lg">Allocation Summary</h4>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-gray-700">Sort by:</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'name' | 'status' | 'chain' | 'type')}
+              className="text-xs rounded border border-gray-300 px-2 py-1 focus:border-blue-500 focus:outline-none"
+            >
+              <option value="name">Name</option>
+              <option value="status">Status</option>
+              <option value="chain">Chain</option>
+              <option value="type">Type</option>
+            </select>
+            <button
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300"
+              title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+            >
+              {sortOrder === 'asc' ? '↑' : '↓'}
+            </button>
+          </div>
+        </div>
+        
+        {/* Sort the allocation summary */}
+        {(() => {
+          const sorted = [...allocationSummary].sort((a, b) => {
+            let comparison = 0
+            switch (sortBy) {
+              case 'name':
+                comparison = (a.asset.name || a.asset.symbol).localeCompare(b.asset.name || b.asset.symbol)
+                break
+              case 'status':
+                const aStatus = a.isUnallocated ? 0 : a.isOverAllocated ? 2 : 1
+                const bStatus = b.isUnallocated ? 0 : b.isOverAllocated ? 2 : 1
+                comparison = aStatus - bStatus
+                break
+              case 'chain':
+                comparison = (a.asset.chain || '').localeCompare(b.asset.chain || '')
+                break
+              case 'type':
+                comparison = (a.assetIsNFT ? 'NFT' : 'Token').localeCompare(b.assetIsNFT ? 'NFT' : 'Token')
+                break
+            }
+            return sortOrder === 'asc' ? comparison : -comparison
+          })
+          
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {sorted.map(({ asset, allocations: assetAllocs, totalPercentage, totalAmount, isOverAllocated, isUnallocated, assetIsNFT, assetBalance }) => {
+                return (
+                  <div
+                    key={asset.id}
+                    className={`rounded-lg border-2 p-4 shadow-sm ${
+                      assetIsNFT
+                        ? 'border-pink-300 bg-pink-50'
+                        : isOverAllocated 
+                        ? 'border-red-300 bg-red-50' 
+                        : isUnallocated 
+                        ? 'border-yellow-300 bg-yellow-50' 
+                        : 'border-green-200 bg-green-50'
+                    }`}
+                  >
+                    {/* Enhanced header with more info */}
+                    <div className="flex items-start gap-3 mb-3">
+                      {assetIsNFT && asset.imageUrl && (
+                        <img 
+                          src={asset.imageUrl.startsWith('ipfs://') 
+                            ? asset.imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/')
+                            : asset.imageUrl.startsWith('ipfs/')
+                            ? `https://ipfs.io/${asset.imageUrl}`
+                            : asset.imageUrl
+                          }
+                          alt={asset.name || asset.symbol}
+                          className="w-16 h-16 rounded object-cover border-2 border-pink-300 flex-shrink-0"
+                          onError={(e) => e.currentTarget.style.display = 'none'}
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="font-bold text-sm text-gray-900 truncate">{asset.name || asset.symbol}</span>
+                          {assetIsNFT ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-800">
+                              NFT
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800">
+                              {asset.symbol}
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{asset.chain}</span>
+                        </div>
+                        {!assetIsNFT && assetBalance && (
+                          <p className="text-xs text-gray-600 font-mono">
+                            Total: {assetBalance.toLocaleString()} {asset.symbol}
+                          </p>
+                        )}
+                        {asset.walletAddress && (
+                          <p className="text-xs text-gray-500 font-mono truncate mt-1">
+                            {asset.walletAddress}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Status badges - cleaner layout */}
+                    <div className="flex gap-2 mb-3 flex-wrap">
+                      {assetIsNFT && assetAllocs.length > 0 && (
+                        <span className="text-xs text-pink-700 font-semibold bg-pink-100 px-2 py-1 rounded">✓ Allocated</span>
+                      )}
+                      {!assetIsNFT && isOverAllocated && (
+                        <span className="text-xs text-red-700 font-semibold bg-red-100 px-2 py-1 rounded">⚠️ Over-allocated</span>
+                      )}
+                      {isUnallocated && (
+                        <span className="text-xs text-yellow-700 font-semibold bg-yellow-100 px-2 py-1 rounded">⚠️ Unallocated</span>
+                      )}
+                      {!assetIsNFT && !isUnallocated && !isOverAllocated && (
+                        <span className="text-xs text-green-700 font-semibold bg-green-100 px-2 py-1 rounded">
+                          {totalPercentage.toFixed(1)}% Allocated
                         </span>
                       )}
-                      <span className="text-xs text-gray-500">{asset.chain}</span>
                     </div>
-                    {asset.walletAddress && (
-                      <p className="text-xs text-gray-500 font-mono break-all leading-tight">
-                        {asset.walletAddress}
-                      </p>
+                    
+                    {/* Allocations list - enhanced */}
+                    {assetAllocs.length > 0 ? (
+                      <div className="space-y-1.5 text-xs bg-white rounded p-2 border border-gray-200">
+                        {assetAllocs.map((alloc) => {
+                          const beneficiary = beneficiaries.find((b) => b.id === alloc.beneficiaryId)
+                          let allocationDisplay = ''
+                          if (assetIsNFT) {
+                            allocationDisplay = '100%'
+                          } else if (alloc.type === 'percentage') {
+                            allocationDisplay = `${alloc.percentage}%`
+                            if (asset.type === 'btc' && alloc.percentage) {
+                              const satsAmount = Math.floor((parseFloat(asset.balance) * alloc.percentage) / 100)
+                              allocationDisplay += ` (${satsAmount.toLocaleString('en-US')} SATs)`
+                            }
+                          } else {
+                            allocationDisplay = `${alloc.amount} ${asset.symbol}`
+                            if (asset.type === 'btc' && alloc.amount) {
+                              const btcAmount = parseFloat(alloc.amount)
+                              if (!isNaN(btcAmount)) {
+                                const satsAmount = Math.floor(btcAmount * 100000000)
+                                allocationDisplay += ` (${satsAmount.toLocaleString('en-US')} SATs)`
+                              }
+                            }
+                          }
+                          return (
+                            <div key={`${alloc.assetId}-${alloc.beneficiaryId}`} className="flex items-center justify-between bg-gray-50 rounded p-1.5 border border-gray-200">
+                              <div className="flex-1 min-w-0">
+                                <span className="font-semibold text-gray-900">{beneficiary?.name}</span>
+                                <span className="text-gray-600 ml-1">: {allocationDisplay}</span>
+                              </div>
+                              <button
+                                onClick={() => handleRemoveAllocation(alloc.assetId, alloc.beneficiaryId)}
+                                className="text-red-600 hover:text-red-700 text-sm font-bold ml-2 px-1"
+                                title="Remove allocation"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500 italic text-center py-2">No allocations yet</p>
                     )}
                   </div>
-                </div>
-                
-                {/* Status badges */}
-                <div className="flex gap-1 mb-2 flex-wrap">
-                  {assetIsNFT && assetAllocs.length > 0 && (
-                    <span className="text-xs text-pink-700 font-semibold bg-pink-100 px-1.5 py-0.5 rounded">100%</span>
-                  )}
-                  {!assetIsNFT && isOverAllocated && (
-                    <span className="text-xs text-red-700 font-semibold bg-red-100 px-1.5 py-0.5 rounded">⚠️ Over</span>
-                  )}
-                  {isUnallocated && (
-                    <span className="text-xs text-yellow-700 font-semibold bg-yellow-100 px-1.5 py-0.5 rounded">⚠️ Unallocated</span>
-                  )}
-                </div>
-                
-                {/* Allocations list */}
-                {assetAllocs.length > 0 && (
-                  <div className="space-y-1 text-xs">
-                    {assetAllocs.map((alloc) => {
-                      const beneficiary = beneficiaries.find((b) => b.id === alloc.beneficiaryId)
-                      let allocationDisplay = ''
-                      if (assetIsNFT) {
-                        allocationDisplay = '100%'
-                      } else if (alloc.type === 'percentage') {
-                        allocationDisplay = `${alloc.percentage}%`
-                        // For Bitcoin, show SATs equivalent
-                        if (asset.type === 'btc' && alloc.percentage) {
-                          const satsAmount = Math.floor((parseFloat(asset.balance) * alloc.percentage) / 100)
-                          allocationDisplay += ` (${satsAmount.toLocaleString('en-US')} SATs)`
-                        }
-                      } else {
-                        allocationDisplay = `${alloc.amount} ${asset.symbol}`
-                        // For Bitcoin, show SATs equivalent
-                        if (asset.type === 'btc' && alloc.amount) {
-                          const btcAmount = parseFloat(alloc.amount)
-                          if (!isNaN(btcAmount)) {
-                            const satsAmount = Math.floor(btcAmount * 100000000)
-                            allocationDisplay += ` (${satsAmount.toLocaleString('en-US')} SATs)`
-                          }
-                        }
-                      }
-                      return (
-                        <div key={`${alloc.assetId}-${alloc.beneficiaryId}`} className="flex items-center justify-between bg-white rounded p-1">
-                          <span className="text-gray-700 truncate">
-                            {beneficiary?.name}: {allocationDisplay}
-                          </span>
-                          <button
-                            onClick={() => handleRemoveAllocation(alloc.assetId, alloc.beneficiaryId)}
-                            className="text-red-600 hover:text-red-700 text-xs font-semibold ml-2"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
+                )
+              })}
+            </div>
+          )
+        })()}
       </div>
     </div>
   )

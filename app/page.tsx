@@ -1258,7 +1258,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  </button>
  )}
  </div>
- <div className="space-y-3 max-h-96 overflow-y-auto">
+ <div className="space-y-3 max-h-[800px] overflow-y-auto">
  {queuedSessions.map((session) => {
  const totalAssets = session.assets.length
  const totalAllocations = session.allocations.length
