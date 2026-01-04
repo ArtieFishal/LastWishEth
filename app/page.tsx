@@ -2029,9 +2029,14 @@ assets={(() => {
   // If no current assets but we have queued sessions, show queued assets
   let assetsToShow = assets.length > 0 ? assets : queuedSessions.flatMap(s => s.assets)
   
+  const ethscriptionCountBefore = assetsToShow.filter(a => a.type === 'ethscription').length
+  console.log(`[Assets Step] Assets to show: ${assetsToShow.length} total, ${ethscriptionCountBefore} ethscriptions`)
+  
   let filtered = assetsToShow
   if (selectedWalletForLoading) {
     filtered = assetsToShow.filter(a => a.walletAddress?.toLowerCase() === selectedWalletForLoading.toLowerCase())
+    const ethscriptionCountAfter = filtered.filter(a => a.type === 'ethscription').length
+    console.log(`[Assets Step] After wallet filter (${selectedWalletForLoading}): ${filtered.length} total, ${ethscriptionCountAfter} ethscriptions`)
   } else if (btcAddress) {
     filtered = assetsToShow.filter(a => a.chain === 'bitcoin' && (a.walletAddress === btcAddress || a.contractAddress === btcAddress))
     console.log('[Assets Step] Filtering Bitcoin assets:', {
@@ -2044,7 +2049,11 @@ assets={(() => {
   }
   // Apply spam filtering if enabled
   if (hideSpamTokens) {
+    const beforeSpamFilter = filtered.length
     filtered = filterSpamTokens(filtered)
+    const afterSpamFilter = filtered.length
+    const ethscriptionCountAfterSpam = filtered.filter(a => a.type === 'ethscription').length
+    console.log(`[Assets Step] After spam filter: ${beforeSpamFilter} -> ${afterSpamFilter} assets, ${ethscriptionCountAfterSpam} ethscriptions`)
   }
   return filtered
 })()}
