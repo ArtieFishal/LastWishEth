@@ -1518,8 +1518,9 @@ setError('Failed to load Bitcoin assets. Please try again.')
  {queuedSessions.map((session) => {
  const totalAssets = session.assets.length
  const totalAllocations = session.allocations.length
- // Get wallet name (manual name > resolved ENS > ENS from session > address)
- const walletName = walletNames[session.walletAddress] || 
+ // Get wallet name (stored walletName > manual name > resolved ENS > ENS from session > address)
+ const walletName = session.walletName || 
+                    walletNames[session.walletAddress] || 
                     resolvedEnsNames[session.walletAddress.toLowerCase()] || 
                     session.ensName || 
                     session.walletAddress
