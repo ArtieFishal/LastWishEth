@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPublicClient, http, formatUnits, isAddress } from 'viem'
 import { mainnet } from 'viem/chains'
+import { getPaymentAmountETH } from '@/lib/pricing'
 
 // Default to the actual address for lastwish.eth
 // Can be overridden with environment variable (supports both ENS names and addresses)
 const PAYMENT_RECEIVER_ADDRESS = process.env.PAYMENT_RECEIVER_ADDRESS || '0x016ae25Ac494B123C40EDb2418d9b1FC2d62279b'
-const PAYMENT_AMOUNT = '0.000025' // 0.000025 ETH (testing amount)
 const ETHERSCAN_API_URL = 'https://api.etherscan.io/api'
 
 // Resolve ENS name to address using Ethereum mainnet (ENS is on mainnet)
@@ -72,7 +72,7 @@ async function verifyViaRPC(
     return NextResponse.json({
       status: 'pending',
       invoiceId,
-      message: 'Payment verification is checking your transaction. If you just sent the payment, please wait 10-30 seconds for it to be confirmed on-chain, then try again. Make sure you sent exactly 0.006 ETH (~$20.26) from your connected wallet to the recipient address on Ethereum mainnet.',
+      message: `Payment verification is checking your transaction. If you just sent the payment, please wait 10-30 seconds for it to be confirmed on-chain, then try again. Make sure you sent exactly ${getPaymentAmountETH()} ETH from your connected wallet to the recipient address on Ethereum mainnet.`,
     })
   } catch (error: any) {
     console.error('RPC verification error:', error)
@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         status: 'pending',
         invoiceId,
-        message: 'No matching payment transaction found. Please ensure you have sent exactly 0.000025 ETH from your connected wallet to the recipient address on Ethereum mainnet.',
+        message: `No matching payment transaction found. Please ensure you have sent exactly ${paymentAmount} ETH from your connected wallet to the recipient address on Ethereum mainnet.`,
       })
       } catch (innerError: any) {
         // Handle errors from the inner try block (Etherscan API call)
@@ -312,7 +312,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           status: 'pending',
           invoiceId,
-          message: `Payment verification error: ${innerError.message || 'Unknown error'}. Please try again in a moment. If the problem persists, ensure you sent exactly 0.000025 ETH from your connected wallet to the recipient address on Ethereum mainnet.`,
+          message: `Payment verification error: ${innerError.message || 'Unknown error'}. Please try again in a moment. If the problem persists, ensure you sent exactly ${paymentAmount} ETH from your connected wallet to the recipient address on Ethereum mainnet.`,
         })
       }
     } catch (error: any) {
