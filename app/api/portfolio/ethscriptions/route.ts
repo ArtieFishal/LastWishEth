@@ -190,22 +190,23 @@ export async function POST(request: NextRequest) {
                 isOwner
               })
               
+              // The API filters by current_owner, so if it returns an ethscription for this address,
+              // it means the address is the current_owner. We should trust the API and include it.
+              // However, we log if there's a mismatch for debugging.
               if (!isCreator && !isOwner) {
-                console.warn(`[Ethscriptions API] Skipping ethscription ${ethscriptionId}: address mismatch`, {
-                  address,
-                  addressLower,
+                console.warn(`[Ethscriptions API] WARNING: Ethscription owner/creator doesn't match queried address, but API returned it`, {
+                  queriedAddress: address,
                   creator,
                   currentOwner,
-                  creatorMatch: creator === addressLower,
-                  ownerMatch: currentOwner === addressLower
+                  note: 'Including anyway since API returned it for this address'
                 })
-                continue
               }
               
               console.log(`[Ethscriptions API] ✅ Including ethscription ${ethscriptionId} (isCreator: ${isCreator}, isOwner: ${isOwner})`)
               
-              // Use current_owner as the walletAddress (or creator if no current_owner)
-              const walletAddress = currentOwner || creator || address
+              // Use the queried address as walletAddress to ensure proper filtering in the UI
+              // This is critical - the UI filters by walletAddress, so it must match the queried address
+              const walletAddress = addressLower
               
               // Determine name and symbol based on mimetype
               let name = 'Ethscription'
