@@ -181,14 +181,28 @@ export async function POST(request: NextRequest) {
               const isCreator = creator === addressLower
               const isOwner = currentOwner === addressLower
               
+              console.log(`[Ethscriptions API] Checking ethscription ${ethscriptionId}:`, {
+                address,
+                addressLower,
+                creator,
+                currentOwner,
+                isCreator,
+                isOwner
+              })
+              
               if (!isCreator && !isOwner) {
                 console.warn(`[Ethscriptions API] Skipping ethscription ${ethscriptionId}: address mismatch`, {
                   address,
+                  addressLower,
                   creator,
-                  currentOwner
+                  currentOwner,
+                  creatorMatch: creator === addressLower,
+                  ownerMatch: currentOwner === addressLower
                 })
                 continue
               }
+              
+              console.log(`[Ethscriptions API] ✅ Including ethscription ${ethscriptionId} (isCreator: ${isCreator}, isOwner: ${isOwner})`)
               
               // Use current_owner as the walletAddress (or creator if no current_owner)
               const walletAddress = currentOwner || creator || address

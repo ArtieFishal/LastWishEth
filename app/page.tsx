@@ -750,13 +750,17 @@ export default function Home() {
     const ethscriptionsResponse = await axios.post('/api/portfolio/ethscriptions', {
       addresses: [walletAddress],
     })
-    console.log(`[Load Assets From Wallet] Ethscriptions API response:`, {
-      hasData: !!ethscriptionsResponse.data,
-      hasAssets: !!ethscriptionsResponse.data?.assets,
-      assetCount: Array.isArray(ethscriptionsResponse.data?.assets) ? ethscriptionsResponse.data.assets.length : 0
-    })
+    
+    console.log(`[Load Assets From Wallet] Full API response:`, JSON.stringify(ethscriptionsResponse.data, null, 2))
+    console.log(`[Load Assets From Wallet] Response keys:`, Object.keys(ethscriptionsResponse.data || {}))
+    console.log(`[Load Assets From Wallet] Response type:`, typeof ethscriptionsResponse.data)
+    console.log(`[Load Assets From Wallet] Has assets key:`, 'assets' in (ethscriptionsResponse.data || {}))
+    console.log(`[Load Assets From Wallet] Assets value:`, ethscriptionsResponse.data?.assets)
+    console.log(`[Load Assets From Wallet] Assets is array:`, Array.isArray(ethscriptionsResponse.data?.assets))
+    console.log(`[Load Assets From Wallet] Asset count:`, Array.isArray(ethscriptionsResponse.data?.assets) ? ethscriptionsResponse.data.assets.length : 'NOT AN ARRAY')
     
     if (ethscriptionsResponse.data?.assets && Array.isArray(ethscriptionsResponse.data.assets)) {
+      console.log(`[Load Assets From Wallet] Processing ${ethscriptionsResponse.data.assets.length} ethscriptions`)
       const existingIds = new Set(assets.map(a => a.id))
       const uniqueEthscriptions = ethscriptionsResponse.data.assets
         .filter((a: Asset) => !existingIds.has(a.id))
@@ -767,20 +771,39 @@ export default function Home() {
         }))
       
       console.log(`[Load Assets From Wallet] Unique ethscriptions after deduplication: ${uniqueEthscriptions.length} (from ${ethscriptionsResponse.data.assets.length} total)`)
+      console.log(`[Load Assets From Wallet] Existing asset IDs count: ${existingIds.size}`)
       
       if (uniqueEthscriptions.length > 0) {
         newAssets.push(...uniqueEthscriptions)
         console.log(`✅ Loaded ${uniqueEthscriptions.length} ethscription(s) from wallet ${walletAddress}`)
         console.log('Sample ethscription:', uniqueEthscriptions[0])
-      } else {
+        console.log('Sample ethscription type:', uniqueEthscriptions[0].type)
+        console.log('Sample ethscription id:', uniqueEthscriptions[0].id)
+      } else if (ethscriptionsResponse.data.assets.length > 0) {
         console.log(`⚠️ All ${ethscriptionsResponse.data.assets.length} ethscriptions were duplicates`)
+        console.log(`⚠️ Sample ethscription ID that was duplicate:`, ethscriptionsResponse.data.assets[0]?.id)
+        console.log(`⚠️ Existing IDs sample:`, Array.from(existingIds).slice(0, 5))
+      } else {
+        console.log(`⚠️ API returned empty assets array`)
       }
     } else {
       console.log('⚠️ No ethscriptions in response or invalid format')
-      console.log('Response data:', ethscriptionsResponse.data)
+      console.log('⚠️ Response data:', ethscriptionsResponse.data)
+      console.log('⚠️ Response data type:', typeof ethscriptionsResponse.data)
+      if (ethscriptionsResponse.data) {
+        console.log('⚠️ Response keys:', Object.keys(ethscriptionsResponse.data))
+      }
     }
   } catch (err) {
     console.error('❌ Error loading ethscriptions:', err)
+    if (axios.isAxiosError(err)) {
+      console.error('❌ Axios error details:', {
+        message: err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data
+      })
+    }
     // Don't set error for ethscriptions - it's optional
   }
 } else {
