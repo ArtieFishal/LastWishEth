@@ -526,16 +526,6 @@ export default function Home() {
  }
  }, [step, paymentRecipientAddress])
 
- // Auto-verify payment after transaction is confirmed
- useEffect(() => {
- if (isPaymentSent && sendTxHash && evmAddress) {
- // If transaction is confirmed, automatically unlock PDF generation
- // We trust wagmi's transaction confirmation - no need to wait for API verification
- console.log('Payment transaction confirmed, unlocking PDF generation')
- setPaymentVerified(true)
- setStep('download')
- setError(null)
- 
  // Auto-select queued assets when navigating to Allocate step
  useEffect(() => {
    if (step === 'allocate' && selectedAssetIds.length === 0 && assets.length === 0) {
@@ -547,6 +537,16 @@ export default function Home() {
    }
  }, [step, queuedSessions, selectedAssetIds.length, assets.length])
 
+ // Auto-verify payment after transaction is confirmed
+ useEffect(() => {
+ if (isPaymentSent && sendTxHash && evmAddress) {
+ // If transaction is confirmed, automatically unlock PDF generation
+ // We trust wagmi's transaction confirmation - no need to wait for API verification
+ console.log('Payment transaction confirmed, unlocking PDF generation')
+ setPaymentVerified(true)
+ setStep('download')
+ setError(null)
+ 
  // Still try to verify via API in background (for logging/analytics)
  setTimeout(async () => {
  try {
