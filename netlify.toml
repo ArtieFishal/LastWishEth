@@ -4,6 +4,8 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+  # Note: If build fails with auth errors, add NETLIFY_AUTH_TOKEN to environment variables
+  # or retry the deploy (may be transient network issue)
 
 [build.environment]
   NODE_VERSION = "20"
