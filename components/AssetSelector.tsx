@@ -8,6 +8,8 @@ interface AssetSelectorProps {
   assets: Asset[]
   selectedAssetIds: string[]
   onSelectionChange: (selectedIds: string[]) => void
+  walletNames?: Record<string, string> // Maps wallet address to name (ENS or manual)
+  resolvedEnsNames?: Record<string, string> // Maps lowercase address to ENS name
 }
 
 const getChainColor = (chain: string) => {
@@ -51,7 +53,7 @@ const getWalletProviderName = (provider?: string): string => {
   return provider.charAt(0).toUpperCase() + provider.slice(1)
 }
 
-export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: AssetSelectorProps) {
+export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, walletNames = {}, resolvedEnsNames = {} }: AssetSelectorProps) {
   const [filter, setFilter] = useState<'all' | 'currencies' | 'nfts' | 'ethscriptions' | 'other'>('all')
   const [sortBy, setSortBy] = useState<'chain' | 'type' | 'value' | 'wallet'>('type')
 
@@ -87,13 +89,24 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
       } else if (sortBy === 'type') {
         return getAssetCategory(a).localeCompare(getAssetCategory(b))
       } else if (sortBy === 'wallet') {
-        // Sort by wallet provider (MetaMask, Coinbase, Phantom, etc.)
-        // Normalize provider names for consistent sorting
+        // Sort by wallet name (ENS or manual name), then by provider, then by chain
+        const getWalletName = (asset: Asset): string => {
+          if (!asset.walletAddress) return 'Unknown'
+          const addrLower = asset.walletAddress.toLowerCase()
+          // Priority: manual name > resolved ENS > address
+          return walletNames[asset.walletAddress] || 
+                 resolvedEnsNames[addrLower] || 
+                 asset.walletAddress
+        }
+        const aName = getWalletName(a)
+        const bName = getWalletName(b)
+        const nameCompare = aName.localeCompare(bName)
+        if (nameCompare !== 0) return nameCompare
+        // If same name, sort by provider, then chain, then type
         const aProvider = getWalletProviderName(a.walletProvider)
         const bProvider = getWalletProviderName(b.walletProvider)
         const providerCompare = aProvider.localeCompare(bProvider)
         if (providerCompare !== 0) return providerCompare
-        // If same provider, sort by chain then type
         const chainCompare = a.chain.localeCompare(b.chain)
         if (chainCompare !== 0) return chainCompare
         return getAssetCategory(a).localeCompare(getAssetCategory(b))

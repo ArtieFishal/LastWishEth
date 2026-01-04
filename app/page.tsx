@@ -13,6 +13,7 @@ import { AssetList } from '@/components/AssetList'
 import { AssetSelector } from '@/components/AssetSelector'
 import { BeneficiaryForm } from '@/components/BeneficiaryForm'
 import { AllocationPanel } from '@/components/AllocationPanel'
+import { WalletNameEditor } from '@/components/WalletNameEditor'
 import { Asset, Beneficiary, Allocation, UserData, QueuedWalletSession } from '@/types'
 import axios from 'axios'
 import { generatePDF } from '@/lib/pdf-generator'
@@ -1713,7 +1714,17 @@ setError('Failed to load Bitcoin assets. Please try again.')
      >
        <div className="flex items-start justify-between">
          <div className="flex-1 min-w-0">
-           <div className="flex items-center gap-2 mb-2 flex-wrap">
+           {/* Wallet Name - Editable */}
+           <WalletNameEditor
+             address={addr}
+             currentName={ensName || walletNames[addr] || ''}
+             isENS={!!resolvedEnsNames[addr.toLowerCase()]}
+             onNameChange={(newName) => {
+               setWalletNames(prev => ({ ...prev, [addr]: newName }))
+             }}
+           />
+           
+           <div className="flex items-center gap-2 mb-2 flex-wrap mt-2">
              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
                {walletProvider}
              </span>
@@ -1734,24 +1745,11 @@ setError('Failed to load Bitcoin assets. Please try again.')
              )}
            </div>
            
-           {/* Full address display - NO truncation */}
-           <div className="mt-2">
-             {ensName && ensName !== addr && (
-               <div className="mb-1">
-                 <p className="text-sm font-semibold text-green-600 break-all">
-                   <span className="mr-1">✓</span>
-                   {ensName}
-                 </p>
-                 <p className="text-xs font-mono text-gray-500 break-all">
-                   ({addr})
-                 </p>
-               </div>
-             )}
-             {(!ensName || ensName === addr) && (
-               <p className="text-xs font-mono text-gray-700 break-all bg-gray-50 p-2 rounded border">
-                 {addr}
-               </p>
-             )}
+           {/* Address display */}
+           <div className="mt-1">
+             <p className="text-xs font-mono text-gray-500 break-all">
+               {addr}
+             </p>
            </div>
          </div>
          
@@ -1932,6 +1930,31 @@ setError('Failed to load Bitcoin assets. Please try again.')
  if (provider) {
  setWalletProviders(prev => ({ ...prev, [addr]: provider }))
  }
+ 
+ // Resolve ENS name for this wallet address
+ const resolveWalletENS = async (address: string) => {
+ try {
+ const publicClient = createPublicClient({
+ chain: mainnet,
+ transport: http(),
+ })
+ const ensName = await publicClient.getEnsName({ address: address as `0x${string}` })
+ if (ensName) {
+ setResolvedEnsNames(prev => ({ ...prev, [address.toLowerCase()]: ensName }))
+ // If no manual name is set, use ENS name as the wallet name
+ if (!walletNames[address]) {
+ setWalletNames(prev => ({ ...prev, [address]: ensName }))
+ }
+ console.log(`Resolved ENS for wallet ${address}: ${ensName}`)
+ }
+ } catch (error) {
+ console.error(`Error resolving ENS for wallet ${address}:`, error)
+ }
+ }
+ 
+ // Resolve ENS in background (don't block)
+ resolveWalletENS(addr)
+ 
  // Set as selected if it's the first wallet or no wallet is selected
  if (selectedWalletForLoading === null) {
  setSelectedWalletForLoading(addr)
@@ -1979,9 +2002,14 @@ setError('Failed to load Bitcoin assets. Please try again.')
  <p className="text-sm font-semibold text-blue-900 mb-1">
  Selected Wallet:
  </p>
- <p className="text-xs text-blue-700 font-mono break-all">
- {resolvedEnsNames[selectedWalletForLoading.toLowerCase()] || walletNames[selectedWalletForLoading] || selectedWalletForLoading}
- </p>
+     <div>
+       <p className="text-sm font-bold text-blue-900 mb-1">
+         {walletNames[selectedWalletForLoading] || resolvedEnsNames[selectedWalletForLoading.toLowerCase()] || selectedWalletForLoading.slice(0, 10) + '...' + selectedWalletForLoading.slice(-8)}
+       </p>
+       <p className="text-xs text-blue-700 font-mono break-all">
+         {selectedWalletForLoading}
+       </p>
+     </div>
  </div>
  <button
  onClick={async () => {
@@ -2083,12 +2111,17 @@ setError('Failed to load Bitcoin assets. Please try again.')
        Currently Viewing Assets From:
      </p>
      {selectedWalletForLoading && (
-       <p className="text-xs text-blue-700 font-mono break-all">
-         {resolvedEnsNames[selectedWalletForLoading.toLowerCase()] || walletNames[selectedWalletForLoading] || selectedWalletForLoading}
-         {walletProviders[selectedWalletForLoading] && (
-           <span className="ml-2 text-blue-600">({walletProviders[selectedWalletForLoading]})</span>
-         )}
-       </p>
+       <div>
+         <p className="text-sm font-bold text-blue-900 mb-1">
+           {walletNames[selectedWalletForLoading] || resolvedEnsNames[selectedWalletForLoading.toLowerCase()] || selectedWalletForLoading.slice(0, 10) + '...' + selectedWalletForLoading.slice(-8)}
+         </p>
+         <p className="text-xs text-blue-700 font-mono break-all">
+           {selectedWalletForLoading}
+           {walletProviders[selectedWalletForLoading] && (
+             <span className="ml-2 text-blue-600">({walletProviders[selectedWalletForLoading]})</span>
+           )}
+         </p>
+       </div>
      )}
      {btcAddress && (
        <p className="text-xs text-blue-700 font-mono break-all">
@@ -2110,7 +2143,9 @@ setError('Failed to load Bitcoin assets. Please try again.')
   </label>
 </div>
 <AssetSelector
-assets={(() => {
+      walletNames={walletNames}
+      resolvedEnsNames={resolvedEnsNames}
+      assets={(() => {
   // If no current assets but we have queued sessions, show queued assets
   let assetsToShow = assets.length > 0 ? assets : queuedSessions.flatMap(s => s.assets)
   
