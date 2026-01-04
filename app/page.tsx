@@ -16,6 +16,7 @@ import { AllocationPanel } from '@/components/AllocationPanel'
 import { Asset, Beneficiary, Allocation, UserData, QueuedWalletSession } from '@/types'
 import axios from 'axios'
 import { generatePDF } from '@/lib/pdf-generator'
+import { getCurrentPricing, getPaymentAmountETH, getFormattedPrice } from '@/lib/pricing'
 
 type Step = 'connect' | 'assets' | 'allocate' | 'details' | 'payment' | 'download'
 
@@ -92,6 +93,10 @@ export default function Home() {
  const [discountCode, setDiscountCode] = useState('')
  const [discountApplied, setDiscountApplied] = useState(false)
  const [paymentWalletAddress, setPaymentWalletAddress] = useState<string | null>(null) // First verified wallet for payment
+ 
+ // Get current pricing (special or regular) - memoized to avoid recalculation
+ const pricing = useMemo(() => getCurrentPricing(), [])
+ const paymentAmountETH = useMemo(() => getPaymentAmountETH(), [])
  const [selectedWalletForLoading, setSelectedWalletForLoading] = useState<string | null>(null) // Currently selected wallet for loading assets
  const [queuedSessions, setQueuedSessions] = useState<QueuedWalletSession[]>([])
  const [currentSessionWallet, setCurrentSessionWallet] = useState<string | null>(null)
@@ -1272,7 +1277,11 @@ setError('Failed to load Bitcoin assets. Please try again.')
         </p>
       </div>
       <p className="text-sm text-gray-500">
-        Secure crypto inheritance instructions • 0.000025 ETH one-time fee
+        Secure crypto inheritance instructions • {pricing.isSpecial ? (
+          <span className="text-green-600 font-semibold">${pricing.usdAmount.toFixed(2)} one-time fee (New Year's Special!)</span>
+        ) : (
+          <span>${pricing.usdAmount.toFixed(2)} one-time fee</span>
+        )}
       </p>
       <div className="mt-4">
         <a 
@@ -2556,7 +2565,7 @@ onSelectionChange={setSelectedAssetIds}
  className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
  title={!canProceedToPayment() ? `Missing: ${getPaymentValidationErrors().join(', ')}` : ''}
  >
-              {discountApplied ? 'Unlock & Generate (FREE)' : 'Unlock & Generate (0.000025 ETH)'} →
+              {discountApplied ? 'Unlock & Generate (FREE)' : `Unlock & Generate (${pricing.isSpecial ? '' : ''}$${pricing.usdAmount.toFixed(2)} / ${paymentAmountETH} ETH)`} →
  </button>
  </div>
  </div>
@@ -2583,13 +2592,24 @@ onSelectionChange={setSelectedAssetIds}
  <div className="max-w-2xl mx-auto">
  <h2 className="text-3xl font-bold text-gray-900 mb-2">Payment Required</h2>
  <p className="text-gray-600 mb-8">
-                Pay 0.000025 ETH to unlock PDF generation
+                Pay {paymentAmountETH} ETH (${pricing.usdAmount.toFixed(2)}) to unlock PDF generation
+                {pricing.isSpecial && (
+                  <span className="ml-2 text-green-600 font-semibold">🎉 New Year's Special!</span>
+                )}
  </p>
  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-8 border-2 border-blue-200">
  <div className="space-y-4">
- <div className="bg-gray-50 rounded-lg p-4">
+ <div className={`rounded-lg p-4 ${pricing.isSpecial ? 'bg-green-50 border-2 border-green-300' : 'bg-gray-50'}`}>
  <p className="text-sm text-gray-600 mb-1">Amount</p>
-                    <p className="text-2xl font-bold text-gray-900">0.000025 ETH</p> </div>
+                    <p className={`text-2xl font-bold ${pricing.isSpecial ? 'text-green-700' : 'text-gray-900'}`}>
+                      {pricing.isSpecial && <span className="text-green-600">🎉 </span>}
+                      ${pricing.usdAmount.toFixed(2)} ({paymentAmountETH} ETH)
+                      {pricing.isSpecial && <span className="ml-2 text-sm text-green-600">New Year's Special!</span>}
+                    </p>
+                    {pricing.isSpecial && (
+                      <p className="text-xs text-green-600 mt-1">Regular price: $42.00 after February 1st</p>
+                    )}
+                  </div>
  <div className="bg-gray-50 rounded-lg p-4">
  <p className="text-sm text-gray-600 mb-1">Token</p>
                     <p className="text-lg font-semibold text-gray-900">Native ETH on Ethereum Mainnet</p>
@@ -2601,7 +2621,7 @@ onSelectionChange={setSelectedAssetIds}
  {isConnected && chain?.id === mainnet.id && paymentRecipientAddress && (
  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
  <p className="text-sm text-green-800">
-                <strong>✓ Ready to Pay:</strong> Click "Send Payment" below to send 0.000025 ETH directly from your connected wallet. No need to leave this page!
+                <strong>✓ Ready to Pay:</strong> Click "Send Payment" below to send {paymentAmountETH} ETH (${pricing.usdAmount.toFixed(2)}) directly from your connected wallet. No need to leave this page!
  </p>
  </div>
  )}
@@ -2698,7 +2718,7 @@ onSelectionChange={setSelectedAssetIds}
  // Don't specify gas limit - wallet will estimate and show user options
  sendTransaction({
  to: paymentRecipientAddress,
-            value: parseEther('0.000025'),
+            value: parseEther(paymentAmountETH),
  // No gas limit specified - wallet handles everything
  })
  } catch (error: any) {
@@ -2710,7 +2730,7 @@ onSelectionChange={setSelectedAssetIds}
  disabled={isSendingPayment || isConfirming || !paymentRecipientAddress}
  className="w-full rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-lg"
  >
-              {isSendingPayment ? 'Confirm in Wallet...' : isConfirming ? 'Confirming Transaction...' : '💳 Send Payment (0.000025 ETH)'}
+              {isSendingPayment ? 'Confirm in Wallet...' : isConfirming ? 'Confirming Transaction...' : `💳 Send Payment (${paymentAmountETH} ETH)`}
  </button>
  ) : !isConnected ? (
  <div className="bg-gray-50 border-2 border-gray-300 rounded-lg p-4 text-center space-y-3">

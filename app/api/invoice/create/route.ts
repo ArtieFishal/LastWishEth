@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
+import { getCurrentPricing, getPaymentAmountETH } from '@/lib/pricing'
 
 // Payment receiver address - can be ENS name or 0x address
 // If ENS name, it will be resolved automatically
 const PAYMENT_RECEIVER_ADDRESS = process.env.PAYMENT_RECEIVER_ADDRESS || '0x016ae25Ac494B123C40EDb2418d9b1FC2d62279b' // lastwish.eth resolved address
 
-// Payment in ETH (testing amount)
+// Payment amount is now dynamic based on date (New Year's special vs regular price)
 // Using native ETH on Ethereum mainnet
-const PAYMENT_AMOUNT = '0.000025' // 0.000025 ETH
 const PAYMENT_TOKEN = null // Native ETH (no token contract)
 const PAYMENT_CHAIN = 'ethereum'
 
@@ -25,12 +25,18 @@ export async function POST(request: NextRequest) {
     const discountPercent = validDiscountCodes[normalizedCode] || 0
     const discountApplied = discountPercent === 100
     
+    // Get current pricing (special or regular)
+    const pricing = getCurrentPricing()
+    const paymentAmount = getPaymentAmountETH()
+    
     const invoiceId = uuidv4()
 
     const invoice = {
       id: invoiceId,
-      amount: discountApplied ? '0' : PAYMENT_AMOUNT,
-      originalAmount: PAYMENT_AMOUNT,
+      amount: discountApplied ? '0' : paymentAmount,
+      originalAmount: paymentAmount,
+      usdAmount: pricing.usdAmount,
+      isSpecial: pricing.isSpecial,
       discountPercent,
       discountApplied,
       token: PAYMENT_TOKEN, // null for native ETH
