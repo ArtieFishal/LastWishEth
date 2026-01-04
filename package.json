@@ -10,7 +10,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "test:ethscriptions": "tsx scripts/test-ethscriptions-api.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.16",
@@ -42,6 +43,7 @@
     "eslint-config-next": "16.1.1",
     "jsdom": "^23.0.1",
     "tailwindcss": "^4",
+    "tsx": "^4.7.0",
     "typescript": "^5",
     "vitest": "^1.0.4"
   }

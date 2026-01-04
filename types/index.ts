@@ -1,7 +1,7 @@
 export interface Asset {
   id: string
   chain: string
-  type: 'native' | 'erc20' | 'erc721' | 'erc1155' | 'btc'
+  type: 'native' | 'erc20' | 'erc721' | 'erc1155' | 'btc' | 'ethscription'
   symbol: string
   name: string
   balance: string
@@ -15,6 +15,9 @@ export interface Asset {
   walletProvider?: string // Wallet provider name (MetaMask, Rainbow, WalletConnect, Xverse, etc.)
   imageUrl?: string // NFT image URL
   metadata?: any // Full NFT metadata
+  // Ethscription-specific fields
+  ethscriptionId?: string // The transaction hash or ethscription ID
+  contentUri?: string // The content URI for the ethscription
 }
 
 export interface Beneficiary {

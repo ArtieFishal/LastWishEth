@@ -795,30 +795,48 @@ export default function Home() {
  }
  }
 
- // Load EVM assets from all specified wallets
- if (walletsToLoad.length > 0) {
- try {
- const evmResponse = await axios.post('/api/portfolio/evm', {
- addresses: walletsToLoad,
- })
- if (evmResponse.data?.assets && Array.isArray(evmResponse.data.assets)) {
- // Filter out duplicates by checking if asset ID already exists
- const existingIds = new Set(assets.map(a => a.id))
- const uniqueAssets = evmResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
- // Apply spam filtering
- const filteredAssets = filterSpamTokens(uniqueAssets)
- const filteredCount = uniqueAssets.length - filteredAssets.length
- if (filteredCount > 0) {
-   console.log(`Filtered out ${filteredCount} spam/dust token(s)`)
- }
- newAssets.push(...filteredAssets)
- console.log(`Loaded ${filteredAssets.length} assets from ${walletsToLoad.length} wallet(s)`)
- }
- } catch (err) {
- console.error('Error loading EVM assets:', err)
- setError('Failed to load EVM assets. Please try again.')
- }
- }
+// Load EVM assets from all specified wallets
+if (walletsToLoad.length > 0) {
+  try {
+    const evmResponse = await axios.post('/api/portfolio/evm', {
+      addresses: walletsToLoad,
+    })
+    if (evmResponse.data?.assets && Array.isArray(evmResponse.data.assets)) {
+      // Filter out duplicates by checking if asset ID already exists
+      const existingIds = new Set(assets.map(a => a.id))
+      const uniqueAssets = evmResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
+      // Apply spam filtering
+      const filteredAssets = filterSpamTokens(uniqueAssets)
+      const filteredCount = uniqueAssets.length - filteredAssets.length
+      if (filteredCount > 0) {
+        console.log(`Filtered out ${filteredCount} spam/dust token(s)`)
+      }
+      newAssets.push(...filteredAssets)
+      console.log(`Loaded ${filteredAssets.length} assets from ${walletsToLoad.length} wallet(s)`)
+    }
+  } catch (err) {
+    console.error('Error loading EVM assets:', err)
+    setError('Failed to load EVM assets. Please try again.')
+  }
+
+  // Load Ethscriptions
+  try {
+    const ethscriptionsResponse = await axios.post('/api/portfolio/ethscriptions', {
+      addresses: walletsToLoad,
+    })
+    if (ethscriptionsResponse.data?.assets && Array.isArray(ethscriptionsResponse.data.assets)) {
+      const existingIds = new Set(assets.map(a => a.id))
+      const uniqueEthscriptions = ethscriptionsResponse.data.assets.filter(
+        (a: Asset) => !existingIds.has(a.id)
+      )
+      newAssets.push(...uniqueEthscriptions)
+      console.log(`Loaded ${uniqueEthscriptions.length} ethscription(s) from ${walletsToLoad.length} wallet(s)`)
+    }
+  } catch (err) {
+    console.error('Error loading ethscriptions:', err)
+    // Don't set error for ethscriptions - it's optional
+  }
+}
 
 // Load Bitcoin assets
 if (btcAddress) {

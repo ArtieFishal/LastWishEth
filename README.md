@@ -7,6 +7,11 @@ A stateless web application that allows users to connect crypto wallets, view ho
 - **Multi-chain Support**: Ethereum, Base, Arbitrum, Polygon, and Bitcoin
 - **Wallet Connections**: EVM wallets via WalletConnect, Bitcoin via Xverse
 - **Asset Inventory**: Automatically loads and displays all assets across connected wallets
+  - Native tokens (ETH, BTC, etc.)
+  - ERC-20 tokens
+  - NFTs (ERC-721, ERC-1155)
+  - **Ethscriptions** (digital artifacts on Ethereum)
+  - Bitcoin assets (including SATs)
 - **Beneficiary Management**: Add up to 10 beneficiaries with wallet addresses
 - **Asset Allocation**: Allocate assets by percentage or amount with real-time validation
 - **Payment Gating**: $42 crypto payment required to unlock PDF generation
@@ -66,7 +71,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## User Flow
 
 1. **Connect Wallets**: Connect EVM wallets via WalletConnect and/or Bitcoin wallet via Xverse
-2. **Review Assets**: View all assets across connected wallets
+2. **Review Assets**: View all assets across connected wallets (tokens, NFTs, ethscriptions, Bitcoin)
 3. **Allocate Assets**: 
    - Add beneficiaries (up to 10)
    - Allocate assets by percentage or amount

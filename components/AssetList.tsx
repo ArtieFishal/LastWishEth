@@ -49,10 +49,20 @@ export function AssetList({ assets }: AssetListProps) {
                     NFT
                   </span>
                 ) : null}
+                {asset.type === 'ethscription' ? (
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded font-semibold">
+                    ETHSCRIPTION
+                  </span>
+                ) : null}
               </div>
               <p className="text-sm text-gray-600 font-medium">{asset.name}</p>
               {asset.tokenId && (
                 <p className="text-xs text-gray-500 font-mono mt-1">Token ID: {asset.tokenId}</p>
+              )}
+              {asset.ethscriptionId && (
+                <p className="text-xs text-gray-500 font-mono mt-1 truncate">
+                  ID: {asset.ethscriptionId.slice(0, 10)}...{asset.ethscriptionId.slice(-8)}
+                </p>
               )}
               {asset.type === 'btc' && asset.metadata?.satsFormatted && (
                 <p className="text-xs text-gray-500 mt-1">
@@ -64,10 +74,23 @@ export function AssetList({ assets }: AssetListProps) {
                   )}
                 </p>
               )}
-              {asset.contractAddress && asset.type !== 'native' && asset.type !== 'btc' && (
+              {asset.contractAddress && asset.type !== 'native' && asset.type !== 'btc' && asset.type !== 'ethscription' && (
                 <p className="text-xs text-gray-500 font-mono mt-1 truncate">
                   {asset.contractAddress.slice(0, 10)}...{asset.contractAddress.slice(-8)}
                 </p>
+              )}
+              {asset.imageUrl && (asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription') && (
+                <div className="mt-2">
+                  <img 
+                    src={asset.imageUrl} 
+                    alt={asset.name}
+                    className="w-20 h-20 object-cover rounded border border-gray-200"
+                    onError={(e) => {
+                      // Hide image on error
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                </div>
               )}
             </div>
             <div className="text-right ml-4">

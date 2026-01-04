@@ -100,6 +100,7 @@ export default function GuidePage() {
                           <li>Native tokens (ETH, BTC, etc.)</li>
                           <li>ERC-20 tokens</li>
                           <li>NFTs (with thumbnails)</li>
+                          <li>Ethscriptions (digital artifacts on Ethereum)</li>
                           <li>Bitcoin assets (including SATs)</li>
                         </ul>
                       </li>
@@ -495,7 +496,7 @@ export default function GuidePage() {
                   </div>
                   <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
                     <h4 className="font-bold text-gray-900 mb-2">2. Multi-Chain Support</h4>
-                    <p className="text-gray-700">Ethereum, Base, Arbitrum, Polygon, Bitcoin - handles NFTs, tokens, and native coins</p>
+                    <p className="text-gray-700">Ethereum, Base, Arbitrum, Polygon, Bitcoin - handles NFTs, tokens, ethscriptions, and native coins</p>
                   </div>
                   <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
                     <h4 className="font-bold text-gray-900 mb-2">3. Professional Documentation</h4>
@@ -568,6 +569,13 @@ export default function GuidePage() {
                         <td className="px-4 py-3 text-sm text-gray-700">❌ No</td>
                         <td className="px-4 py-3 text-sm text-gray-700">⚠️ Limited</td>
                         <td className="px-4 py-3 text-sm text-gray-700">⚠️ Manual</td>
+                      </tr>
+                      <tr className="bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-700 font-semibold">Ethscriptions</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">✅ Yes</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">❌ No</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">❌ No</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">❌ No</td>
                       </tr>
                       <tr className="bg-gray-50">
                         <td className="px-4 py-3 text-sm text-gray-700 font-semibold">Updates</td>
