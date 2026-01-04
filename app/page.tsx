@@ -1775,11 +1775,22 @@ setError('Failed to load Bitcoin assets. Please try again.')
  {btcAddress && (() => {
  const btcAssets = assets.filter(a => a.chain === 'bitcoin')
  const btcAssetCount = btcAssets.length
+ const btcWalletName = walletNames[btcAddress] || resolvedEnsNames[btcAddress.toLowerCase()] || ''
   return (
  <div className="bg-gray-50 border-2 border-orange-200 rounded-lg p-4 shadow-sm">
  <div className="flex items-start justify-between">
  <div className="flex-1 min-w-0">
- <div className="flex items-center gap-2 mb-2">
+ {/* Wallet Name - Editable */}
+ <WalletNameEditor
+   address={btcAddress}
+   currentName={btcWalletName}
+   isENS={!!resolvedEnsNames[btcAddress.toLowerCase()]}
+   onNameChange={(newName) => {
+     setWalletNames(prev => ({ ...prev, [btcAddress]: newName }))
+   }}
+ />
+ 
+ <div className="flex items-center gap-2 mb-2 flex-wrap mt-2">
  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-800">
  BITCOIN WALLET
  </span>
@@ -1790,7 +1801,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  )}
  </div>
  
- <div className="mt-2">
+ <div className="mt-1">
  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
  Bitcoin Address
  </p>
