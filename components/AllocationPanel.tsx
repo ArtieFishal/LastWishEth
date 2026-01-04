@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Asset, Beneficiary, Allocation } from '@/types'
+import { NFTImage } from './NFTImage'
 
 interface AllocationPanelProps {
   assets: Asset[]
@@ -25,14 +26,18 @@ export function AllocationPanel({
   const [sortBy, setSortBy] = useState<'name' | 'status' | 'chain' | 'type'>('name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
-  // Helper to check if asset is NFT (non-fungible)
-  const isNFT = (asset: Asset) => asset.type === 'erc721' || asset.type === 'erc1155'
+  // Helper to check if asset is NFT (non-fungible) - includes ethscriptions
+  const isNFT = (asset: Asset) => asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription'
   
   // Helper to check if asset is fungible (can be split)
   const isFungible = (asset: Asset) => asset.type === 'native' || asset.type === 'erc20' || asset.type === 'btc'
   
-  // Separate assets into NFTs and fungible tokens
+  // Helper to check if asset is ethscription
+  const isEthscription = (asset: Asset) => asset.type === 'ethscription'
+  
+  // Separate assets into NFTs (including ethscriptions), ethscriptions, and fungible tokens
   const nftAssets = assets.filter(isNFT)
+  const ethscriptionAssets = assets.filter(isEthscription)
   const fungibleAssets = assets.filter(isFungible)
 
   // Calculate default percentage based on number of beneficiaries
@@ -81,6 +86,10 @@ export function AllocationPanel({
 
   const selectAllNFTs = () => {
     setSelectedAssets(nftAssets.map(a => a.id))
+  }
+
+  const selectAllEthscriptions = () => {
+    setSelectedAssets(ethscriptionAssets.map(a => a.id))
   }
 
   // Quick allocate: distribute fungible tokens evenly, assign NFTs to first beneficiary
@@ -443,6 +452,17 @@ export function AllocationPanel({
               >
                 All NFTs
               </button>
+              {ethscriptionAssets.length > 0 && (
+                <>
+                  <span className="text-gray-300">|</span>
+                  <button
+                    onClick={selectAllEthscriptions}
+                    className="text-xs text-green-600 hover:text-green-700 font-semibold"
+                  >
+                    All Ethscriptions ({ethscriptionAssets.length})
+                  </button>
+                </>
+              )}
               <span className="text-gray-300">|</span>
               <button
                 onClick={selectAllAssets}
@@ -525,48 +545,64 @@ export function AllocationPanel({
             )}
             {nftAssets.length > 0 && (
               <div className={fungibleAssets.length > 0 ? 'mt-2 pt-2 border-t border-gray-300' : ''}>
-                <p className="text-xs font-semibold text-gray-700 mb-1">🖼️ NFTs (Cannot Split)</p>
+                <p className="text-xs font-semibold text-gray-700 mb-1">🖼️ NFTs & Ethscriptions (Cannot Split)</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {nftAssets.map((asset) => {
                     const isSelected = selectedAssets.includes(asset.id)
                     const existingAllocation = allocations.find(a => a.assetId === asset.id)
                     const allocatedTo = existingAllocation ? beneficiaries.find(b => b.id === existingAllocation.beneficiaryId) : null
+                    const isEthscription = asset.type === 'ethscription'
                     return (
                       <label
                         key={asset.id}
                         className={`flex items-start gap-3 p-2.5 rounded cursor-pointer transition-colors text-xs border ${
-                          isSelected ? 'bg-pink-50 border-pink-300 shadow-sm' : existingAllocation ? 'bg-yellow-50 border-yellow-300' : 'hover:bg-gray-100 border-gray-200'
+                          isSelected 
+                            ? (isEthscription ? 'bg-green-50 border-green-300 shadow-sm' : 'bg-pink-50 border-pink-300 shadow-sm')
+                            : existingAllocation 
+                            ? 'bg-yellow-50 border-yellow-300' 
+                            : 'hover:bg-gray-100 border-gray-200'
                         }`}
                       >
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleAsset(asset.id)}
-                          className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 mt-0.5"
+                          className={`w-4 h-4 border-gray-300 rounded mt-0.5 ${
+                            isEthscription ? 'text-green-600 focus:ring-green-500' : 'text-pink-600 focus:ring-pink-500'
+                          }`}
                         />
-                        {asset.imageUrl && (
-                          <img 
-                            src={asset.imageUrl.startsWith('ipfs://') 
-                              ? asset.imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/')
-                              : asset.imageUrl.startsWith('ipfs/')
-                              ? `https://ipfs.io/${asset.imageUrl}`
-                              : asset.imageUrl
-                            }
+                        {(asset.imageUrl || asset.contentUri) && (
+                          <NFTImage
+                            imageUrl={asset.imageUrl}
+                            tokenUri={asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri}
+                            contractAddress={asset.contractAddress}
+                            tokenId={asset.tokenId}
                             alt={asset.name || asset.symbol}
-                            className="w-16 h-16 rounded object-cover border-2 border-gray-300 flex-shrink-0"
-                            onError={(e) => e.currentTarget.style.display = 'none'}
+                            className="w-16 h-16 rounded object-contain border-2 border-gray-300 flex-shrink-0 bg-gray-50"
                           />
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span className="font-bold text-sm text-gray-900 truncate">{asset.name || asset.symbol}</span>
                             {asset.tokenId && <span className="text-gray-500 text-xs">#{asset.tokenId}</span>}
-                            <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-700">NFT</span>
+                            {asset.metadata?.ethscriptionNumber && (
+                              <span className="text-gray-500 text-xs">#{asset.metadata.ethscriptionNumber}</span>
+                            )}
+                            {isEthscription ? (
+                              <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700">ETHSCRIPTION</span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-700">NFT</span>
+                            )}
                           </div>
                           {asset.chain && (
                             <p className="text-xs text-gray-500 mb-1">Chain: {asset.chain}</p>
                           )}
-                          {asset.contractAddress && (
+                          {asset.type === 'ethscription' && asset.ethscriptionId && (
+                            <p className="text-xs font-mono text-gray-500 truncate mb-1" title={asset.ethscriptionId}>
+                              TX: {asset.ethscriptionId.slice(0, 8)}...{asset.ethscriptionId.slice(-6)}
+                            </p>
+                          )}
+                          {asset.contractAddress && asset.type !== 'ethscription' && (
                             <p className="text-xs font-mono text-gray-500 truncate mb-1">
                               Contract: {asset.contractAddress.slice(0, 10)}...{asset.contractAddress.slice(-8)}
                             </p>
