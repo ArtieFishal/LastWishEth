@@ -1013,28 +1013,38 @@ setError('Failed to load Bitcoin assets. Please try again.')
  iframe.src = url
  document.body.appendChild(iframe)
  
- // Wait for iframe to load, then trigger print
+ // Detect mobile devices
+ const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+ 
+ // Wait for iframe to load, then trigger print (desktop only)
  iframe.onload = () => {
  setTimeout(() => {
  try {
- // Try to print from iframe
- if (iframe.contentWindow) {
- iframe.contentWindow.focus()
- iframe.contentWindow.print()
+ // On mobile, skip print dialog and just download
+ // On desktop, try to print
+ if (!isMobile && iframe.contentWindow) {
+   iframe.contentWindow.focus()
+   iframe.contentWindow.print()
  }
  } catch (e) {
  console.error('Error printing from iframe:', e)
  }
- }, 1000) // Give PDF time to fully load
+ }, isMobile ? 500 : 1000) // Faster on mobile, give desktop more time
  }
  
- // Also download the file automatically
+ // Always download the file (works on both mobile and desktop)
  const a = document.createElement('a')
  a.href = url
  a.download = `lastwish-crypto-instructions-${Date.now()}.pdf`
+ a.style.display = 'none'
  document.body.appendChild(a)
  a.click()
- document.body.removeChild(a)
+ // Clean up after a short delay
+ setTimeout(() => {
+   if (document.body.contains(a)) {
+     document.body.removeChild(a)
+   }
+ }, 100)
  
  // Clean up iframe and URL after printing
  setTimeout(() => {
@@ -1199,7 +1209,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
 
  return (
     <div className="min-h-screen bg-gradient-to-br from-gray-200 to-gray-300">
- <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+ <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
  {/* Header */}
  <header className="text-center mb-12 relative">
  <div className="absolute top-0 right-0">
@@ -1263,9 +1273,9 @@ setError('Failed to load Bitcoin assets. Please try again.')
  ↻ Start Over
  </button>
  </div>
- <h1 className="text-5xl font-bold text-gray-900 mb-3">LastWish.eth</h1>
+ <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-3">LastWish.eth</h1>
     <div className="max-w-2xl mx-auto mb-6 space-y-3">
-      <p className="text-lg text-gray-600 font-semibold">
+      <p className="text-base sm:text-lg text-gray-600 font-semibold">
         Do you really want to take your crypto to the grave with you by accident?
       </p>
       <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
@@ -1301,8 +1311,8 @@ setError('Failed to load Bitcoin assets. Please try again.')
  </header>
 
  {/* Progress Steps */}
- <div className="mb-8 bg-gray-100 rounded-lg shadow-sm p-4">
- <div className="flex items-center justify-between max-w-4xl mx-auto">
+ <div className="mb-4 sm:mb-8 bg-gray-100 rounded-lg shadow-sm p-2 sm:p-4">
+ <div className="flex items-center justify-between max-w-4xl mx-auto overflow-x-auto pb-2 sm:pb-0">
  {steps.map((s, index) => {
  const currentIndex = getCurrentStepIndex()
  const isActive = step === s.id
@@ -1335,7 +1345,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
    }
  }}
  disabled={!isFreeNavigationStep && !canNavigate}
- className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${
+ className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold text-xs sm:text-sm transition-all touch-manipulation ${
    isActive
      ? 'bg-blue-600 text-white shadow-lg scale-110 cursor-default'
      : isCompleted
@@ -1356,7 +1366,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
    }
  }}
  disabled={!isFreeNavigationStep && !canNavigate}
- className={`text-xs mt-2 font-medium transition-colors ${
+ className={`text-[10px] sm:text-xs mt-1 sm:mt-2 font-medium transition-colors touch-manipulation ${
    isActive
      ? 'text-blue-600 cursor-default'
      : isCompleted
@@ -1382,7 +1392,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  </div>
 
  {/* Main Content */}
- <main className="bg-gray-100 rounded-xl shadow-xl p-8 md:p-12">
+ <main className="bg-gray-100 rounded-xl shadow-xl p-4 sm:p-6 md:p-8 lg:p-12">
  {error && (
  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
  <p className="text-red-800 text-sm">{error}</p>
@@ -1391,7 +1401,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
 
  {step === 'connect' && (
  <div className="max-w-2xl mx-auto">
- <h2 className="text-3xl font-bold text-gray-900 mb-2">Connect Your Wallets</h2>
+ <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Connect Your Wallets</h2>
  <p className="text-gray-600 mb-8">
  Connect and process up to 20 wallets. Each wallet's assets will be saved to a queue after allocation.
  </p>
@@ -1677,7 +1687,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
              setStep('assets')
            }}
            disabled={loading}
-           className="w-full rounded-lg bg-blue-600 text-white p-3 font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+           className="w-full rounded-lg bg-blue-600 text-white p-3 sm:p-4 font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[44px]"
          >
            {loading ? 'Loading Assets...' : (walletAssetCount > 0 ? `Reload Assets from ${walletProvider}` : `Load Assets from ${walletProvider}`)}
          </button>
@@ -1865,7 +1875,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  setStep('assets')
  }
  }}
- className="w-full rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg"
+ className="w-full rounded-lg bg-blue-600 text-white p-3 sm:p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg touch-manipulation min-h-[44px]"
  >
  {assets.length > 0 ? 'Add Assets from Selected Wallet' : 'Load Assets from Selected Wallet →'}
  </button>
@@ -1875,7 +1885,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  await loadAssets(assets.length > 0, true) // Append if we already have assets, load from ALL verified wallets
  setStep('assets')
  }}
- className="w-full rounded-lg bg-green-600 text-white p-4 font-semibold hover:bg-green-700 transition-colors shadow-lg"
+ className="w-full rounded-lg bg-green-600 text-white p-3 sm:p-4 font-semibold hover:bg-green-700 transition-colors shadow-lg touch-manipulation min-h-[44px]"
  >
  Load Assets from ALL Verified Wallets ({Array.from(connectedEVMAddresses).filter(addr => verifiedAddresses.has(addr)).length}) →
  </button>
@@ -1883,7 +1893,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  {assets.length > 0 && (
  <button
  onClick={() => setStep('assets')}
- className="w-full rounded-lg border-2 border-gray-300 bg-white p-4 font-semibold text-gray-900 hover:bg-gray-50 transition-colors"
+ className="w-full rounded-lg border-2 border-gray-300 bg-white p-3 sm:p-4 font-semibold text-gray-900 hover:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
  >
  Continue with Current Assets ({assets.length}) →
  </button>
@@ -1900,7 +1910,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
 
  {step === 'assets' && (
  <div>
- <h2 className="text-3xl font-bold text-gray-900 mb-2">Your Assets</h2>
+ <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Your Assets</h2>
  <p className="text-gray-600 mb-8">
  {selectedWalletForLoading || btcAddress 
    ? 'Assets from the currently selected wallet'
@@ -2047,7 +2057,7 @@ onSelectionChange={setSelectedAssetIds}
 
  {step === 'allocate' && (
  <div>
- <h2 className="text-3xl font-bold text-gray-900 mb-2">Allocate Your Assets</h2>
+ <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Allocate Your Assets</h2>
  <p className="text-gray-600 mb-6">
  Assign your assets to beneficiaries. You can allocate by percentage or specific amounts.
  </p>
@@ -2278,7 +2288,7 @@ onSelectionChange={setSelectedAssetIds}
 
  {step === 'details' && (
  <div className="max-w-2xl mx-auto">
- <h2 className="text-3xl font-bold text-gray-900 mb-2">Enter Details</h2>
+ <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Enter Details</h2>
  <p className="text-gray-600 mb-8">
  Provide information about yourself, your executor, and instructions for accessing your assets
  </p>
@@ -2604,7 +2614,7 @@ onSelectionChange={setSelectedAssetIds}
 
  {step === 'payment' && invoiceId && (
  <div className="max-w-2xl mx-auto">
- <h2 className="text-3xl font-bold text-gray-900 mb-2">Payment Required</h2>
+ <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Payment Required</h2>
  <p className="text-gray-600 mb-8">
                 {pricing.isSpecial ? (
                   <span className="inline-flex items-center gap-3 text-lg flex-wrap">
@@ -2871,7 +2881,7 @@ onSelectionChange={setSelectedAssetIds}
 
  {step === 'download' && (paymentVerified || discountApplied) && (
  <div className="max-w-2xl mx-auto text-center">
- <h2 className="text-3xl font-bold text-gray-900 mb-2">Document Ready!</h2>
+ <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Document Ready!</h2>
  <p className="text-gray-600 mb-8">
  Your crypto inheritance instructions document is ready to download
  </p>

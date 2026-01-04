@@ -37,3 +37,42 @@ button[style*="borderColor"] span.font-semibold,
 button[style*="borderColor"] svg {
   color: inherit !important;
 }
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  /* Increase touch target sizes */
+  button, a, input[type="button"], input[type="submit"] {
+    min-height: 44px; /* iOS recommended touch target */
+    min-width: 44px;
+  }
+  
+  /* Improve form inputs for mobile */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="tel"],
+  textarea,
+  select {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 12px !important;
+    border-radius: 8px !important;
+  }
+  
+  /* Better scrolling on mobile */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent text size adjustment */
+  html {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+}
+
+/* Touch manipulation for better mobile performance */
+.touch-manipulation {
+  touch-action: manipulation;
+}
