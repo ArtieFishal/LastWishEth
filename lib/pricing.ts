@@ -1,14 +1,14 @@
 /**
  * Pricing configuration for LastWish.eth
- * New Year's Special: $20.26 (2026 = $20.26, valid until February 1, 2025)
- * Regular Price: $42.00 (after February 1, 2025)
+ * New Year's Special: $20.26 (2026 = $20.26, valid until February 1, 2026)
+ * Regular Price: $42.00 (after February 1, 2026)
  */
 
 // Approximate ETH price for conversion (can be updated or fetched dynamically)
 const ETH_PRICE_USD = 3000 // Approximate ETH price in USD
 
-// Special pricing end date (February 1, 2025)
-const SPECIAL_END_DATE = new Date('2025-02-01T00:00:00Z')
+// Special pricing end date (February 1, 2026)
+const SPECIAL_END_DATE = new Date('2026-02-01T00:00:00Z')
 
 export interface PricingInfo {
   usdAmount: number
@@ -20,7 +20,7 @@ export interface PricingInfo {
 
 /**
  * Get current pricing based on date
- * Returns special price ($20.26 - celebrating 2026!) before February 1, 2025, regular price ($42.00) after
+ * Returns special price ($20.26 - celebrating 2026!) before February 1, 2026, regular price ($42.00) after
  */
 export function getCurrentPricing(): PricingInfo {
   const now = new Date()
