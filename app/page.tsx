@@ -1188,7 +1188,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  
  // Try to get wallet name from any of the possible addresses
  let walletName: string | undefined = undefined
- if (normalizedAddress) {
+ if (normalizedAddress && addressToUse) {
    walletName = walletNames[normalizedAddress] || 
                 walletNames[addressToUse] || // Try original case too
                 resolvedEnsNames[normalizedAddress] || 
@@ -1204,8 +1204,8 @@ setError('Failed to load Bitcoin assets. Please try again.')
    walletName,
    walletNames: Object.keys(walletNames),
    resolvedEnsNames: Object.keys(resolvedEnsNames),
-   foundInWalletNames: walletNames[normalizedAddress] || walletNames[addressToUse],
-   foundInResolved: resolvedEnsNames[normalizedAddress]
+   foundInWalletNames: normalizedAddress ? (walletNames[normalizedAddress] || (addressToUse ? walletNames[addressToUse] : undefined)) : undefined,
+   foundInResolved: normalizedAddress ? resolvedEnsNames[normalizedAddress] : undefined
  })
 
  // Create session
