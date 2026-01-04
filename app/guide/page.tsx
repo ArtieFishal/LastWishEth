@@ -29,11 +29,21 @@ export default function GuidePage() {
             <div className="space-y-8">
               <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Overview</h3>
-                <p className="text-gray-700">
+                <p className="text-gray-700 mb-3">
                   LastWish.eth is a <strong>stateless web application</strong> that helps you create a professional, printable PDF document 
                   containing all your crypto inheritance instructions. No accounts, no seed phrases stored, no persistent data—just you, 
                   your wallets, and a secure document.
                 </p>
+                <div className="bg-white p-4 rounded border-2 border-blue-300 mt-3">
+                  <h4 className="font-bold text-gray-900 mb-2">📊 System Limits & Maximums:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
+                    <li><strong>Wallets:</strong> Maximum 20 wallets total (including queued sessions)</li>
+                    <li><strong>Beneficiaries:</strong> Maximum 10 beneficiaries per document</li>
+                    <li><strong>Assets:</strong> No limit - all assets from connected wallets can be included</li>
+                    <li><strong>Allocations:</strong> No limit per asset, but must total 100% for fungible tokens</li>
+                    <li><strong>Queued Sessions:</strong> Up to 20 wallet sessions can be saved to queue</li>
+                  </ul>
+                </div>
               </div>
 
               {/* Step 1 */}
@@ -58,9 +68,11 @@ export default function GuidePage() {
                   <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
                     <h4 className="font-semibold text-gray-900 mb-2">💡 Tips:</h4>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
-                      <li>You can connect <strong>multiple wallets</strong> (up to 20 total)</li>
-                      <li>Each wallet must be verified separately</li>
+                      <li>You can connect <strong>multiple wallets</strong> (up to 20 total including queued)</li>
+                      <li>Each wallet must be verified separately (signature required)</li>
                       <li>Bitcoin wallets can be added manually if Xverse doesn't work</li>
+                      <li><strong>WalletConnect Session Management:</strong> System automatically disconnects previous sessions when adding new wallets to prevent connection limits</li>
+                      <li>You can see all queued wallets in the container (shows up to 10 without scrolling)</li>
                     </ul>
                   </div>
                   <div>
@@ -100,6 +112,14 @@ export default function GuidePage() {
                           <li>"Select All" / "Clear" - Bulk selection</li>
                         </ul>
                       </li>
+                      <li><strong>Hide Spam/Dust Tokens:</strong> Toggle to filter out fake/spam tokens automatically (enabled by default)
+                        <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
+                          <li>Filters tokens with balance &lt; 0.000001 (dust threshold)</li>
+                          <li>Filters tokens with suspicious names (test, fake, scam, spam, etc.)</li>
+                          <li>Always shows native tokens (ETH, BTC, MATIC) and NFTs</li>
+                          <li>Uncheck to see all tokens including spam</li>
+                        </ul>
+                      </li>
                       <li>Select which assets to include in your inheritance document</li>
                       <li>Click <strong>"Continue to Allocation"</strong> when ready</li>
                     </ol>
@@ -111,6 +131,8 @@ export default function GuidePage() {
                       <li>Your selections are preserved when adding more wallets</li>
                       <li>NFTs cannot be split—they go to one beneficiary</li>
                       <li>Fungible tokens can be split by percentage or amount</li>
+                      <li><strong>Spam filtering:</strong> The system automatically hides fake/spam tokens to keep your asset list clean. You can toggle this off if needed.</li>
+                      <li>Asset details show balance, contract address, and wallet provider for easy identification</li>
                     </ul>
                   </div>
                 </div>
@@ -132,18 +154,29 @@ export default function GuidePage() {
                       </li>
                       <li><strong>Allocate Assets:</strong>
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
-                          <li>Select an asset from the dropdown</li>
+                          <li>Select assets from the list (multi-select supported)</li>
                           <li>Choose allocation type: <strong>Percentage</strong> (e.g., "50%") or <strong>Amount</strong> (e.g., "1.5 ETH")</li>
-                          <li>Select beneficiary</li>
-                          <li>Click "Add Allocation"</li>
+                          <li>Select beneficiary from dropdown</li>
+                          <li>Enter percentage or amount (defaults to even split)</li>
+                          <li>Click "Add Allocation" - system prevents over-allocation automatically</li>
+                        </ul>
+                      </li>
+                      <li><strong>Edit Allocations:</strong>
+                        <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
+                          <li><strong>From Summary Cards:</strong> Click the ✎ (edit) button on any allocation card to edit inline</li>
+                          <li><strong>From Add Allocation Form:</strong> Select asset and beneficiary, then edit values</li>
+                          <li>System automatically calculates and prevents over-allocation</li>
+                          <li>Can switch between percentage and amount allocation types</li>
                         </ul>
                       </li>
                       <li><strong>Review Allocations:</strong>
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
-                          <li>See summary of all allocations</li>
-                          <li>Use "Edit" to change beneficiaries</li>
+                          <li>See summary of all allocations in sortable cards</li>
+                          <li>Sort by: Name, Status, Chain, or Type (with ascending/descending toggle)</li>
+                          <li>Color-coded status: Green (allocated), Yellow (unallocated), Red (over-allocated), Pink (NFTs)</li>
+                          <li>Use "Quick Allocate" to split all assets evenly across beneficiaries</li>
                           <li>Use "Undo Last" to revert recent changes</li>
-                          <li>Use "Quick Allocate" to split evenly</li>
+                          <li>Click ✎ to edit or × to remove any allocation</li>
                         </ul>
                       </li>
                       <li>Click <strong>"Save to Queue"</strong> when done with this wallet</li>
@@ -151,12 +184,18 @@ export default function GuidePage() {
                     </ol>
                   </div>
                   <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
-                    <h4 className="font-semibold text-gray-900 mb-2">💡 Tips:</h4>
+                    <h4 className="font-semibold text-gray-900 mb-2">💡 Tips & Tricks:</h4>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
-                      <li>NFTs must be allocated 100% to one beneficiary</li>
-                      <li>Percentages must total 100% for fungible tokens</li>
-                      <li>You can queue multiple wallet sessions</li>
+                      <li><strong>Over-allocation Prevention:</strong> System automatically prevents allocating more than 100% or exceeding asset balance</li>
+                      <li><strong>Edit Anywhere:</strong> Edit allocations from either the "Add Allocation" form or directly from summary cards (click ✎)</li>
+                      <li><strong>Auto-Reallocation:</strong> If you delete a beneficiary, allocations automatically redistribute evenly to remaining beneficiaries</li>
+                      <li><strong>Math is Automatic:</strong> System calculates totals and shows remaining available percentage/amount</li>
+                      <li>NFTs must be allocated 100% to one beneficiary (cannot be split)</li>
+                      <li>Percentages must total 100% for fungible tokens (enforced automatically)</li>
+                      <li>You can queue up to 20 wallet sessions</li>
                       <li>Each session saves assets, allocations, and wallet info</li>
+                      <li><strong>Allocation Summary:</strong> Use sorting to organize by name, status, chain, or type for easier review</li>
+                      <li>Allocated assets show in yellow in the asset list for easy identification</li>
                     </ul>
                   </div>
                 </div>
@@ -179,8 +218,8 @@ export default function GuidePage() {
                       </li>
                       <li><strong>Executor Information:</strong>
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
-                          <li>Full Name (required)</li>
-                          <li>Wallet Address (required, resolves ENS automatically)</li>
+                          <li>Full Name (required) - Can select from beneficiaries dropdown or enter manually</li>
+                          <li>Wallet Address (optional) - Resolves ENS automatically (.eth, .base.eth, etc.)</li>
                           <li>Phone (required)</li>
                           <li>Email (required)</li>
                           <li>Twitter/X (optional)</li>
@@ -203,7 +242,10 @@ export default function GuidePage() {
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
                       <li>The executor should know where to find this document</li>
                       <li>Key instructions are critical—be clear and complete</li>
-                      <li>ENS addresses resolve automatically for executor and beneficiaries</li>
+                      <li><strong>ENS Resolution:</strong> Supports .eth, .base.eth, and attempts resolution for other naming systems (.sol, .btc, etc.)</li>
+                      <li><strong>Visual Verification:</strong> Resolved ENS names show with green checkmark (✓) for easy verification</li>
+                      <li><strong>Executor Selection:</strong> Use the dropdown to quickly select executor from your beneficiaries list</li>
+                      <li>Owner ENS name at the top also resolves and shows verification status</li>
                     </ul>
                   </div>
                 </div>
@@ -243,9 +285,11 @@ export default function GuidePage() {
                   <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
                     <h4 className="font-semibold text-gray-900 mb-2">💡 Tips:</h4>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
-                      <li>Payment is verified on-chain</li>
+                      <li>Payment is verified on-chain automatically</li>
                       <li>You can proceed manually if verification is delayed</li>
-                      <li>Discount code is case-insensitive and accepts variations</li>
+                      <li>Discount code "tryitfree" is case-insensitive and accepts variations</li>
+                      <li><strong>Payment State Reset:</strong> After downloading PDF, payment state resets - you'll need to pay again for additional downloads</li>
+                      <li>This ensures each PDF generation requires payment/discount verification</li>
                     </ul>
                   </div>
                 </div>
