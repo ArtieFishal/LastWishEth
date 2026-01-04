@@ -1273,15 +1273,15 @@ setError('Failed to load Bitcoin assets. Please try again.')
           <strong>We don't ask for seed phrases or private keys.</strong>
         </p>
         <p className="text-xs text-gray-600 mb-2">
-          Nothing is saved, you create a stateless PDF document, you can save it and/or print it on the spot. <strong>We suggest you do both.</strong>
+          By using this utility nothing is permanantly saved, you create a stateless web document with which, you can simply print on the spot.
         </p>
       </div>
       <p className="text-sm text-gray-500">
-        Secure crypto inheritance instructions • {pricing.isSpecial ? (
-          <span className="inline-flex items-center gap-2">
-            <span className="text-green-600 font-bold text-base">🎉 $26.20</span>
-            <span className="line-through text-gray-400">$42.00</span>
-            <span className="text-green-600 font-semibold">New Year's Special - Limited Time!</span>
+        Crypto Inheritance Instructions • {pricing.isSpecial ? (
+          <span className="inline-flex items-center gap-2 flex-wrap">
+            <span className="text-green-600 font-bold text-lg animate-pulse">🎉 $20.26</span>
+            <span className="line-through text-gray-400 text-base">$42.00</span>
+            <span className="text-green-600 font-bold">✨ New Year 2026 Special - Limited Time! ✨</span>
           </span>
         ) : (
           <span>${pricing.usdAmount.toFixed(2)} one-time fee</span>
@@ -2572,10 +2572,10 @@ onSelectionChange={setSelectedAssetIds}
               {discountApplied ? (
                 'Unlock & Generate (FREE)'
               ) : pricing.isSpecial ? (
-                <span>
-                  <span className="text-yellow-300 font-bold">🎉 $26.20</span>
-                  <span className="line-through text-gray-300 ml-2 text-sm">$42.00</span>
-                  <span className="ml-2 text-xs">Limited Time!</span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="text-yellow-300 font-bold text-lg animate-pulse">🎉 $20.26</span>
+                  <span className="line-through text-gray-300 text-sm">$42.00</span>
+                  <span className="text-green-400 font-bold text-xs">✨ 2026 Special! ✨</span>
                 </span>
               ) : (
                 `$${pricing.usdAmount.toFixed(2)} / ${paymentAmountETH} ETH`
@@ -2607,10 +2607,10 @@ onSelectionChange={setSelectedAssetIds}
  <h2 className="text-3xl font-bold text-gray-900 mb-2">Payment Required</h2>
  <p className="text-gray-600 mb-8">
                 {pricing.isSpecial ? (
-                  <span className="inline-flex items-center gap-3 text-lg">
-                    <span className="text-green-600 font-bold text-2xl">🎉 $26.20</span>
-                    <span className="line-through text-gray-400 text-xl">$42.00</span>
-                    <span className="text-green-600 font-semibold">Limited Time Offer!</span>
+                  <span className="inline-flex items-center gap-3 text-lg flex-wrap">
+                    <span className="text-green-600 font-bold text-3xl animate-pulse">🎉 $20.26</span>
+                    <span className="line-through text-gray-400 text-2xl">$42.00</span>
+                    <span className="text-green-600 font-bold">✨ New Year 2026 Special! ✨</span>
                   </span>
                 ) : (
                   `Pay ${paymentAmountETH} ETH ($${pricing.usdAmount.toFixed(2)}) to unlock PDF generation`
@@ -2621,18 +2621,18 @@ onSelectionChange={setSelectedAssetIds}
  <div className={`rounded-lg p-6 ${pricing.isSpecial ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-3 border-green-400 shadow-lg' : 'bg-gray-50'}`}>
  <p className="text-sm text-gray-600 mb-2 font-semibold">Payment Amount</p>
                     {pricing.isSpecial ? (
-                      <div className="space-y-2">
-                        <div className="flex items-baseline gap-3">
-                          <p className="text-4xl font-bold text-green-700">
-                            🎉 $26.20
+                      <div className="space-y-3">
+                        <div className="flex items-baseline gap-4">
+                          <p className="text-5xl font-bold text-green-700 animate-pulse">
+                            🎉 $20.26
                           </p>
-                          <p className="text-2xl line-through text-gray-400">$42.00</p>
+                          <p className="text-3xl line-through text-gray-400">$42.00</p>
                         </div>
-                        <p className="text-lg text-green-700 font-semibold">
-                          New Year's Special - Save $15.80!
+                        <p className="text-xl text-green-700 font-bold">
+                          ✨ New Year 2026 Special - Save $21.74! ✨
                         </p>
-                        <p className="text-sm text-gray-600">
-                          ({paymentAmountETH} ETH) • Regular price returns February 1st
+                        <p className="text-base text-gray-700 font-semibold">
+                          ({paymentAmountETH} ETH) • Regular price $42.00 returns February 1st
                         </p>
                       </div>
                     ) : (
