@@ -736,18 +736,58 @@ export default function Home() {
  if (filteredCount > 0) {
    console.log(`Filtered out ${filteredCount} spam/dust token(s)`)
  }
- newAssets.push(...filteredAssets)
- console.log(`Loaded ${uniqueAssets.length} new assets from wallet (${walletProvider})`)
- }
- } catch (err) {
- console.error('Error loading EVM assets:', err)
- setError('Failed to load EVM assets. Please try again.')
- }
- } else {
- setError('Wallet must be verified (signature required) before loading assets.')
- setLoading(false)
- return
- }
+      newAssets.push(...filteredAssets)
+      console.log(`Loaded ${filteredAssets.length} assets from wallet (${walletProvider})`)
+    }
+  } catch (err) {
+    console.error('Error loading EVM assets:', err)
+    setError('Failed to load EVM assets. Please try again.')
+  }
+
+  // Load Ethscriptions for this wallet
+  try {
+    console.log(`[Load Assets From Wallet] Fetching ethscriptions for wallet: ${walletAddress}`)
+    const ethscriptionsResponse = await axios.post('/api/portfolio/ethscriptions', {
+      addresses: [walletAddress],
+    })
+    console.log(`[Load Assets From Wallet] Ethscriptions API response:`, {
+      hasData: !!ethscriptionsResponse.data,
+      hasAssets: !!ethscriptionsResponse.data?.assets,
+      assetCount: Array.isArray(ethscriptionsResponse.data?.assets) ? ethscriptionsResponse.data.assets.length : 0
+    })
+    
+    if (ethscriptionsResponse.data?.assets && Array.isArray(ethscriptionsResponse.data.assets)) {
+      const existingIds = new Set(assets.map(a => a.id))
+      const uniqueEthscriptions = ethscriptionsResponse.data.assets
+        .filter((a: Asset) => !existingIds.has(a.id))
+        .map((a: Asset) => ({
+          ...a,
+          walletAddress: walletAddress,
+          walletProvider: walletProviders[walletAddress] || 'Unknown',
+        }))
+      
+      console.log(`[Load Assets From Wallet] Unique ethscriptions after deduplication: ${uniqueEthscriptions.length} (from ${ethscriptionsResponse.data.assets.length} total)`)
+      
+      if (uniqueEthscriptions.length > 0) {
+        newAssets.push(...uniqueEthscriptions)
+        console.log(`✅ Loaded ${uniqueEthscriptions.length} ethscription(s) from wallet ${walletAddress}`)
+        console.log('Sample ethscription:', uniqueEthscriptions[0])
+      } else {
+        console.log(`⚠️ All ${ethscriptionsResponse.data.assets.length} ethscriptions were duplicates`)
+      }
+    } else {
+      console.log('⚠️ No ethscriptions in response or invalid format')
+      console.log('Response data:', ethscriptionsResponse.data)
+    }
+  } catch (err) {
+    console.error('❌ Error loading ethscriptions:', err)
+    // Don't set error for ethscriptions - it's optional
+  }
+} else {
+  setError('Wallet must be verified (signature required) before loading assets.')
+  setLoading(false)
+  return
+}
 
 if (append) {
   const finalAssets = [...assets, ...newAssets]
