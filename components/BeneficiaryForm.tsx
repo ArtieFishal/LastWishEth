@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Beneficiary } from '@/types'
-import { createPublicClient, http } from 'viem'
-import { mainnet } from 'viem/chains'
+import { resolveBlockchainName, reverseResolveAddress } from '@/lib/name-resolvers'
 
 interface BeneficiaryFormProps {
   beneficiaries: Beneficiary[]
@@ -20,12 +19,12 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
   const [ensName, setEnsName] = useState<string | null>(null)
   const [resolvedAddress, setResolvedAddress] = useState<string | null>(null)
   
-  // Resolve ENS name or address when wallet address changes
+  // Resolve blockchain name or address when wallet address changes
   useEffect(() => {
-    const resolveENS = async () => {
+    const resolveName = async () => {
       if (!walletAddress || walletAddress.trim().length === 0) {
-        setEnsName(null)
         setResolvedAddress(null)
+        setEnsName(null)
         return
       }
       
@@ -33,43 +32,39 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
       
       setResolvingEns(true)
       try {
-        const publicClient = createPublicClient({
-          chain: mainnet,
-          transport: http(),
-        })
+        // Try unified blockchain name resolver first
+        const resolved = await resolveBlockchainName(input)
         
-        // Check if input is an ENS name (ends with .eth)
-        if (input.endsWith('.eth')) {
-          // Forward lookup: ENS name -> address
-          const address = await publicClient.getEnsAddress({ name: input })
-          if (address) {
-            setResolvedAddress(address)
-            setEnsName(input) // Keep the ENS name
-            console.log(`Resolved ENS "${input}" to address: ${address}`)
-          } else {
-            setResolvedAddress(null)
-            setEnsName(null)
+        if (resolved) {
+          setResolvedAddress(resolved.address)
+          setEnsName(resolved.name) // Keep the resolved name
+          console.log(`Resolved ${resolved.resolver} name "${resolved.name}" to address: ${resolved.address}`)
+          return
+        }
+        
+        // If not a name, try reverse lookup if it's an address
+        if (input.startsWith('0x') && input.length === 42) {
+          // Reverse lookup: address -> name across all systems
+          const reverseResolved = await reverseResolveAddress(input)
+          if (reverseResolved) {
+            setEnsName(reverseResolved.name)
+            setResolvedAddress(reverseResolved.address)
+            console.log(`Reverse resolved address "${input}" to ${reverseResolved.resolver} name: ${reverseResolved.name}`)
+            return
           }
-        } 
-        // Check if input is an Ethereum address (starts with 0x and is 42 chars)
-        else if (input.startsWith('0x') && input.length === 42) {
-          // Reverse lookup: address -> ENS name
-          const resolved = await publicClient.getEnsName({ address: input as `0x${string}` })
-          if (resolved) {
-            setEnsName(resolved)
-            setResolvedAddress(input.toLowerCase())
-            console.log(`Resolved address "${input}" to ENS: ${resolved}`)
-          } else {
-            setEnsName(null)
-            setResolvedAddress(input.toLowerCase())
-          }
+        }
+        
+        // Fallback: if it's an address, just use it
+        if (input.startsWith('0x') && input.length === 42) {
+          setEnsName(null)
+          setResolvedAddress(input.toLowerCase())
         } else {
-          // Not a valid ENS name or address
+          // Not a valid name or address
           setEnsName(null)
           setResolvedAddress(null)
         }
       } catch (error) {
-        console.error('Error resolving ENS:', error)
+        console.error('Error resolving name:', error)
         setEnsName(null)
         setResolvedAddress(null)
       } finally {
@@ -77,8 +72,8 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
       }
     }
     
-    // Debounce ENS resolution
-    const timeoutId = setTimeout(resolveENS, 500)
+    // Debounce name resolution
+    const timeoutId = setTimeout(resolveName, 500)
     return () => clearTimeout(timeoutId)
   }, [walletAddress])
 

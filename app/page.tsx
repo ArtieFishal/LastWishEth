@@ -14,6 +14,7 @@ import { AssetSelector } from '@/components/AssetSelector'
 import { BeneficiaryForm } from '@/components/BeneficiaryForm'
 import { AllocationPanel } from '@/components/AllocationPanel'
 import { WalletNameEditor } from '@/components/WalletNameEditor'
+import { resolveBlockchainName, reverseResolveAddress } from '@/lib/name-resolvers'
 import { Asset, Beneficiary, Allocation, UserData, QueuedWalletSession } from '@/types'
 import axios from 'axios'
 import { generatePDF } from '@/lib/pdf-generator'
@@ -274,60 +275,34 @@ export default function Home() {
     }
   }
 
- // Resolve ENS names for addresses
-  // Resolve ENS name from address (reverse lookup)
-  const resolveENS = async (address: string) => {
- if (!address || address.length < 10 || !address.startsWith('0x')) return null
- try {
- const publicClient = createPublicClient({
- chain: mainnet,
- transport: http(),
- })
- const ensName = await publicClient.getEnsName({ address: address as `0x${string}` })
- return ensName
- } catch (error) {
- console.error('Error resolving ENS:', error)
- return null
- }
- }
+ // Old resolveENS function removed - now using unified reverseResolveAddress from name-resolvers
 
- // Resolve ENS names when wallets are connected
+ // Resolve wallet names across all blockchain naming systems when wallets are connected
  useEffect(() => {
  const resolveWalletNames = async () => {
  const newWalletNames: Record<string, string> = { ...walletNames }
  let updated = false
  
- // Resolve ENS for current EVM address
+ // Resolve name for current EVM address
  if (evmAddress && !newWalletNames[evmAddress]) {
- const ensName = await resolveENS(evmAddress)
- if (ensName) {
- newWalletNames[evmAddress] = ensName
- setResolvedEnsNames(prev => ({ ...prev, [evmAddress.toLowerCase()]: ensName }))
+ const resolved = await reverseResolveAddress(evmAddress)
+ if (resolved) {
+ newWalletNames[evmAddress] = resolved.name
+ setResolvedEnsNames(prev => ({ ...prev, [evmAddress.toLowerCase()]: resolved.name }))
  updated = true
+ console.log(`Resolved ${resolved.resolver} name for current wallet: ${resolved.name}`)
  }
  }
  
- // Resolve ENS for all connected EVM addresses
+ // Resolve names for all connected EVM addresses
  for (const addr of connectedEVMAddresses) {
- if (addr && !resolvedEnsNames[addr.toLowerCase()]) {
- const ensName = await resolveENS(addr)
- if (ensName) {
- setResolvedEnsNames(prev => ({ ...prev, [addr.toLowerCase()]: ensName }))
- if (!newWalletNames[addr]) {
- newWalletNames[addr] = ensName
+ if (addr && !resolvedEnsNames[addr.toLowerCase()] && !newWalletNames[addr]) {
+ const resolved = await reverseResolveAddress(addr)
+ if (resolved) {
+ setResolvedEnsNames(prev => ({ ...prev, [addr.toLowerCase()]: resolved.name }))
+ newWalletNames[addr] = resolved.name
  updated = true
- }
- }
- }
- }
- 
- // Resolve ENS for all connected EVM addresses
- for (const addr of connectedEVMAddresses) {
- if (addr && !newWalletNames[addr]) {
- const ensName = await resolveENS(addr)
- if (ensName) {
- newWalletNames[addr] = ensName
- updated = true
+ console.log(`Resolved ${resolved.resolver} name for wallet ${addr}: ${resolved.name}`)
  }
  }
  }
@@ -426,9 +401,9 @@ export default function Home() {
  return () => clearTimeout(timeoutId)
  }, [executorAddress])
 
- // Resolve ENS name for owner wallet address (supports .eth, .base.eth, etc.)
+ // Resolve owner wallet address across all blockchain naming systems
  useEffect(() => {
- const resolveOwnerENS = async () => {
+ const resolveOwnerName = async () => {
  if (!ownerEnsName || ownerEnsName.trim().length === 0) {
  setOwnerEnsResolvedName(null)
  setOwnerResolvedAddress(null)
@@ -440,55 +415,39 @@ export default function Home() {
  setOwnerResolvedAddress(null)
 
  try {
- const publicClient = createPublicClient({
- chain: mainnet,
- transport: http(),
- })
-
- // Check if input is an ENS name (ends with .eth, .base.eth, etc.)
- // Support: .eth, .base.eth, and other ENS-compatible TLDs
- const isENSName = /\.(eth|base\.eth)$/i.test(input) || input.includes('.')
+ // Try unified blockchain name resolver first
+ const resolved = await resolveBlockchainName(input)
  
- if (isENSName) {
- // Forward lookup: ENS name -> address
- // Note: .sol and .btc are not ENS-compatible and would need different resolvers
- // For now, we'll try ENS resolution for .eth and .base.eth
- const address = await publicClient.getEnsAddress({ name: input })
- if (address) {
- setOwnerResolvedAddress(address)
- setOwnerEnsResolvedName(input) // Keep the ENS name
- // Store in resolvedEnsNames for PDF generation
- setResolvedEnsNames(prev => ({ ...prev, [address.toLowerCase()]: input }))
- console.log(`Resolved owner ENS "${input}" to address: ${address}`)
- } else {
- // If resolution fails, still keep the name but no address
- setOwnerEnsResolvedName(input)
- setOwnerResolvedAddress(null)
- console.warn(`Could not resolve owner ENS name "${input}"`)
- }
- } 
- // Check if input is an Ethereum address (starts with 0x and is 42 chars)
- else if (input.startsWith('0x') && input.length === 42) {
- // Reverse lookup: address -> ENS name
- const resolved = await publicClient.getEnsName({ address: input as `0x${string}` })
  if (resolved) {
- setOwnerEnsResolvedName(resolved)
- setOwnerResolvedAddress(input.toLowerCase())
+ setOwnerResolvedAddress(resolved.address)
+ setOwnerEnsResolvedName(resolved.name) // Keep the resolved name
  // Store in resolvedEnsNames for PDF generation
- setResolvedEnsNames(prev => ({ ...prev, [input.toLowerCase()]: resolved }))
- console.log(`Resolved owner address "${input}" to ENS: ${resolved}`)
+ setResolvedEnsNames(prev => ({ ...prev, [resolved.address.toLowerCase()]: resolved.name }))
+ console.log(`Resolved owner ${resolved.resolver} name "${resolved.name}" to address: ${resolved.address}`)
+ return
+ }
+ 
+ // If not a name, check if input is an Ethereum address (starts with 0x and is 42 chars)
+ if (input.startsWith('0x') && input.length === 42) {
+ // Reverse lookup: address -> name across all systems
+ const reverseResolved = await reverseResolveAddress(input)
+ if (reverseResolved) {
+ setOwnerEnsResolvedName(reverseResolved.name)
+ setOwnerResolvedAddress(reverseResolved.address)
+ // Store in resolvedEnsNames for PDF generation
+ setResolvedEnsNames(prev => ({ ...prev, [reverseResolved.address.toLowerCase()]: reverseResolved.name }))
+ console.log(`Resolved owner address "${input}" to ${reverseResolved.resolver} name: ${reverseResolved.name}`)
  } else {
  setOwnerEnsResolvedName(null)
  setOwnerResolvedAddress(input.toLowerCase())
  }
  } else {
- // Not a valid ENS name or address - could be .sol, .btc, or other
- // Keep the input as-is but don't try to resolve
+ // Not a valid name or address
  setOwnerEnsResolvedName(input.includes('.') ? input : null)
  setOwnerResolvedAddress(null)
  }
  } catch (error) {
- console.error('Error resolving owner ENS:', error)
+ console.error('Error resolving owner name:', error)
  // On error, keep the input as-is if it looks like a name
  if (ownerEnsName && typeof ownerEnsName === 'string' && ownerEnsName.includes('.')) {
  setOwnerEnsResolvedName(ownerEnsName.trim())
@@ -496,9 +455,9 @@ export default function Home() {
  setOwnerResolvedAddress(null)
  }
  }
-
- // Debounce ENS resolution
- const timeoutId = setTimeout(resolveOwnerENS, 500)
+ 
+ // Debounce name resolution
+ const timeoutId = setTimeout(resolveOwnerName, 500)
  return () => clearTimeout(timeoutId)
  }, [ownerEnsName])
 
@@ -1931,29 +1890,26 @@ setError('Failed to load Bitcoin assets. Please try again.')
  setWalletProviders(prev => ({ ...prev, [addr]: provider }))
  }
  
- // Resolve ENS name for this wallet address
- const resolveWalletENS = async (address: string) => {
+ // Resolve wallet name across all blockchain naming systems
+ const resolveWalletName = async (address: string) => {
  try {
- const publicClient = createPublicClient({
- chain: mainnet,
- transport: http(),
- })
- const ensName = await publicClient.getEnsName({ address: address as `0x${string}` })
- if (ensName) {
- setResolvedEnsNames(prev => ({ ...prev, [address.toLowerCase()]: ensName }))
- // If no manual name is set, use ENS name as the wallet name
+ // Try reverse lookup across all naming systems
+ const resolved = await reverseResolveAddress(address)
+ if (resolved) {
+ setResolvedEnsNames(prev => ({ ...prev, [address.toLowerCase()]: resolved.name }))
+ // If no manual name is set, use resolved name as the wallet name
  if (!walletNames[address]) {
- setWalletNames(prev => ({ ...prev, [address]: ensName }))
+ setWalletNames(prev => ({ ...prev, [address]: resolved.name }))
  }
- console.log(`Resolved ENS for wallet ${address}: ${ensName}`)
+ console.log(`Resolved ${resolved.resolver} name for wallet ${address}: ${resolved.name}`)
  }
  } catch (error) {
- console.error(`Error resolving ENS for wallet ${address}:`, error)
+ console.error(`Error resolving name for wallet ${address}:`, error)
  }
  }
  
- // Resolve ENS in background (don't block)
- resolveWalletENS(addr)
+ // Resolve name in background (don't block)
+ resolveWalletName(addr)
  
  // Set as selected if it's the first wallet or no wallet is selected
  if (selectedWalletForLoading === null) {
