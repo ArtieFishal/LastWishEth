@@ -166,28 +166,103 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
             Deselect All
           </button>
         </div>
-        <div className="flex gap-2 ml-auto">
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-          >
-            <option value="all">All Types</option>
-            <option value="currencies">Currencies</option>
-            <option value="nfts">NFTs</option>
-            <option value="ethscriptions">Ethscriptions</option>
-            <option value="other">Other</option>
-          </select>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-          >
-            <option value="type">Sort by Type</option>
-            <option value="chain">Sort by Chain</option>
-            <option value="wallet">Sort by Wallet</option>
-            <option value="value">Sort by Value</option>
-          </select>
+        <div className="flex gap-2 ml-auto flex-wrap">
+          <div className="flex gap-1 items-center">
+            <span className="text-xs text-gray-500 font-semibold mr-1">Filter:</span>
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                filter === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              All Types
+            </button>
+            <button
+              onClick={() => setFilter('currencies')}
+              className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                filter === 'currencies'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+              }`}
+            >
+              Currencies
+            </button>
+            <button
+              onClick={() => setFilter('nfts')}
+              className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                filter === 'nfts'
+                  ? 'bg-pink-600 text-white'
+                  : 'bg-pink-100 text-pink-700 hover:bg-pink-200'
+              }`}
+            >
+              NFTs
+            </button>
+            <button
+              onClick={() => setFilter('ethscriptions')}
+              className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                filter === 'ethscriptions'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
+            >
+              Ethscriptions
+            </button>
+            <button
+              onClick={() => setFilter('other')}
+              className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                filter === 'other'
+                  ? 'bg-gray-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Other
+            </button>
+          </div>
+          <div className="flex gap-1 items-center">
+            <span className="text-xs text-gray-500 font-semibold mr-1">Sort:</span>
+            <button
+              onClick={() => setSortBy('type')}
+              className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                sortBy === 'type'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+              }`}
+            >
+              Type
+            </button>
+            <button
+              onClick={() => setSortBy('chain')}
+              className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                sortBy === 'chain'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+              }`}
+            >
+              Chain
+            </button>
+            <button
+              onClick={() => setSortBy('wallet')}
+              className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                sortBy === 'wallet'
+                  ? 'bg-cyan-600 text-white'
+                  : 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200'
+              }`}
+            >
+              Wallet
+            </button>
+            <button
+              onClick={() => setSortBy('value')}
+              className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                sortBy === 'value'
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+              }`}
+            >
+              Value
+            </button>
+          </div>
         </div>
       </div>
 

@@ -452,17 +452,14 @@ export function AllocationPanel({
               >
                 All NFTs
               </button>
-              {ethscriptionAssets.length > 0 && (
-                <>
-                  <span className="text-gray-300">|</span>
-                  <button
-                    onClick={selectAllEthscriptions}
-                    className="text-xs text-green-600 hover:text-green-700 font-semibold"
-                  >
-                    All Ethscriptions ({ethscriptionAssets.length})
-                  </button>
-                </>
-              )}
+              <span className="text-gray-300">|</span>
+              <button
+                onClick={selectAllEthscriptions}
+                className="text-xs text-green-600 hover:text-green-700 font-semibold"
+                disabled={ethscriptionAssets.length === 0}
+              >
+                All Ethscriptions{ethscriptionAssets.length > 0 ? ` (${ethscriptionAssets.length})` : ''}
+              </button>
               <span className="text-gray-300">|</span>
               <button
                 onClick={selectAllAssets}
@@ -748,21 +745,57 @@ export function AllocationPanel({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="font-semibold text-gray-900 text-lg">Allocation Summary</h4>
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-700">Sort by:</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'name' | 'status' | 'chain' | 'type')}
-              className="text-xs rounded border border-gray-300 px-2 py-1 focus:border-blue-500 focus:outline-none"
-            >
-              <option value="name">Name</option>
-              <option value="status">Status</option>
-              <option value="chain">Chain</option>
-              <option value="type">Type</option>
-            </select>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex gap-1 items-center">
+              <span className="text-xs text-gray-500 font-semibold mr-1">Sort:</span>
+              <button
+                onClick={() => setSortBy('name')}
+                className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                  sortBy === 'name'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                }`}
+              >
+                Name
+              </button>
+              <button
+                onClick={() => setSortBy('status')}
+                className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                  sortBy === 'status'
+                    ? 'bg-yellow-600 text-white'
+                    : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                }`}
+              >
+                Status
+              </button>
+              <button
+                onClick={() => setSortBy('chain')}
+                className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                  sortBy === 'chain'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                }`}
+              >
+                Chain
+              </button>
+              <button
+                onClick={() => setSortBy('type')}
+                className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                  sortBy === 'type'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                }`}
+              >
+                Type
+              </button>
+            </div>
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300"
+              className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                sortOrder === 'asc'
+                  ? 'bg-gray-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
               title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
             >
               {sortOrder === 'asc' ? '↑' : '↓'}
