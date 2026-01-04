@@ -106,7 +106,7 @@ export function AllocationPanel({
       return
     }
 
-    const percentagePerBeneficiary = defaultPercentageForQuickAllocateForQuickAllocate
+    const percentagePerBeneficiary = defaultPercentageForQuickAllocate
     const newAllocations: Allocation[] = []
 
     // Allocate fungible tokens evenly across all beneficiaries
