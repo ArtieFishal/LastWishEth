@@ -513,9 +513,17 @@ export default function GuidePage() {
                     <h4 className="font-bold text-gray-900 mb-2">4. Affordable</h4>
                     <p className="text-gray-700">One-time fee: 0.000025 ETH (~$0.01 during testing), Regular price: ~$20.26, Discount codes available</p>
                   </div>
+                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                    <h4 className="font-bold text-gray-900 mb-2">5. Smart Filtering</h4>
+                    <p className="text-gray-700">Automatic spam/dust token filtering keeps your asset list clean and manageable</p>
+                  </div>
+                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                    <h4 className="font-bold text-gray-900 mb-2">6. Advanced Allocation System</h4>
+                    <p className="text-gray-700">Prevent over-allocation, edit from anywhere, auto-reallocate when beneficiaries change</p>
+                  </div>
                   <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded md:col-span-2">
-                    <h4 className="font-bold text-gray-900 mb-2">5. User-Friendly</h4>
-                    <p className="text-gray-700">No technical knowledge required, step-by-step guidance, real-time validation</p>
+                    <h4 className="font-bold text-gray-900 mb-2">7. User-Friendly</h4>
+                    <p className="text-gray-700">No technical knowledge required, step-by-step guidance, real-time validation, enhanced UI with larger containers and detailed asset information</p>
                   </div>
                 </div>
               </div>
