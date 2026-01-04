@@ -292,7 +292,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           status: 'pending',
           invoiceId,
-          message: `Found a transaction to the recipient, but amount doesn't match. Expected: ${PAYMENT_AMOUNT} ETH, Found: ${latestAmount} ETH. Transaction hash: ${latest.hash}`,
+          message: `Found a transaction to the recipient, but amount doesn't match. Expected: ${paymentAmount} ETH, Found: ${latestAmount} ETH. Transaction hash: ${latest.hash}`,
         })
       }
 
