@@ -18,6 +18,7 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
   const [resolvingEns, setResolvingEns] = useState(false)
   const [ensName, setEnsName] = useState<string | null>(null)
   const [resolvedAddress, setResolvedAddress] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   
   // Resolve blockchain name or address when wallet address changes
   useEffect(() => {
@@ -120,6 +121,61 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
     onBeneficiariesChange(beneficiaries.filter((b) => b.id !== id))
   }
 
+  const handleEdit = (beneficiary: Beneficiary) => {
+    setEditingId(beneficiary.id)
+    setName(beneficiary.name)
+    setWalletAddress(beneficiary.ensName || beneficiary.walletAddress)
+    setPhone(beneficiary.phone || '')
+    setEmail(beneficiary.email || '')
+    setNotes(beneficiary.notes || '')
+    setEnsName(beneficiary.ensName || null)
+    setResolvedAddress(beneficiary.walletAddress || null)
+  }
+
+  const handleSaveEdit = () => {
+    if (!editingId) return
+    if (!name.trim() || !walletAddress.trim()) {
+      alert('Name and wallet address are required')
+      return
+    }
+
+    const finalAddress = resolvedAddress || walletAddress.trim()
+    
+    // Validate address format
+    if (!finalAddress.startsWith('0x') || finalAddress.length !== 42) {
+      alert('Invalid wallet address. Please enter a valid Ethereum address (0x...) or ENS name (.eth)')
+      return
+    }
+
+    const updatedBeneficiaries = beneficiaries.map(b => 
+      b.id === editingId
+        ? {
+            ...b,
+            name: name.trim(),
+            walletAddress: finalAddress.toLowerCase(),
+            ensName: ensName || undefined,
+            phone: phone.trim() || undefined,
+            email: email.trim() || undefined,
+            notes: notes.trim() || undefined,
+          }
+        : b
+    )
+
+    onBeneficiariesChange(updatedBeneficiaries)
+    handleCancelEdit()
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setName('')
+    setWalletAddress('')
+    setPhone('')
+    setEmail('')
+    setNotes('')
+    setEnsName(null)
+    setResolvedAddress(null)
+  }
+
   return (
     <div className="space-y-3">
       {/* Main fields - horizontal */}
@@ -161,13 +217,31 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
             </div>
           )}
         </div>
-        <button
-          onClick={handleAdd}
-          disabled={!name.trim() || !walletAddress.trim() || beneficiaries.length >= 10}
-          className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-        >
-          Add ({beneficiaries.length}/10)
-        </button>
+        {editingId ? (
+          <div className="flex gap-2">
+            <button
+              onClick={handleSaveEdit}
+              disabled={!name.trim() || !walletAddress.trim()}
+              className="rounded-lg bg-green-600 text-white px-4 py-2 text-sm font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            >
+              ✓ Save
+            </button>
+            <button
+              onClick={handleCancelEdit}
+              className="rounded-lg bg-gray-600 text-white px-4 py-2 text-sm font-semibold hover:bg-gray-700 transition-colors whitespace-nowrap"
+            >
+              ✕ Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleAdd}
+            disabled={!name.trim() || !walletAddress.trim() || beneficiaries.length >= 10}
+            className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          >
+            Add ({beneficiaries.length}/10)
+          </button>
+        )}
       </div>
 
       {/* Optional fields - horizontal */}

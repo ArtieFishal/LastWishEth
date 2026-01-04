@@ -2333,15 +2333,49 @@ onSelectionChange={setSelectedAssetIds}
            {beneficiaries.map((ben) => {
              const beneficiaryAllocations = allocations.filter(a => a.beneficiaryId === ben.id)
              return (
-               <div key={ben.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+               <div key={ben.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3 relative">
                  <div className="flex items-start justify-between mb-2">
                    <span className="text-sm font-semibold text-gray-900">{ben.name}</span>
-                   <button
-                     onClick={() => setBeneficiaries(beneficiaries.filter(b => b.id !== ben.id))}
-                     className="text-red-600 hover:text-red-700 text-xs font-semibold"
-                   >
-                     ×
-                   </button>
+                   <div className="flex gap-1">
+                     <button
+                       onClick={() => {
+                         // Populate form fields with beneficiary data for editing
+                         const form = document.querySelector('form') || document.querySelector('.space-y-3')
+                         if (form) {
+                           const inputs = form.querySelectorAll('input')
+                           const nameInput = Array.from(inputs).find((el: any) => el.placeholder === 'John Doe') as HTMLInputElement
+                           const walletInput = Array.from(inputs).find((el: any) => el.placeholder === '0x... or name.eth') as HTMLInputElement
+                           const phoneInput = Array.from(inputs).find((el: any) => el.placeholder === '+1 (555) 123-4567') as HTMLInputElement
+                           const emailInput = Array.from(inputs).find((el: any) => el.placeholder === 'john@example.com') as HTMLInputElement
+                           const notesInput = Array.from(inputs).find((el: any) => el.placeholder === 'Additional info to find them') as HTMLInputElement
+                           
+                           if (nameInput) { nameInput.value = ben.name; nameInput.dispatchEvent(new Event('input', { bubbles: true })) }
+                           if (walletInput) { walletInput.value = ben.ensName || ben.walletAddress; walletInput.dispatchEvent(new Event('input', { bubbles: true })) }
+                           if (phoneInput) { phoneInput.value = ben.phone || ''; phoneInput.dispatchEvent(new Event('input', { bubbles: true })) }
+                           if (emailInput) { emailInput.value = ben.email || ''; emailInput.dispatchEvent(new Event('input', { bubbles: true })) }
+                           if (notesInput) { notesInput.value = ben.notes || ''; notesInput.dispatchEvent(new Event('input', { bubbles: true })) }
+                           
+                           // Remove this beneficiary (will be re-added when saved)
+                           setBeneficiaries(beneficiaries.filter((b) => b.id !== ben.id))
+                           
+                           // Scroll to form and focus
+                           nameInput?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                           setTimeout(() => nameInput?.focus(), 300)
+                         }
+                       }}
+                       className="text-blue-600 hover:text-blue-700 text-xs font-semibold px-1"
+                       title="Edit beneficiary"
+                     >
+                       ✏️
+                     </button>
+                     <button
+                       onClick={() => setBeneficiaries(beneficiaries.filter(b => b.id !== ben.id))}
+                       className="text-red-600 hover:text-red-700 text-xs font-semibold"
+                       title="Remove beneficiary"
+                     >
+                       ×
+                     </button>
+                   </div>
                  </div>
                  {ben.ensName && ben.ensName !== ben.walletAddress && (
                    <div className="mb-1">

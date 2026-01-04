@@ -40,17 +40,20 @@ export function AllocationPanel({
   const ethscriptionAssets = assets.filter(isEthscription)
   const fungibleAssets = assets.filter(isFungible)
 
-  // Calculate default percentage based on number of beneficiaries
+  // Calculate default percentage for quick allocate (evenly across all beneficiaries)
   // 1 beneficiary = 100%, 2 = 50% each, 3 = 33.33% each, etc.
-  const defaultPercentage = beneficiaries.length > 0 
+  const defaultPercentageForQuickAllocate = beneficiaries.length > 0 
     ? Math.round((100 / beneficiaries.length) * 100) / 100 // Round to 2 decimals
     : 0
+
+  // Default percentage for manual allocation: 100% (allocate to one person)
+  const defaultPercentage = 100
 
   // Auto-fill default percentage when beneficiary is selected and type is percentage
   const handleBeneficiaryChange = (beneficiaryId: string) => {
     setSelectedBeneficiary(beneficiaryId)
     if (allocationType === 'percentage' && beneficiaries.length > 0 && !allocationValue) {
-      setAllocationValue(defaultPercentage.toFixed(2))
+      setAllocationValue(defaultPercentage.toFixed(2)) // Always 100% for manual allocation
     }
   }
 
@@ -58,7 +61,7 @@ export function AllocationPanel({
   const handleAllocationTypeChange = (type: 'amount' | 'percentage') => {
     setAllocationType(type)
     if (type === 'percentage' && beneficiaries.length > 0 && !allocationValue) {
-      setAllocationValue(defaultPercentage.toFixed(2))
+      setAllocationValue(defaultPercentage.toFixed(2)) // Always 100% for manual allocation
     } else if (type === 'amount') {
       setAllocationValue('')
     }
@@ -103,7 +106,7 @@ export function AllocationPanel({
       return
     }
 
-    const percentagePerBeneficiary = defaultPercentage
+    const percentagePerBeneficiary = defaultPercentageForQuickAllocateForQuickAllocate
     const newAllocations: Allocation[] = []
 
     // Allocate fungible tokens evenly across all beneficiaries
@@ -214,7 +217,7 @@ export function AllocationPanel({
         let value = parseFloat(allocationValue)
         if (isNaN(value) || value <= 0) {
           if (allocationType === 'percentage' && beneficiaries.length > 0) {
-            value = defaultPercentage
+            value = defaultPercentage // 100% for manual allocation
           } else {
             alert('Please enter a valid positive number')
             return
@@ -292,7 +295,7 @@ export function AllocationPanel({
     setSelectedBeneficiary(null)
     // Reset to default percentage if type is percentage, otherwise clear
     if (allocationType === 'percentage' && beneficiaries.length > 0) {
-      setAllocationValue(defaultPercentage.toFixed(2))
+      setAllocationValue(defaultPercentage.toFixed(2)) // 100% for manual allocation
     } else {
       setAllocationValue('')
     }
@@ -668,7 +671,7 @@ export function AllocationPanel({
                   type="number"
                   value={allocationValue}
                   onChange={(e) => setAllocationValue(e.target.value)}
-                  placeholder={allocationType === 'percentage' && beneficiaries.length > 0 ? defaultPercentage.toFixed(2) : 
+                  placeholder={allocationType === 'percentage' && beneficiaries.length > 0 ? defaultPercentage.toFixed(2) : // 100% placeholder 
                     selectedAssets.some(id => {
                       const asset = assets.find(a => a.id === id)
                       return asset?.type === 'btc'
@@ -942,7 +945,7 @@ export function AllocationPanel({
                                       onChange={(e) => {
                                         setAllocationType(e.target.value as 'amount' | 'percentage')
                                         if (e.target.value === 'percentage') {
-                                          setAllocationValue(alloc.percentage?.toString() || defaultPercentage.toFixed(2))
+                                          setAllocationValue(alloc.percentage?.toString() || defaultPercentage.toFixed(2)) // 100% default
                                         } else {
                                           setAllocationValue(alloc.amount || '')
                                         }
