@@ -134,10 +134,12 @@ export async function POST(request: NextRequest) {
     
     console.log(`[Payment Verification] Checking transactions from ${fromAddress} to ${recipientAddress}`)
 
+    // Get current payment amount (dynamic pricing)
+    const paymentAmount = getPaymentAmountETH()
     // Convert payment amount to wei for comparison
-    const requiredAmountWei = BigInt(Math.floor(parseFloat(PAYMENT_AMOUNT) * 1e18))
-    const requiredAmountWeiMin = requiredAmountWei - BigInt(Math.floor(parseFloat(PAYMENT_AMOUNT) * 1e15)) // Allow 0.1% tolerance
-    const requiredAmountWeiMax = requiredAmountWei + BigInt(Math.floor(parseFloat(PAYMENT_AMOUNT) * 1e15))
+    const requiredAmountWei = BigInt(Math.floor(parseFloat(paymentAmount) * 1e18))
+    const requiredAmountWeiMin = requiredAmountWei - BigInt(Math.floor(parseFloat(paymentAmount) * 1e15)) // Allow 0.1% tolerance
+    const requiredAmountWeiMax = requiredAmountWei + BigInt(Math.floor(parseFloat(paymentAmount) * 1e15))
 
     try {
       // Use Etherscan API to get recent transactions from the user's address
