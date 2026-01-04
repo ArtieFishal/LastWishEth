@@ -88,6 +88,7 @@ export default function Home() {
  const [paymentVerified, setPaymentVerified] = useState(false)
  const [verifyingPayment, setVerifyingPayment] = useState(false)
  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([])
+ const [hideSpamTokens, setHideSpamTokens] = useState(true) // Default: hide spam tokens
  const [discountCode, setDiscountCode] = useState('')
  const [discountApplied, setDiscountApplied] = useState(false)
  const [paymentWalletAddress, setPaymentWalletAddress] = useState<string | null>(null) // First verified wallet for payment
@@ -566,6 +567,53 @@ export default function Home() {
  }
  }, [isPaymentSent, sendTxHash, evmAddress, invoiceId])
 
+ // Filter spam tokens (dust, suspicious names, etc.)
+ const filterSpamTokens = (assets: Asset[]): Asset[] => {
+   if (!hideSpamTokens) return assets
+   
+   return assets.filter(asset => {
+     // Always show native tokens (ETH, BTC, MATIC) regardless of balance
+     if (asset.type === 'native') return true
+     
+     // Always show NFTs
+     if (asset.type === 'erc721' || asset.type === 'erc1155') return true
+     
+     // For ERC-20 tokens, check balance threshold
+     if (asset.type === 'erc20' || asset.type === 'btc') {
+       const balance = parseFloat(asset.balance) / Math.pow(10, asset.decimals || 18)
+       // Filter out tokens with balance below threshold (0.000001)
+       if (balance < 0.000001) return false
+       
+       // Additional spam detection: filter tokens with suspicious names
+       const suspiciousPatterns = [
+         /^test/i,
+         /^fake/i,
+         /^scam/i,
+         /^spam/i,
+         /^airdrop/i,
+         /^claim/i,
+         /^free/i,
+         /unknown/i,
+         /unnamed/i,
+         /^token$/i,
+         /^coin$/i,
+       ]
+       
+       const name = (asset.name || '').toLowerCase()
+       const symbol = (asset.symbol || '').toLowerCase()
+       
+       // If name or symbol matches suspicious patterns, filter out
+       if (suspiciousPatterns.some(pattern => pattern.test(name) || pattern.test(symbol))) {
+         return false
+       }
+       
+       return true
+     }
+     
+     return true
+   })
+ }
+
  // Load assets from a specific wallet address
  const loadAssetsFromWallet = async (walletAddress: string, append = false) => {
  setLoading(true)
@@ -589,7 +637,13 @@ export default function Home() {
  walletAddress: walletAddress,
  walletProvider: walletProvider, // Track which wallet provider was used
  }))
- newAssets.push(...uniqueAssets)
+ // Apply spam filtering
+ const filteredAssets = filterSpamTokens(uniqueAssets)
+ const filteredCount = uniqueAssets.length - filteredAssets.length
+ if (filteredCount > 0) {
+   console.log(`Filtered out ${filteredCount} spam/dust token(s)`)
+ }
+ newAssets.push(...filteredAssets)
  console.log(`Loaded ${uniqueAssets.length} new assets from wallet (${walletProvider})`)
  }
  } catch (err) {
@@ -661,8 +715,14 @@ export default function Home() {
  // Filter out duplicates by checking if asset ID already exists
  const existingIds = new Set(assets.map(a => a.id))
  const uniqueAssets = evmResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
- newAssets.push(...uniqueAssets)
- console.log(`Loaded ${uniqueAssets.length} new assets from ${walletsToLoad.length} wallet(s)`)
+ // Apply spam filtering
+ const filteredAssets = filterSpamTokens(uniqueAssets)
+ const filteredCount = uniqueAssets.length - filteredAssets.length
+ if (filteredCount > 0) {
+   console.log(`Filtered out ${filteredCount} spam/dust token(s)`)
+ }
+ newAssets.push(...filteredAssets)
+ console.log(`Loaded ${filteredAssets.length} assets from ${walletsToLoad.length} wallet(s)`)
  }
  } catch (err) {
  console.error('Error loading EVM assets:', err)
@@ -1810,6 +1870,18 @@ setError('Failed to load Bitcoin assets. Please try again.')
      )}
    </div>
  )}
+<div className="mb-4 flex items-center justify-between">
+  <h3 className="text-xl font-bold text-gray-900">Select Assets</h3>
+  <label className="flex items-center gap-2 cursor-pointer">
+    <input
+      type="checkbox"
+      checked={hideSpamTokens}
+      onChange={(e) => setHideSpamTokens(e.target.checked)}
+      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+    />
+    <span className="text-sm text-gray-700 font-semibold">Hide Spam/Dust Tokens</span>
+  </label>
+</div>
 <AssetSelector
 assets={(() => {
   // If no current assets but we have queued sessions, show queued assets
@@ -1827,6 +1899,10 @@ assets={(() => {
       filtered: filtered.length,
       filteredAssets: filtered
     })
+  }
+  // Apply spam filtering if enabled
+  if (hideSpamTokens) {
+    filtered = filterSpamTokens(filtered)
   }
   return filtered
 })()}
