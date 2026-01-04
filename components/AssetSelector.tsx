@@ -58,11 +58,24 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
   const groupedAssets = useMemo(() => {
     let filtered = assets
 
+    // Debug: Log ethscriptions when filter is set
+    if (filter === 'ethscriptions') {
+      const ethscriptionAssets = assets.filter(a => a.type === 'ethscription')
+      console.log(`[AssetSelector] Filter: ethscriptions, Found ${ethscriptionAssets.length} ethscription assets out of ${assets.length} total`)
+      if (ethscriptionAssets.length > 0) {
+        console.log('Sample ethscription asset:', ethscriptionAssets[0])
+      }
+    }
+
     // Filter by category
     if (filter !== 'all') {
       filtered = assets.filter(asset => {
         const category = getAssetCategory(asset)
-        return category.toLowerCase() === filter
+        const matches = category.toLowerCase() === filter
+        if (filter === 'ethscriptions' && asset.type === 'ethscription') {
+          console.log(`[AssetSelector] Asset ${asset.name}: category="${category}", lowercased="${category.toLowerCase()}", filter="${filter}", matches=${matches}`)
+        }
+        return matches
       })
     }
 

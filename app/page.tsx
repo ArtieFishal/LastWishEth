@@ -665,10 +665,13 @@ export default function Home() {
      // Always show native tokens (ETH, BTC, MATIC) regardless of balance
      if (asset.type === 'native') return true
      
-     // Always show NFTs
-     if (asset.type === 'erc721' || asset.type === 'erc1155') return true
-     
-     // For ERC-20 tokens, check balance threshold
+    // Always show NFTs
+    if (asset.type === 'erc721' || asset.type === 'erc1155') return true
+    
+    // Always show ethscriptions
+    if (asset.type === 'ethscription') return true
+    
+    // For ERC-20 tokens, check balance threshold
      if (asset.type === 'erc20' || asset.type === 'btc') {
        const balance = parseFloat(asset.balance) / Math.pow(10, asset.decimals || 18)
        // Filter out tokens with balance below threshold (0.000001)
@@ -830,7 +833,12 @@ if (walletsToLoad.length > 0) {
         (a: Asset) => !existingIds.has(a.id)
       )
       newAssets.push(...uniqueEthscriptions)
-      console.log(`Loaded ${uniqueEthscriptions.length} ethscription(s) from ${walletsToLoad.length} wallet(s)`)
+      console.log(`✅ Loaded ${uniqueEthscriptions.length} ethscription(s) from ${walletsToLoad.length} wallet(s)`)
+      if (uniqueEthscriptions.length > 0) {
+        console.log('Sample ethscription:', uniqueEthscriptions[0])
+      }
+    } else {
+      console.log('⚠️ No ethscriptions in response or invalid format')
     }
   } catch (err) {
     console.error('Error loading ethscriptions:', err)
