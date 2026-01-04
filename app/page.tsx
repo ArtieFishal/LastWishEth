@@ -1278,7 +1278,11 @@ setError('Failed to load Bitcoin assets. Please try again.')
       </div>
       <p className="text-sm text-gray-500">
         Secure crypto inheritance instructions • {pricing.isSpecial ? (
-          <span className="text-green-600 font-semibold">${pricing.usdAmount.toFixed(2)} one-time fee (New Year's Special!)</span>
+          <span className="inline-flex items-center gap-2">
+            <span className="text-green-600 font-bold text-base">🎉 $26.20</span>
+            <span className="line-through text-gray-400">$42.00</span>
+            <span className="text-green-600 font-semibold">New Year's Special - Limited Time!</span>
+          </span>
         ) : (
           <span>${pricing.usdAmount.toFixed(2)} one-time fee</span>
         )}
@@ -2565,7 +2569,17 @@ onSelectionChange={setSelectedAssetIds}
  className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
  title={!canProceedToPayment() ? `Missing: ${getPaymentValidationErrors().join(', ')}` : ''}
  >
-              {discountApplied ? 'Unlock & Generate (FREE)' : `Unlock & Generate (${pricing.isSpecial ? '' : ''}$${pricing.usdAmount.toFixed(2)} / ${paymentAmountETH} ETH)`} →
+              {discountApplied ? (
+                'Unlock & Generate (FREE)'
+              ) : pricing.isSpecial ? (
+                <span>
+                  <span className="text-yellow-300 font-bold">🎉 $26.20</span>
+                  <span className="line-through text-gray-300 ml-2 text-sm">$42.00</span>
+                  <span className="ml-2 text-xs">Limited Time!</span>
+                </span>
+              ) : (
+                `$${pricing.usdAmount.toFixed(2)} / ${paymentAmountETH} ETH`
+              )} →
  </button>
  </div>
  </div>
@@ -2592,22 +2606,39 @@ onSelectionChange={setSelectedAssetIds}
  <div className="max-w-2xl mx-auto">
  <h2 className="text-3xl font-bold text-gray-900 mb-2">Payment Required</h2>
  <p className="text-gray-600 mb-8">
-                Pay {paymentAmountETH} ETH (${pricing.usdAmount.toFixed(2)}) to unlock PDF generation
-                {pricing.isSpecial && (
-                  <span className="ml-2 text-green-600 font-semibold">🎉 New Year's Special!</span>
+                {pricing.isSpecial ? (
+                  <span className="inline-flex items-center gap-3 text-lg">
+                    <span className="text-green-600 font-bold text-2xl">🎉 $26.20</span>
+                    <span className="line-through text-gray-400 text-xl">$42.00</span>
+                    <span className="text-green-600 font-semibold">Limited Time Offer!</span>
+                  </span>
+                ) : (
+                  `Pay ${paymentAmountETH} ETH ($${pricing.usdAmount.toFixed(2)}) to unlock PDF generation`
                 )}
  </p>
  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-8 border-2 border-blue-200">
  <div className="space-y-4">
- <div className={`rounded-lg p-4 ${pricing.isSpecial ? 'bg-green-50 border-2 border-green-300' : 'bg-gray-50'}`}>
- <p className="text-sm text-gray-600 mb-1">Amount</p>
-                    <p className={`text-2xl font-bold ${pricing.isSpecial ? 'text-green-700' : 'text-gray-900'}`}>
-                      {pricing.isSpecial && <span className="text-green-600">🎉 </span>}
-                      ${pricing.usdAmount.toFixed(2)} ({paymentAmountETH} ETH)
-                      {pricing.isSpecial && <span className="ml-2 text-sm text-green-600">New Year's Special!</span>}
-                    </p>
-                    {pricing.isSpecial && (
-                      <p className="text-xs text-green-600 mt-1">Regular price: $42.00 after February 1st</p>
+ <div className={`rounded-lg p-6 ${pricing.isSpecial ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-3 border-green-400 shadow-lg' : 'bg-gray-50'}`}>
+ <p className="text-sm text-gray-600 mb-2 font-semibold">Payment Amount</p>
+                    {pricing.isSpecial ? (
+                      <div className="space-y-2">
+                        <div className="flex items-baseline gap-3">
+                          <p className="text-4xl font-bold text-green-700">
+                            🎉 $26.20
+                          </p>
+                          <p className="text-2xl line-through text-gray-400">$42.00</p>
+                        </div>
+                        <p className="text-lg text-green-700 font-semibold">
+                          New Year's Special - Save $15.80!
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          ({paymentAmountETH} ETH) • Regular price returns February 1st
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-2xl font-bold text-gray-900">
+                        ${pricing.usdAmount.toFixed(2)} ({paymentAmountETH} ETH)
+                      </p>
                     )}
                   </div>
  <div className="bg-gray-50 rounded-lg p-4">

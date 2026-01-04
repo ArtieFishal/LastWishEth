@@ -258,7 +258,7 @@ export default function GuidePage() {
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-2">What to do:</h4>
                     <ol className="list-decimal list-inside space-y-2 text-gray-700 ml-4">
-                      <li>Review the payment amount: <strong>$20.26</strong> (New Year's Special until February 1st, then $42.00 regular price)</li>
+                      <li>Review the payment amount: <strong className="text-green-600">🎉 $26.20</strong> <span className="line-through text-gray-400">$42.00</span> (New Year's Special - Limited Time! Regular price $42.00 after February 1st)</li>
                       <li><strong>Pay with Connected Wallet:</strong>
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
                           <li>Click "Send Payment from Connected Wallet"</li>
@@ -503,7 +503,7 @@ export default function GuidePage() {
                   </div>
                   <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
                     <h4 className="font-bold text-gray-900 mb-2">4. Affordable</h4>
-                    <p className="text-gray-700">One-time fee: <span className="text-green-600 font-semibold">$20.26 (New Year's Special)</span> until February 1st, then $42.00 regular price</p>
+                    <p className="text-gray-700">One-time fee: <span className="text-green-600 font-bold text-lg">🎉 $26.20</span> <span className="line-through text-gray-400">$42.00</span> <span className="text-green-600 font-semibold">(New Year's Special - Limited Time!)</span> Regular price $42.00 after February 1st</p>
                   </div>
                   <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
                     <h4 className="font-bold text-gray-900 mb-2">5. Smart Filtering</h4>
@@ -536,7 +536,7 @@ export default function GuidePage() {
                     <tbody className="divide-y divide-gray-200">
                       <tr>
                         <td className="px-4 py-3 text-sm text-gray-700 font-semibold">Cost</td>
-                        <td className="px-4 py-3 text-sm text-gray-700"><span className="text-green-600 font-semibold">$20.26</span> (Special) / $42.00 (Regular)</td>
+                        <td className="px-4 py-3 text-sm text-gray-700"><span className="text-green-600 font-bold">🎉 $26.20</span> <span className="line-through text-gray-400">$42.00</span> (Special) / $42.00 (Regular)</td>
                         <td className="px-4 py-3 text-sm text-gray-700">$500-$5,000</td>
                         <td className="px-4 py-3 text-sm text-gray-700">$100-$1,000/year</td>
                         <td className="px-4 py-3 text-sm text-gray-700">Free but risky</td>
