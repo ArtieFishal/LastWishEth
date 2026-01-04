@@ -24,6 +24,9 @@ const getAssetCategory = (asset: Asset): string => {
   if (asset.type === 'erc721' || asset.type === 'erc1155') {
     return 'NFTs'
   }
+  if (asset.type === 'ethscription') {
+    return 'Ethscriptions'
+  }
   if (asset.type === 'native' || asset.type === 'btc' || asset.type === 'erc20') {
     return 'Currencies'
   }
@@ -48,7 +51,7 @@ const getWalletProviderName = (provider?: string): string => {
 }
 
 export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: AssetSelectorProps) {
-  const [filter, setFilter] = useState<'all' | 'currencies' | 'nfts' | 'other'>('all')
+  const [filter, setFilter] = useState<'all' | 'currencies' | 'nfts' | 'ethscriptions' | 'other'>('all')
   const [sortBy, setSortBy] = useState<'chain' | 'type' | 'value' | 'wallet'>('type')
 
   // Group and filter assets
@@ -158,6 +161,7 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
             <option value="all">All Types</option>
             <option value="currencies">Currencies</option>
             <option value="nfts">NFTs</option>
+            <option value="ethscriptions">Ethscriptions</option>
             <option value="other">Other</option>
           </select>
           <select
@@ -224,6 +228,11 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
                                 NFT
                               </span>
                             ) : null}
+                            {asset.type === 'ethscription' ? (
+                              <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded font-semibold">
+                                ETHSCRIPTION
+                              </span>
+                            ) : null}
                             {asset.walletProvider && asset.walletProvider !== 'Unknown' ? (
                               <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-medium">
                                 {getWalletProviderName(asset.walletProvider)}
@@ -233,6 +242,11 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
                           <p className="text-sm text-gray-600 font-medium">{asset.name}</p>
                           {asset.tokenId && (
                             <p className="text-xs text-gray-500 font-mono mt-1">Token ID: {asset.tokenId}</p>
+                          )}
+                          {asset.ethscriptionId && (
+                            <p className="text-xs text-gray-500 font-mono mt-1 truncate">
+                              ID: {asset.ethscriptionId.slice(0, 10)}...{asset.ethscriptionId.slice(-8)}
+                            </p>
                           )}
                           {asset.type === 'btc' && asset.metadata?.satsFormatted && (
                             <p className="text-xs text-gray-500 mt-1">
@@ -248,6 +262,18 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
                       </div>
                       <div className="text-right ml-4">
                         <p className="font-bold text-lg text-gray-900">{asset.balanceFormatted} {asset.symbol}</p>
+                        {asset.imageUrl && (asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription') && (
+                          <div className="mt-2">
+                            <img 
+                              src={asset.imageUrl} 
+                              alt={asset.name}
+                              className="w-16 h-16 object-cover rounded border border-gray-200"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                              }}
+                            />
+                          </div>
+                        )}
                         {asset.type === 'btc' && asset.metadata?.satsFormatted && (
                           <p className="text-xs text-gray-500 mt-1">{asset.metadata.satsFormatted} SATs</p>
                         )}
