@@ -2035,10 +2035,11 @@ onSelectionChange={setSelectedAssetIds}
          allocations={(() => {
            // Merge allocations from queued sessions with current allocations
            const queuedAllocations = queuedSessions.flatMap(s => s.allocations)
-           // Combine and deduplicate by assetId
+           // Combine and deduplicate by assetId AND beneficiaryId (fungible tokens can have multiple allocations)
            const allAllocations = [...allocations, ...queuedAllocations]
            const uniqueAllocations = allAllocations.reduce((acc, curr) => {
-             const existing = acc.find(a => a.assetId === curr.assetId)
+             // Check if this exact allocation (assetId + beneficiaryId) already exists
+             const existing = acc.find(a => a.assetId === curr.assetId && a.beneficiaryId === curr.beneficiaryId)
              if (!existing) {
                acc.push(curr)
              }

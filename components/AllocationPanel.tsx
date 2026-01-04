@@ -408,11 +408,19 @@ export function AllocationPanel({
                   {fungibleAssets.map((asset) => {
                     const isSelected = selectedAssets.includes(asset.id)
                     const assetBalance = asset.balance ? parseFloat(asset.balance) / Math.pow(10, asset.decimals || 18) : 0
+                    // Check for existing allocations for this asset
+                    const existingAllocations = allocations.filter(a => a.assetId === asset.id)
+                    const hasAllocations = existingAllocations.length > 0
+                    // Get all beneficiaries this asset is allocated to
+                    const allocatedBeneficiaries = existingAllocations.map(alloc => {
+                      const beneficiary = beneficiaries.find(b => b.id === alloc.beneficiaryId)
+                      return beneficiary ? beneficiary.name : null
+                    }).filter(Boolean)
                     return (
                       <label
                         key={asset.id}
                         className={`flex items-start gap-3 p-2.5 rounded cursor-pointer transition-colors text-xs border ${
-                          isSelected ? 'bg-blue-50 border-blue-300 shadow-sm' : 'hover:bg-gray-100 border-gray-200'
+                          isSelected ? 'bg-blue-50 border-blue-300 shadow-sm' : hasAllocations ? 'bg-yellow-50 border-yellow-300' : 'hover:bg-gray-100 border-gray-200'
                         }`}
                       >
                         <input
@@ -442,6 +450,11 @@ export function AllocationPanel({
                           {asset.contractAddress && (
                             <p className="text-xs font-mono text-gray-500 truncate mt-1">
                               {asset.contractAddress.slice(0, 10)}...{asset.contractAddress.slice(-8)}
+                            </p>
+                          )}
+                          {hasAllocations && (
+                            <p className="text-xs text-yellow-700 font-semibold mt-1">
+                              → Allocated to: {allocatedBeneficiaries.join(', ')}
                             </p>
                           )}
                         </div>
