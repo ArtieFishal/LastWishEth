@@ -4,6 +4,67 @@ import { mainnet } from 'viem/chains'
 
 const ETHSCRIPTIONS_API_BASE = 'https://api.ethscriptions.com/v2'
 
+// Helper function to validate and sanitize image URLs
+function validateImageUrl(contentUri: string): string | undefined {
+  if (!contentUri || typeof contentUri !== 'string') {
+    return undefined
+  }
+
+  // Data URIs are valid
+  if (contentUri.startsWith('data:')) {
+    // Basic validation - data URIs should have a comma
+    if (contentUri.includes(',')) {
+      return contentUri
+    }
+    return undefined
+  }
+
+  // Handle IPFS URLs
+  if (contentUri.includes('ipfs')) {
+    // Fix malformed IPFS URLs (ipfs:/Qm... -> ipfs://Qm...)
+    let fixedUri = contentUri.replace(/^ipfs:\/(?!\/)/, 'ipfs://')
+    
+    // Extract IPFS hash (Qm...)
+    const ipfsHashMatch = fixedUri.match(/ipfs:\/\/([a-zA-Z0-9]+)/)
+    if (ipfsHashMatch && ipfsHashMatch[1]) {
+      const hash = ipfsHashMatch[1]
+      // Convert to IPFS gateway URL
+      return `https://ipfs.io/ipfs/${hash}`
+    }
+    
+    // If it's already a full IPFS gateway URL, validate it
+    if (fixedUri.startsWith('https://ipfs.io/ipfs/') || 
+        fixedUri.startsWith('https://gateway.pinata.cloud/ipfs/') ||
+        fixedUri.startsWith('https://cloudflare-ipfs.com/ipfs/')) {
+      return fixedUri
+    }
+  }
+
+  // Validate HTTP/HTTPS URLs
+  if (contentUri.startsWith('http://') || contentUri.startsWith('https://')) {
+    try {
+      // Try to create a URL object to validate
+      const url = new URL(contentUri)
+      // Reject if it's just a domain with no path (likely invalid)
+      if (url.pathname === '/' && !url.search && !url.hash) {
+        return undefined
+      }
+      return contentUri
+    } catch {
+      return undefined
+    }
+  }
+
+  // Reject anything that looks like just a filename (no protocol, no slashes, or just numbers)
+  // Examples: "45", "1.png", "image.jpg" - these are invalid
+  if (!contentUri.includes('/') && !contentUri.includes(':')) {
+    return undefined
+  }
+
+  // Reject anything that doesn't look like a valid URL
+  return undefined
+}
+
 async function resolveENS(ensName: string): Promise<string | null> {
   if (!ensName.endsWith('.eth')) {
     if (isAddress(ensName)) {
@@ -93,15 +154,10 @@ export async function POST(request: NextRequest) {
                 name = `Ethscription #${ethscriptionNumber}`
               }
 
-              // Get image URL if it's an image
+              // Get image URL if it's an image - validate it first
               let imageUrl: string | undefined
               if (mimetype.startsWith('image/') && contentUri) {
-                // content_uri is already a data URI, use it directly
-                if (contentUri.startsWith('data:')) {
-                  imageUrl = contentUri
-                } else if (contentUri.startsWith('http')) {
-                  imageUrl = contentUri
-                }
+                imageUrl = validateImageUrl(contentUri)
               }
 
               allAssets.push({
