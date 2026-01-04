@@ -1853,15 +1853,8 @@ setError('Failed to load Bitcoin assets. Please try again.')
                 setBtcAddress(addr)
                 setSelectedWalletForLoading(null) // Clear EVM selection when Bitcoin is connected
                 setError(null)
-                // Automatically load Bitcoin assets after connection
-                setSelectedWalletForLoading(null) // Clear EVM selection so Bitcoin filtering works
-                try {
-                  await loadAssets(true, false) // append=true, loadFromAllWallets=false
-                  setStep('assets') // Navigate to assets step to show Bitcoin assets
-                } catch (err) {
-                  console.error('Error loading Bitcoin assets after connection:', err)
-                  setError('Connected successfully, but failed to load assets. You can manually load assets using the "Load Assets" button.')
-                }
+                // Stay on connect step - user can manually load assets when ready
+                // Don't automatically navigate to assets step
               }}
  onEvmConnect={async (addr: string, provider?: string) => {
  if (addr && !connectedEVMAddresses.has(addr)) {
