@@ -259,21 +259,14 @@ export default function GuidePage() {
                     <h4 className="font-semibold text-gray-900 mb-2">What to do:</h4>
                     <ol className="list-decimal list-inside space-y-2 text-gray-700 ml-4">
                       <li>Review the payment amount: <strong>0.000025 ETH</strong> (testing fee)</li>
-                      <li><strong>Option 1 - Pay with Connected Wallet:</strong>
+                      <li><strong>Pay with Connected Wallet:</strong>
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
                           <li>Click "Send Payment from Connected Wallet"</li>
                           <li>Approve the transaction in your wallet</li>
                           <li>Wait for confirmation</li>
                         </ul>
                       </li>
-                      <li><strong>Option 2 - Use Discount Code:</strong>
-                        <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
-                          <li>Enter "tryitfree" in the discount code field</li>
-                          <li>Click "Apply Discount"</li>
-                          <li>If valid, proceed to download</li>
-                        </ul>
-                      </li>
-                      <li><strong>Option 3 - WalletConnect QR:</strong>
+                      <li><strong>WalletConnect QR (Mobile):</strong>
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
                           <li>Click "Open WalletConnect QR" to connect a mobile wallet</li>
                           <li>Scan and approve from your phone</li>
@@ -287,9 +280,8 @@ export default function GuidePage() {
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
                       <li>Payment is verified on-chain automatically</li>
                       <li>You can proceed manually if verification is delayed</li>
-                      <li>Discount code "tryitfree" is case-insensitive and accepts variations</li>
                       <li><strong>Payment State Reset:</strong> After downloading PDF, payment state resets - you'll need to pay again for additional downloads</li>
-                      <li>This ensures each PDF generation requires payment/discount verification</li>
+                      <li>This ensures each PDF generation requires payment verification</li>
                     </ul>
                   </div>
                 </div>
@@ -511,7 +503,7 @@ export default function GuidePage() {
                   </div>
                   <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
                     <h4 className="font-bold text-gray-900 mb-2">4. Affordable</h4>
-                    <p className="text-gray-700">One-time fee: 0.000025 ETH (~$0.01 during testing), Regular price: ~$20.26, Discount codes available</p>
+                    <p className="text-gray-700">One-time fee: 0.000025 ETH (~$0.01 during testing), Regular price: ~$20.26</p>
                   </div>
                   <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
                     <h4 className="font-bold text-gray-900 mb-2">5. Smart Filtering</h4>
