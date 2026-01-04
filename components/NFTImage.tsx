@@ -29,12 +29,24 @@ export function NFTImage({
   useEffect(() => {
     // If we have an initial image URL, use it
     if (initialImageUrl) {
-      setImageUrl(getImageUrlWithIPFSFallback(initialImageUrl))
+      // For ethscriptions, contentUri might be a data URI - use it directly
+      if (initialImageUrl.startsWith('data:')) {
+        setImageUrl(initialImageUrl)
+      } else {
+        setImageUrl(getImageUrlWithIPFSFallback(initialImageUrl))
+      }
       return
     }
 
     // If we have a token URI but no image, fetch metadata
     if (tokenUri && !imageUrl && !error) {
+      // Check if tokenUri is a data URI (common for ethscriptions)
+      if (tokenUri.startsWith('data:')) {
+        setImageUrl(tokenUri)
+        setLoading(false)
+        return
+      }
+      
       setLoading(true)
       fetchNFTMetadata(tokenUri, contractAddress, tokenId)
         .then((result) => {

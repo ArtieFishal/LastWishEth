@@ -2057,28 +2057,51 @@ assets={(() => {
   let filtered = assetsToShow
   if (selectedWalletForLoading) {
     const selectedWalletLower = selectedWalletForLoading.toLowerCase()
+    
+    // Also check resolved ENS names
+    let selectedWalletResolved: string | null = null
+    if (selectedWalletForLoading.endsWith('.eth')) {
+      // Try to find the resolved address for this ENS name
+      const resolved = Object.entries(resolvedEnsNames).find(
+        ([addr, ens]) => ens?.toLowerCase() === selectedWalletLower
+      )?.[0]
+      if (resolved) {
+        selectedWalletResolved = resolved.toLowerCase()
+        console.log(`[Assets Step] Resolved ENS ${selectedWalletForLoading} to ${selectedWalletResolved}`)
+      }
+    }
+    
     filtered = assetsToShow.filter(a => {
-      const assetWalletLower = a.walletAddress?.toLowerCase()
-      let matches = assetWalletLower === selectedWalletLower
-      
-      // For ethscriptions, also check creator and currentOwner in metadata
-      if (!matches && a.type === 'ethscription' && a.metadata) {
-        const creator = a.metadata.creator?.toLowerCase()
-        const currentOwner = a.metadata.currentOwner?.toLowerCase()
-        matches = creator === selectedWalletLower || currentOwner === selectedWalletLower
+      if (a.type === 'ethscription') {
+        // For ethscriptions, be more lenient - check walletAddress, creator, and currentOwner
+        const assetWalletLower = a.walletAddress?.toLowerCase()
+        const creator = a.metadata?.creator?.toLowerCase()
+        const currentOwner = a.metadata?.currentOwner?.toLowerCase()
+        
+        const matches = assetWalletLower === selectedWalletLower ||
+                       assetWalletLower === selectedWalletResolved ||
+                       creator === selectedWalletLower ||
+                       creator === selectedWalletResolved ||
+                       currentOwner === selectedWalletLower ||
+                       currentOwner === selectedWalletResolved
         
         if (!matches) {
           console.log(`[Assets Step] Ethscription filtered out:`, {
+            id: a.id,
             walletAddress: a.walletAddress,
             creator,
             currentOwner,
-            selectedWallet: selectedWalletForLoading
+            selectedWallet: selectedWalletForLoading,
+            selectedWalletResolved
           })
         }
-      } else if (a.type === 'ethscription' && !matches) {
-        console.log(`[Assets Step] Ethscription filtered out: walletAddress="${a.walletAddress}" !== selectedWallet="${selectedWalletForLoading}"`)
+        return matches
+      } else {
+        // For other assets, use normal matching
+        const assetWalletLower = a.walletAddress?.toLowerCase()
+        return assetWalletLower === selectedWalletLower || 
+               assetWalletLower === selectedWalletResolved
       }
-      return matches
     })
     const ethscriptionCountAfter = filtered.filter(a => a.type === 'ethscription').length
     console.log(`[Assets Step] After wallet filter (${selectedWalletForLoading}): ${filtered.length} total, ${ethscriptionCountAfter} ethscriptions`)
@@ -2090,7 +2113,7 @@ assets={(() => {
         creator: sampleEthscription?.metadata?.creator,
         currentOwner: sampleEthscription?.metadata?.currentOwner
       })
-      console.log(`[Assets Step] Selected wallet: ${selectedWalletForLoading}`)
+      console.log(`[Assets Step] Selected wallet: ${selectedWalletForLoading}, Resolved: ${selectedWalletResolved}`)
     }
   } else if (btcAddress) {
     filtered = assetsToShow.filter(a => a.chain === 'bitcoin' && (a.walletAddress === btcAddress || a.contractAddress === btcAddress))

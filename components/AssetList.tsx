@@ -60,7 +60,41 @@ export function AssetList({ assets }: AssetListProps) {
               {asset.tokenId && (
                 <p className="text-xs text-gray-500 font-mono mt-1">Token ID: {asset.tokenId}</p>
               )}
-              {asset.ethscriptionId && (
+              {asset.type === 'ethscription' && (
+                <div className="mt-2 space-y-1">
+                  {asset.metadata?.ethscriptionNumber && (
+                    <p className="text-xs text-gray-600 font-semibold">
+                      Ethscription #{asset.metadata.ethscriptionNumber}
+                    </p>
+                  )}
+                  {asset.ethscriptionId && (
+                    <p className="text-xs text-gray-500 font-mono truncate" title={asset.ethscriptionId}>
+                      TX: {asset.ethscriptionId.slice(0, 10)}...{asset.ethscriptionId.slice(-8)}
+                    </p>
+                  )}
+                  {asset.metadata?.mimetype && (
+                    <p className="text-xs text-gray-500">
+                      Type: {asset.metadata.mimetype}
+                    </p>
+                  )}
+                  {asset.metadata?.creator && (
+                    <p className="text-xs text-gray-500 font-mono truncate" title={asset.metadata.creator}>
+                      Creator: {asset.metadata.creator.slice(0, 6)}...{asset.metadata.creator.slice(-4)}
+                    </p>
+                  )}
+                  {asset.metadata?.currentOwner && asset.metadata.currentOwner !== asset.metadata?.creator && (
+                    <p className="text-xs text-gray-500 font-mono truncate" title={asset.metadata.currentOwner}>
+                      Owner: {asset.metadata.currentOwner.slice(0, 6)}...{asset.metadata.currentOwner.slice(-4)}
+                    </p>
+                  )}
+                  {asset.metadata?.blockNumber && (
+                    <p className="text-xs text-gray-400">
+                      Block: {asset.metadata.blockNumber}
+                    </p>
+                  )}
+                </div>
+              )}
+              {asset.ethscriptionId && asset.type !== 'ethscription' && (
                 <p className="text-xs text-gray-500 font-mono mt-1 truncate">
                   ID: {asset.ethscriptionId.slice(0, 10)}...{asset.ethscriptionId.slice(-8)}
                 </p>
@@ -81,15 +115,22 @@ export function AssetList({ assets }: AssetListProps) {
                 </p>
               )}
               {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription') && (
-                <div className="mt-2">
+                <div className="mt-3">
                   <NFTImage
                     imageUrl={asset.imageUrl}
-                    tokenUri={asset.metadata?.token_uri || asset.metadata?.tokenUri}
+                    tokenUri={asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri}
                     contractAddress={asset.contractAddress}
                     tokenId={asset.tokenId}
                     alt={asset.name}
-                    className="w-20 h-20 object-cover rounded border border-gray-200"
+                    className="w-32 h-32 object-contain rounded border-2 border-gray-300 bg-gray-50"
                   />
+                  {asset.type === 'ethscription' && !asset.imageUrl && asset.contentUri && (
+                    <p className="text-xs text-gray-400 mt-1 text-center">
+                      {asset.metadata?.mimetype?.startsWith('text/') ? 'Text Content' : 
+                       asset.metadata?.mimetype?.includes('json') ? 'JSON Data' : 
+                       'Content Available'}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

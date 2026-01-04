@@ -257,7 +257,31 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
                           {asset.tokenId && (
                             <p className="text-xs text-gray-500 font-mono mt-1">Token ID: {asset.tokenId}</p>
                           )}
-                          {asset.ethscriptionId && (
+                          {asset.type === 'ethscription' && (
+                            <div className="mt-2 space-y-1">
+                              {asset.metadata?.ethscriptionNumber && (
+                                <p className="text-xs text-gray-600 font-semibold">
+                                  #{asset.metadata.ethscriptionNumber}
+                                </p>
+                              )}
+                              {asset.ethscriptionId && (
+                                <p className="text-xs text-gray-500 font-mono truncate" title={asset.ethscriptionId}>
+                                  TX: {asset.ethscriptionId.slice(0, 8)}...{asset.ethscriptionId.slice(-6)}
+                                </p>
+                              )}
+                              {asset.metadata?.mimetype && (
+                                <p className="text-xs text-gray-500">
+                                  {asset.metadata.mimetype}
+                                </p>
+                              )}
+                              {asset.metadata?.creator && (
+                                <p className="text-xs text-gray-400 font-mono truncate" title={asset.metadata.creator}>
+                                  Creator: {asset.metadata.creator.slice(0, 6)}...{asset.metadata.creator.slice(-4)}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          {asset.ethscriptionId && asset.type !== 'ethscription' && (
                             <p className="text-xs text-gray-500 font-mono mt-1 truncate">
                               ID: {asset.ethscriptionId.slice(0, 10)}...{asset.ethscriptionId.slice(-8)}
                             </p>
@@ -280,12 +304,19 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
                           <div className="mt-2">
                             <NFTImage
                               imageUrl={asset.imageUrl}
-                              tokenUri={asset.metadata?.token_uri || asset.metadata?.tokenUri}
+                              tokenUri={asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri}
                               contractAddress={asset.contractAddress}
                               tokenId={asset.tokenId}
                               alt={asset.name}
-                              className="w-16 h-16 object-cover rounded border border-gray-200"
+                              className="w-20 h-20 object-contain rounded border-2 border-gray-300 bg-gray-50"
                             />
+                            {asset.type === 'ethscription' && !asset.imageUrl && asset.contentUri && (
+                              <p className="text-xs text-gray-400 mt-1 text-center">
+                                {asset.metadata?.mimetype?.startsWith('text/') ? 'Text' : 
+                                 asset.metadata?.mimetype?.includes('json') ? 'JSON' : 
+                                 'Content'}
+                              </p>
+                            )}
                           </div>
                         )}
                         {asset.type === 'btc' && asset.metadata?.satsFormatted && (
