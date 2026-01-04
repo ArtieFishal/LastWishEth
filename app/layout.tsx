@@ -1,17 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientProviders from "@/components/ClientProviders";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// Using system fonts directly - more reliable for CI builds
+// No external font fetching required
 
 export const metadata: Metadata = {
   title: "LastWish - Crypto Inheritance Instructions",
@@ -32,9 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="antialiased">
         <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
