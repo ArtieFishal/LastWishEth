@@ -110,95 +110,143 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Ethscriptions API] Fetching ethscriptions for ${inputAddress} -> ${address}`)
 
-        // Fetch ethscriptions
-        const response = await fetch(
-          `${ETHSCRIPTIONS_API_BASE}/ethscriptions?address=${address}`,
-          {
-            headers: {
-              'Accept': 'application/json',
-            },
-          }
-        )
+        // Fetch ethscriptions - query by current_owner (what we're doing now)
+        // The API's ?address parameter returns ethscriptions where address is current_owner
+        let allEthscriptionsForAddress: any[] = []
+        let page = 1
+        let hasMore = true
+        const maxPages = 10 // Safety limit
 
-        if (!response.ok) {
-          console.error(`[Ethscriptions API] Error fetching ethscriptions for ${address}: ${response.status} ${response.statusText}`)
-          const errorText = await response.text().catch(() => '')
-          console.error(`[Ethscriptions API] Error response: ${errorText}`)
-          continue
+        // Fetch all pages for current_owner
+        while (hasMore && page <= maxPages) {
+          try {
+            const response = await fetch(
+              `${ETHSCRIPTIONS_API_BASE}/ethscriptions?address=${address}&page=${page}`,
+              {
+                headers: {
+                  'Accept': 'application/json',
+                },
+              }
+            )
+
+            if (!response.ok) {
+              if (page === 1) {
+                // Only log error on first page
+                console.error(`[Ethscriptions API] Error fetching ethscriptions for ${address}: ${response.status} ${response.statusText}`)
+                const errorText = await response.text().catch(() => '')
+                console.error(`[Ethscriptions API] Error response: ${errorText}`)
+              }
+              break
+            }
+
+            const data = await response.json()
+            const ethscriptions = data?.result || []
+            const pagination = data?.pagination || {}
+            
+            console.log(`[Ethscriptions API] Page ${page}: Received ${ethscriptions.length} ethscriptions (current_owner)`)
+            
+            allEthscriptionsForAddress.push(...ethscriptions)
+
+            // Check if there are more pages
+            hasMore = pagination.has_more === true || 
+                     (pagination.page && pagination.total_pages && pagination.page < pagination.total_pages)
+            
+            if (!hasMore || ethscriptions.length === 0) {
+              break
+            }
+            
+            page++
+          } catch (error) {
+            console.error(`[Ethscriptions API] Error fetching page ${page}:`, error)
+            break
+          }
         }
 
-        const data = await response.json()
-        
-        // Handle response format: { result: [...], pagination: {...} }
-        const ethscriptions = data?.result || []
-        
-        console.log(`[Ethscriptions API] Received ${ethscriptions.length} ethscriptions for ${address}`)
+        console.log(`[Ethscriptions API] Total ethscriptions found as current_owner: ${allEthscriptionsForAddress.length}`)
 
-        if (Array.isArray(ethscriptions)) {
-          if (ethscriptions.length > 0) {
-            for (const ethscription of ethscriptions) {
-              if (ethscription && typeof ethscription === 'object') {
-                // Extract fields from API response
-                const ethscriptionId = ethscription.transaction_hash
-                const contentUri = ethscription.content_uri
-                const mimetype = ethscription.mimetype || 'unknown'
-                const ethscriptionNumber = ethscription.ethscription_number
-                
-                // Determine name and symbol based on mimetype
-                let name = 'Ethscription'
-                let symbol = 'ETHSCRIPTION'
-                
-                if (mimetype.startsWith('image/')) {
-                  name = `Ethscription Image #${ethscriptionNumber}`
-                  symbol = 'IMG'
-                } else if (mimetype.startsWith('text/')) {
-                  name = `Ethscription Text #${ethscriptionNumber}`
-                  symbol = 'TXT'
-                } else if (mimetype.includes('json')) {
-                  name = `Ethscription JSON #${ethscriptionNumber}`
-                  symbol = 'JSON'
-                } else {
-                  name = `Ethscription #${ethscriptionNumber}`
-                }
-
-                // Get image URL if it's an image - validate it first
-                let imageUrl: string | undefined
-                if (mimetype.startsWith('image/') && contentUri) {
-                  imageUrl = validateImageUrl(contentUri)
-                }
-
-                allAssets.push({
-                  id: `ethscription-${address}-${ethscriptionId}`,
-                  chain: 'eth',
-                  type: 'ethscription',
-                  symbol,
-                  name,
-                  balance: '1',
-                  balanceFormatted: '1',
-                  walletAddress: address,
-                  ethscriptionId,
-                  contentUri,
-                  imageUrl,
-                  metadata: {
-                    mimetype,
-                    mediaType: ethscription.media_type,
-                    mimeSubtype: ethscription.mime_subtype,
-                    creator: ethscription.creator,
-                    currentOwner: ethscription.current_owner,
-                    blockNumber: ethscription.block_number,
-                    blockTimestamp: ethscription.block_timestamp,
-                    transactionHash: ethscription.transaction_hash,
-                    ethscriptionNumber: ethscriptionNumber,
-                    ...ethscription,
-                  },
+        // Process all ethscriptions found
+        if (allEthscriptionsForAddress.length > 0) {
+          for (const ethscription of allEthscriptionsForAddress) {
+            if (ethscription && typeof ethscription === 'object') {
+              // Extract fields from API response
+              const ethscriptionId = ethscription.transaction_hash
+              const contentUri = ethscription.content_uri
+              const mimetype = ethscription.mimetype || 'unknown'
+              const ethscriptionNumber = ethscription.ethscription_number
+              const creator = ethscription.creator?.toLowerCase()
+              const currentOwner = ethscription.current_owner?.toLowerCase()
+              const addressLower = address.toLowerCase()
+              
+              // Verify this ethscription belongs to our address (either as creator or current_owner)
+              const isCreator = creator === addressLower
+              const isOwner = currentOwner === addressLower
+              
+              if (!isCreator && !isOwner) {
+                console.warn(`[Ethscriptions API] Skipping ethscription ${ethscriptionId}: address mismatch`, {
+                  address,
+                  creator,
+                  currentOwner
                 })
+                continue
               }
+              
+              // Use current_owner as the walletAddress (or creator if no current_owner)
+              const walletAddress = currentOwner || creator || address
+              
+              // Determine name and symbol based on mimetype
+              let name = 'Ethscription'
+              let symbol = 'ETHSCRIPTION'
+              
+              if (mimetype.startsWith('image/')) {
+                name = `Ethscription Image #${ethscriptionNumber}`
+                symbol = 'IMG'
+              } else if (mimetype.startsWith('text/')) {
+                name = `Ethscription Text #${ethscriptionNumber}`
+                symbol = 'TXT'
+              } else if (mimetype.includes('json')) {
+                name = `Ethscription JSON #${ethscriptionNumber}`
+                symbol = 'JSON'
+              } else {
+                name = `Ethscription #${ethscriptionNumber}`
+              }
+
+              // Get image URL if it's an image - validate it first
+              let imageUrl: string | undefined
+              if (mimetype.startsWith('image/') && contentUri) {
+                imageUrl = validateImageUrl(contentUri)
+              }
+
+              allAssets.push({
+                id: `ethscription-${walletAddress}-${ethscriptionId}`,
+                chain: 'eth',
+                type: 'ethscription',
+                symbol,
+                name,
+                balance: '1',
+                balanceFormatted: '1',
+                walletAddress: walletAddress, // Use actual owner/creator address
+                ethscriptionId,
+                contentUri,
+                imageUrl,
+                metadata: {
+                  mimetype,
+                  mediaType: ethscription.media_type,
+                  mimeSubtype: ethscription.mime_subtype,
+                  creator: ethscription.creator,
+                  currentOwner: ethscription.current_owner,
+                  blockNumber: ethscription.block_number,
+                  blockTimestamp: ethscription.block_timestamp,
+                  transactionHash: ethscription.transaction_hash,
+                  ethscriptionNumber: ethscriptionNumber,
+                  isCreator,
+                  isOwner,
+                  ...ethscription,
+                },
+              })
             }
-          } else {
-            console.log(`[Ethscriptions API] No ethscriptions found for ${address} (empty array)`)
           }
         } else {
-          console.log(`[Ethscriptions API] Invalid response format for ${address}:`, typeof data, data)
+          console.log(`[Ethscriptions API] No ethscriptions found for ${address} (empty result)`)
         }
       } catch (error) {
         console.error(`[Ethscriptions API] Error processing ethscriptions for ${inputAddress}:`, error)

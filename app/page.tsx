@@ -2059,8 +2059,23 @@ assets={(() => {
     const selectedWalletLower = selectedWalletForLoading.toLowerCase()
     filtered = assetsToShow.filter(a => {
       const assetWalletLower = a.walletAddress?.toLowerCase()
-      const matches = assetWalletLower === selectedWalletLower
-      if (a.type === 'ethscription' && !matches) {
+      let matches = assetWalletLower === selectedWalletLower
+      
+      // For ethscriptions, also check creator and currentOwner in metadata
+      if (!matches && a.type === 'ethscription' && a.metadata) {
+        const creator = a.metadata.creator?.toLowerCase()
+        const currentOwner = a.metadata.currentOwner?.toLowerCase()
+        matches = creator === selectedWalletLower || currentOwner === selectedWalletLower
+        
+        if (!matches) {
+          console.log(`[Assets Step] Ethscription filtered out:`, {
+            walletAddress: a.walletAddress,
+            creator,
+            currentOwner,
+            selectedWallet: selectedWalletForLoading
+          })
+        }
+      } else if (a.type === 'ethscription' && !matches) {
         console.log(`[Assets Step] Ethscription filtered out: walletAddress="${a.walletAddress}" !== selectedWallet="${selectedWalletForLoading}"`)
       }
       return matches
@@ -2069,7 +2084,12 @@ assets={(() => {
     console.log(`[Assets Step] After wallet filter (${selectedWalletForLoading}): ${filtered.length} total, ${ethscriptionCountAfter} ethscriptions`)
     if (ethscriptionCountBefore > 0 && ethscriptionCountAfter === 0) {
       console.warn(`[Assets Step] ⚠️ All ${ethscriptionCountBefore} ethscriptions were filtered out by wallet filter!`)
-      console.log(`[Assets Step] Sample ethscription walletAddress:`, assetsToShow.find(a => a.type === 'ethscription')?.walletAddress)
+      const sampleEthscription = assetsToShow.find(a => a.type === 'ethscription')
+      console.log(`[Assets Step] Sample ethscription:`, {
+        walletAddress: sampleEthscription?.walletAddress,
+        creator: sampleEthscription?.metadata?.creator,
+        currentOwner: sampleEthscription?.metadata?.currentOwner
+      })
       console.log(`[Assets Step] Selected wallet: ${selectedWalletForLoading}`)
     }
   } else if (btcAddress) {
