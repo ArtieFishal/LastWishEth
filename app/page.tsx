@@ -1509,17 +1509,23 @@ setError('Failed to load Bitcoin assets. Please try again.')
  {queuedSessions.map((session) => {
  const totalAssets = session.assets.length
  const totalAllocations = session.allocations.length
+ // Get wallet name (manual name > resolved ENS > ENS from session > address)
+ const walletName = walletNames[session.walletAddress] || 
+                    resolvedEnsNames[session.walletAddress.toLowerCase()] || 
+                    session.ensName || 
+                    session.walletAddress
+ const displayName = walletName !== session.walletAddress ? walletName : session.walletAddress
  return (
  <div key={session.id} className="bg-gray-50 rounded-lg border border-gray-300 p-4">
  <div className="flex items-start justify-between">
  <div className="flex-1">
  <div className="flex items-center gap-2 mb-2">
- <span className="font-mono text-sm font-semibold text-gray-900">
- {session.ensName || session.walletAddress}
+ <span className="text-sm font-bold text-gray-900">
+ {displayName}
  </span>
- {session.ensName && (
+ {displayName !== session.walletAddress && (
  <span className="text-xs text-gray-500 font-mono">
- ({session.walletAddress})
+ ({session.walletAddress.slice(0, 10)}...{session.walletAddress.slice(-8)})
  </span>
  )}
  <span className={`px-2 py-1 rounded text-xs font-semibold ${
