@@ -290,13 +290,53 @@ export function AllocationPanel({
   }
 
   const handleRemoveAllocation = (assetId: string, beneficiaryId: string) => {
+    const asset = assets.find(a => a.id === assetId)
+    if (!asset) return
+
+    const assetIsNFT = isNFT(asset)
+    
     // Save current state to history before removing
     setAllocationHistory(prev => [...prev, [...allocations]])
-    onAllocationChange(
-      allocations.filter(
-        (a) => !(a.assetId === assetId && a.beneficiaryId === beneficiaryId)
-      )
+    
+    // Get the allocation being removed
+    const removedAllocation = allocations.find(
+      a => a.assetId === assetId && a.beneficiaryId === beneficiaryId
     )
+    
+    // Remove the allocation
+    let updatedAllocations = allocations.filter(
+      (a) => !(a.assetId === assetId && a.beneficiaryId === beneficiaryId)
+    )
+    
+    // For non-NFTs with percentage allocations, redistribute the removed percentage
+    if (!assetIsNFT && removedAllocation?.type === 'percentage' && removedAllocation.percentage) {
+      const removedPercentage = removedAllocation.percentage
+      
+      // Get remaining allocations for this asset
+      const remainingAllocations = updatedAllocations.filter(a => a.assetId === assetId)
+      
+      // Get remaining beneficiaries (those with allocations for this asset)
+      const remainingBeneficiaryIds = new Set(remainingAllocations.map(a => a.beneficiaryId))
+      
+      // If there are remaining beneficiaries, redistribute evenly
+      if (remainingBeneficiaryIds.size > 0) {
+        const percentagePerBeneficiary = removedPercentage / remainingBeneficiaryIds.size
+        
+        // Update each remaining allocation to add the redistributed percentage
+        updatedAllocations = updatedAllocations.map(alloc => {
+          if (alloc.assetId === assetId && remainingBeneficiaryIds.has(alloc.beneficiaryId)) {
+            const currentPercentage = alloc.percentage || 0
+            return {
+              ...alloc,
+              percentage: Math.round((currentPercentage + percentagePerBeneficiary) * 100) / 100
+            }
+          }
+          return alloc
+        })
+      }
+    }
+    
+    onAllocationChange(updatedAllocations)
   }
 
   const handleChangeBeneficiary = (assetId: string, oldBeneficiaryId: string, newBeneficiaryId: string) => {

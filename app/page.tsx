@@ -2056,9 +2056,22 @@ assets={(() => {
   
   let filtered = assetsToShow
   if (selectedWalletForLoading) {
-    filtered = assetsToShow.filter(a => a.walletAddress?.toLowerCase() === selectedWalletForLoading.toLowerCase())
+    const selectedWalletLower = selectedWalletForLoading.toLowerCase()
+    filtered = assetsToShow.filter(a => {
+      const assetWalletLower = a.walletAddress?.toLowerCase()
+      const matches = assetWalletLower === selectedWalletLower
+      if (a.type === 'ethscription' && !matches) {
+        console.log(`[Assets Step] Ethscription filtered out: walletAddress="${a.walletAddress}" !== selectedWallet="${selectedWalletForLoading}"`)
+      }
+      return matches
+    })
     const ethscriptionCountAfter = filtered.filter(a => a.type === 'ethscription').length
     console.log(`[Assets Step] After wallet filter (${selectedWalletForLoading}): ${filtered.length} total, ${ethscriptionCountAfter} ethscriptions`)
+    if (ethscriptionCountBefore > 0 && ethscriptionCountAfter === 0) {
+      console.warn(`[Assets Step] ⚠️ All ${ethscriptionCountBefore} ethscriptions were filtered out by wallet filter!`)
+      console.log(`[Assets Step] Sample ethscription walletAddress:`, assetsToShow.find(a => a.type === 'ethscription')?.walletAddress)
+      console.log(`[Assets Step] Selected wallet: ${selectedWalletForLoading}`)
+    }
   } else if (btcAddress) {
     filtered = assetsToShow.filter(a => a.chain === 'bitcoin' && (a.walletAddress === btcAddress || a.contractAddress === btcAddress))
     console.log('[Assets Step] Filtering Bitcoin assets:', {
