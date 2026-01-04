@@ -212,17 +212,36 @@ export function AllocationPanel({
           }
         }
 
-        if (allocationType === 'percentage' && value > 100) {
-          alert('Percentage cannot exceed 100%')
-          return
-        }
+        // Check existing allocations for this asset
+        const existingAllocations = allocations.filter(a => a.assetId === assetId)
+        const existingPercentageAllocations = existingAllocations.filter(a => a.type === 'percentage' && a.beneficiaryId !== selectedBeneficiary)
+        const existingAmountAllocations = existingAllocations.filter(a => a.type === 'amount' && a.beneficiaryId !== selectedBeneficiary)
+        
+        const totalExistingPercentage = existingPercentageAllocations.reduce((sum, a) => sum + (a.percentage || 0), 0)
+        const totalExistingAmount = existingAmountAllocations.reduce((sum, a) => sum + parseFloat(a.amount || '0'), 0)
 
-        // For fungible tokens, we don't check against balance when using percentage
-        // Percentage is just what % of the token goes to this beneficiary
-        if (allocationType === 'amount') {
+        if (allocationType === 'percentage') {
+          if (value > 100) {
+            alert('Percentage cannot exceed 100%')
+            return
+          }
+          // Check if adding this allocation would exceed 100%
+          if (totalExistingPercentage + value > 100) {
+            const available = 100 - totalExistingPercentage
+            alert(`Cannot allocate ${value}%. Only ${available.toFixed(2)}% remaining (${totalExistingPercentage.toFixed(2)}% already allocated).`)
+            return
+          }
+        } else {
+          // For amount allocations
           const assetBalance = parseFloat(asset.balance) / Math.pow(10, asset.decimals || 18)
           if (value > assetBalance) {
             alert(`Amount cannot exceed available balance for ${asset.symbol}: ${assetBalance.toFixed(6)}`)
+            return
+          }
+          // Check if adding this allocation would exceed balance
+          if (totalExistingAmount + value > assetBalance) {
+            const available = assetBalance - totalExistingAmount
+            alert(`Cannot allocate ${value} ${asset.symbol}. Only ${available.toFixed(6)} ${asset.symbol} remaining (${totalExistingAmount.toFixed(6)} ${asset.symbol} already allocated).`)
             return
           }
         }
@@ -774,11 +793,12 @@ export function AllocationPanel({
                       )}
                     </div>
                     
-                    {/* Allocations list - enhanced */}
+                    {/* Allocations list - enhanced with edit */}
                     {assetAllocs.length > 0 ? (
                       <div className="space-y-1.5 text-xs bg-white rounded p-2 border border-gray-200">
                         {assetAllocs.map((alloc) => {
                           const beneficiary = beneficiaries.find((b) => b.id === alloc.beneficiaryId)
+                          const isEditing = editingAllocation?.assetId === alloc.assetId && editingAllocation?.beneficiaryId === alloc.beneficiaryId
                           let allocationDisplay = ''
                           if (assetIsNFT) {
                             allocationDisplay = '100%'
@@ -798,19 +818,143 @@ export function AllocationPanel({
                               }
                             }
                           }
+                          
+                          if (isEditing) {
+                            // Edit mode
+                            return (
+                              <div key={`${alloc.assetId}-${alloc.beneficiaryId}`} className="bg-blue-50 rounded p-2 border border-blue-300">
+                                <div className="mb-2">
+                                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                    {beneficiary?.name} - {assetIsNFT ? 'NFT (100%)' : alloc.type === 'percentage' ? 'Percentage' : 'Amount'}
+                                  </label>
+                                  {!assetIsNFT && (
+                                    <select
+                                      value={allocationType}
+                                      onChange={(e) => {
+                                        setAllocationType(e.target.value as 'amount' | 'percentage')
+                                        if (e.target.value === 'percentage') {
+                                          setAllocationValue(alloc.percentage?.toString() || defaultPercentage.toFixed(2))
+                                        } else {
+                                          setAllocationValue(alloc.amount || '')
+                                        }
+                                      }}
+                                      className="w-full text-xs border border-gray-300 rounded p-1 mb-1"
+                                    >
+                                      <option value="percentage">Percentage (%)</option>
+                                      <option value="amount">Amount</option>
+                                    </select>
+                                  )}
+                                  <input
+                                    type="number"
+                                    value={allocationValue || (assetIsNFT ? '100' : alloc.type === 'percentage' ? alloc.percentage?.toString() : alloc.amount)}
+                                    onChange={(e) => setAllocationValue(e.target.value)}
+                                    placeholder={assetIsNFT ? '100' : alloc.type === 'percentage' ? 'Percentage' : 'Amount'}
+                                    className="w-full text-xs border border-gray-300 rounded p-1"
+                                    step={allocationType === 'percentage' ? '0.01' : '0.00000001'}
+                                    min="0"
+                                    max={allocationType === 'percentage' ? '100' : undefined}
+                                    disabled={assetIsNFT}
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      // Save changes
+                                      const value = parseFloat(allocationValue || (assetIsNFT ? '100' : alloc.type === 'percentage' ? alloc.percentage?.toString() || '0' : alloc.amount || '0'))
+                                      if (isNaN(value) || value <= 0) {
+                                        alert('Please enter a valid positive number')
+                                        return
+                                      }
+                                      
+                                      // Validate over-allocation
+                                      const otherAllocations = assetAllocs.filter(a => !(a.assetId === alloc.assetId && a.beneficiaryId === alloc.beneficiaryId))
+                                      const otherPercentage = otherAllocations.filter(a => a.type === 'percentage').reduce((sum, a) => sum + (a.percentage || 0), 0)
+                                      const otherAmount = otherAllocations.filter(a => a.type === 'amount').reduce((sum, a) => sum + parseFloat(a.amount || '0'), 0)
+                                      
+                                      if (allocationType === 'percentage') {
+                                        if (value > 100) {
+                                          alert('Percentage cannot exceed 100%')
+                                          return
+                                        }
+                                        if (otherPercentage + value > 100) {
+                                          alert(`Cannot allocate ${value}%. Only ${(100 - otherPercentage).toFixed(2)}% remaining.`)
+                                          return
+                                        }
+                                      } else {
+                                        const assetBalance = parseFloat(asset.balance) / Math.pow(10, asset.decimals || 18)
+                                        if (value > assetBalance) {
+                                          alert(`Amount cannot exceed balance: ${assetBalance.toFixed(6)} ${asset.symbol}`)
+                                          return
+                                        }
+                                        if (otherAmount + value > assetBalance) {
+                                          alert(`Cannot allocate ${value} ${asset.symbol}. Only ${(assetBalance - otherAmount).toFixed(6)} ${asset.symbol} remaining.`)
+                                          return
+                                        }
+                                      }
+                                      
+                                      const updated = allocations.map(a => 
+                                        a.assetId === alloc.assetId && a.beneficiaryId === alloc.beneficiaryId
+                                          ? {
+                                              ...a,
+                                              type: allocationType,
+                                              ...(allocationType === 'percentage' ? { percentage: value, amount: undefined } : { amount: value.toString(), percentage: undefined })
+                                            }
+                                          : a
+                                      )
+                                      onAllocationChange(updated)
+                                      setEditingAllocation(null)
+                                      setAllocationValue('')
+                                      setSelectedAssets([])
+                                      setSelectedBeneficiary(null)
+                                    }}
+                                    className="flex-1 px-2 py-1 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditingAllocation(null)
+                                      setAllocationValue('')
+                                      setSelectedAssets([])
+                                      setSelectedBeneficiary(null)
+                                    }}
+                                    className="px-2 py-1 bg-gray-300 text-gray-700 text-xs font-semibold rounded hover:bg-gray-400"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          }
+                          
                           return (
                             <div key={`${alloc.assetId}-${alloc.beneficiaryId}`} className="flex items-center justify-between bg-gray-50 rounded p-1.5 border border-gray-200">
                               <div className="flex-1 min-w-0">
                                 <span className="font-semibold text-gray-900">{beneficiary?.name}</span>
                                 <span className="text-gray-600 ml-1">: {allocationDisplay}</span>
                               </div>
-                              <button
-                                onClick={() => handleRemoveAllocation(alloc.assetId, alloc.beneficiaryId)}
-                                className="text-red-600 hover:text-red-700 text-sm font-bold ml-2 px-1"
-                                title="Remove allocation"
-                              >
-                                ×
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => {
+                                    setEditingAllocation({ assetId: alloc.assetId, beneficiaryId: alloc.beneficiaryId })
+                                    setSelectedAssets([alloc.assetId])
+                                    setSelectedBeneficiary(alloc.beneficiaryId)
+                                    setAllocationType(alloc.type)
+                                    setAllocationValue(alloc.type === 'percentage' ? alloc.percentage?.toString() || '' : alloc.amount || '')
+                                  }}
+                                  className="text-blue-600 hover:text-blue-700 text-xs font-semibold px-1"
+                                  title="Edit allocation"
+                                >
+                                  ✎
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveAllocation(alloc.assetId, alloc.beneficiaryId)}
+                                  className="text-red-600 hover:text-red-700 text-sm font-bold px-1"
+                                  title="Remove allocation"
+                                >
+                                  ×
+                                </button>
+                              </div>
                             </div>
                           )
                         })}

@@ -4,7 +4,7 @@
 export const dynamic = 'force-dynamic'
 export const dynamicParams = true
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAccount, useDisconnect, useSignMessage, useSendTransaction, useWaitForTransactionReceipt, useConnect } from 'wagmi'
 import { createPublicClient, http, parseEther, formatEther, isAddress } from 'viem'
 import { mainnet } from 'viem/chains'
@@ -537,6 +537,91 @@ export default function Home() {
      }
    }
  }, [step, queuedSessions, selectedAssetIds.length, assets.length])
+
+ // Auto-reallocate when beneficiaries are deleted
+ useEffect(() => {
+   // Get list of current beneficiary IDs
+   const currentBeneficiaryIds = new Set(beneficiaries.map(b => b.id))
+   
+   // Filter out allocations for deleted beneficiaries
+   const validAllocations = allocations.filter(a => currentBeneficiaryIds.has(a.beneficiaryId))
+   
+   // If allocations were removed, redistribute if needed
+   if (validAllocations.length < allocations.length && beneficiaries.length > 0) {
+     // Find assets that had allocations to deleted beneficiaries
+     const deletedBeneficiaryIds = allocations
+       .filter(a => !currentBeneficiaryIds.has(a.beneficiaryId))
+       .map(a => a.beneficiaryId)
+     const uniqueDeletedIds = new Set(deletedBeneficiaryIds)
+     
+     // For each asset, redistribute if it was quick-allocated (evenly distributed)
+     const affectedAssetIds = new Set(allocations
+       .filter(a => !currentBeneficiaryIds.has(a.beneficiaryId))
+       .map(a => a.assetId))
+     
+     const updatedAllocations = [...validAllocations]
+     
+     affectedAssetIds.forEach(assetId => {
+       const asset = assets.find(a => a.id === assetId) || queuedSessions.flatMap(s => s.assets).find(a => a.id === assetId)
+       if (!asset) return
+       
+       const remainingAllocations = validAllocations.filter(a => a.assetId === assetId)
+       const isNFT = asset.type === 'erc721' || asset.type === 'erc1155'
+       
+       if (remainingAllocations.length === 0 && beneficiaries.length > 0) {
+         // No allocations left, redistribute evenly
+         if (isNFT) {
+           // NFTs go to first beneficiary
+           updatedAllocations.push({
+             assetId,
+             beneficiaryId: beneficiaries[0].id,
+             type: 'percentage',
+             percentage: 100,
+           })
+         } else {
+           // Fungible tokens split evenly
+           const percentagePerBeneficiary = 100 / beneficiaries.length
+           beneficiaries.forEach(ben => {
+             updatedAllocations.push({
+               assetId,
+               beneficiaryId: ben.id,
+               type: 'percentage',
+               percentage: percentagePerBeneficiary,
+             })
+           })
+         }
+       } else if (remainingAllocations.length > 0 && !isNFT) {
+         // Redistribute remaining percentage/amount evenly among remaining beneficiaries
+         const totalAllocated = remainingAllocations.reduce((sum, a) => {
+           if (a.type === 'percentage') return sum + (a.percentage || 0)
+           const assetBalance = parseFloat(asset.balance) / Math.pow(10, asset.decimals || 18)
+           return sum + (parseFloat(a.amount || '0') / assetBalance * 100)
+         }, 0)
+         
+         const remainingPercentage = 100 - totalAllocated
+         if (remainingPercentage > 0 && beneficiaries.length > 0) {
+           const percentagePerBeneficiary = remainingPercentage / beneficiaries.length
+           beneficiaries.forEach(ben => {
+             // Only add if not already allocated
+             if (!remainingAllocations.some(a => a.beneficiaryId === ben.id)) {
+               updatedAllocations.push({
+                 assetId,
+                 beneficiaryId: ben.id,
+                 type: 'percentage',
+                 percentage: percentagePerBeneficiary,
+               })
+             }
+           })
+         }
+       }
+     })
+     
+     setAllocations(updatedAllocations)
+   } else if (validAllocations.length < allocations.length) {
+     // Just remove invalid allocations if no beneficiaries left
+     setAllocations(validAllocations)
+   }
+ }, [beneficiaries.map(b => b.id).join(',')]) // Only run when beneficiary IDs change
 
  // Auto-verify payment after transaction is confirmed
  useEffect(() => {
