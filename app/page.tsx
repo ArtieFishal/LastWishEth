@@ -1962,22 +1962,9 @@ setError('Failed to load Bitcoin assets. Please try again.')
  </div>
  )}
 
- {mounted && selectedWalletForLoading && verifiedAddresses.has(selectedWalletForLoading) && !loading && (
- <div className="mt-8 space-y-3">
- <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
- <p className="text-sm font-semibold text-blue-900 mb-1">
- Selected Wallet:
- </p>
-     <div>
-       <p className="text-sm font-bold text-blue-900 mb-1">
-         {walletNames[selectedWalletForLoading] || resolvedEnsNames[selectedWalletForLoading.toLowerCase()] || selectedWalletForLoading.slice(0, 10) + '...' + selectedWalletForLoading.slice(-8)}
-       </p>
-       <p className="text-xs text-blue-700 font-mono break-all">
-         {selectedWalletForLoading}
-       </p>
-     </div>
- </div>
- <button
+{mounted && selectedWalletForLoading && verifiedAddresses.has(selectedWalletForLoading) && !loading && (
+<div className="mt-8 space-y-3">
+<button
  onClick={async () => {
  // Temporarily set evmAddress context to selected wallet for loading
  const originalEvmAddress = evmAddress
