@@ -63,6 +63,15 @@ export default function GuidePage() {
                       <li>Approve the connection request in your wallet</li>
                       <li>Sign the verification message to prove wallet ownership</li>
                       <li>Wait for "✓ Signature Verified" to appear</li>
+                      <li><strong>Name Your Wallet (Optional but Recommended):</strong>
+                        <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
+                          <li>Click the <strong>✏️ pencil icon</strong> next to your wallet name</li>
+                          <li>Enter a custom name (e.g., "Trick Wallet", "Main Wallet", "Savings")</li>
+                          <li>Or use the auto-resolved name if your wallet has an ENS/domain name</li>
+                          <li>Wallet names are used for sorting and make it easier to identify wallets</li>
+                          <li>Names are preserved when wallets are saved to the queue</li>
+                        </ul>
+                      </li>
                     </ol>
                   </div>
                   <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
@@ -73,6 +82,17 @@ export default function GuidePage() {
                       <li>Bitcoin wallets can be added manually if Xverse doesn't work</li>
                       <li><strong>WalletConnect Session Management:</strong> System automatically disconnects previous sessions when adding new wallets to prevent connection limits</li>
                       <li>You can see all queued wallets in the container (shows up to 10 without scrolling)</li>
+                      <li><strong>Multi-Chain Name Resolution:</strong> The system automatically resolves wallet names from:
+                        <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
+                          <li><strong>ENS</strong> (.eth, .base.eth domains)</li>
+                          <li><strong>Solana Name Service</strong> (.sol domains)</li>
+                          <li><strong>Unstoppable Domains</strong> (.crypto, .nft, .wallet, .x, .dao, .blockchain, .bitcoin, .zil)</li>
+                          <li><strong>Space ID</strong> (.arb for Arbitrum, .bnb for BSC)</li>
+                          <li><strong>Lens Protocol</strong> (.lens profiles)</li>
+                          <li><strong>Farcaster</strong> (.farcaster.eth names)</li>
+                        </ul>
+                        If your wallet has a domain name, it will be automatically detected and displayed. You can still override it with a custom name.
+                      </li>
                     </ul>
                   </div>
                   <div>
@@ -80,6 +100,7 @@ export default function GuidePage() {
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
                       <li>Your wallet address is recorded (NOT your private keys)</li>
                       <li>The wallet is added to your session</li>
+                      <li>If your wallet has a blockchain domain name, it's automatically resolved and displayed</li>
                       <li>You can proceed to load assets</li>
                     </ul>
                   </div>
@@ -99,25 +120,28 @@ export default function GuidePage() {
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
                           <li>Native tokens (ETH, BTC, etc.)</li>
                           <li>ERC-20 tokens</li>
-                          <li>NFTs (with thumbnails)</li>
-                          <li>Ethscriptions (digital artifacts on Ethereum)</li>
+                          <li>NFTs (with thumbnails and improved metadata loading)</li>
+                          <li><strong>Ethscriptions</strong> (digital artifacts on Ethereum blockchain)</li>
                           <li>Bitcoin assets (including SATs)</li>
                         </ul>
                       </li>
-                      <li>Use filters:
+                      <li>Use <strong>Button-Style Filters</strong> (replaced dropdown menus):
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
-                          <li>"Sort by Chain" - Group by blockchain</li>
-                          <li>"Sort by Wallet" - Group by wallet provider</li>
-                          <li>"All Fungible" - Select all currencies</li>
-                          <li>"All NFTs" - Select all NFTs</li>
-                          <li>"Select All" / "Clear" - Bulk selection</li>
+                          <li><strong>Filter Buttons:</strong> "All Types", "Currencies", "NFTs", "Ethscriptions", "Other" - Click to filter by asset type</li>
+                          <li><strong>Sort Buttons:</strong> "Type", "Chain", "Wallet", "Value" - Click to sort assets</li>
+                          <li>Active filters/sorts are highlighted in color</li>
+                          <li><strong>"Select All"</strong> / <strong>"Clear"</strong> - Bulk selection controls</li>
+                          <li><strong>"All Fungible"</strong> - Select all currencies at once</li>
+                          <li><strong>"All NFTs"</strong> - Select all NFTs at once</li>
+                          <li><strong>"All Ethscriptions"</strong> - Select all ethscriptions at once (if available)</li>
                         </ul>
                       </li>
+                      <li><strong>Sort by Wallet Name:</strong> Use the "Wallet" sort button to organize assets by wallet name (custom names, ENS names, or addresses)</li>
                       <li><strong>Hide Spam/Dust Tokens:</strong> Toggle to filter out fake/spam tokens automatically (enabled by default)
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
                           <li>Filters tokens with balance &lt; 0.000001 (dust threshold)</li>
                           <li>Filters tokens with suspicious names (test, fake, scam, spam, etc.)</li>
-                          <li>Always shows native tokens (ETH, BTC, MATIC) and NFTs</li>
+                          <li>Always shows native tokens (ETH, BTC, MATIC), NFTs, and Ethscriptions</li>
                           <li>Uncheck to see all tokens including spam</li>
                         </ul>
                       </li>
@@ -132,8 +156,10 @@ export default function GuidePage() {
                       <li>Your selections are preserved when adding more wallets</li>
                       <li>NFTs cannot be split—they go to one beneficiary</li>
                       <li>Fungible tokens can be split by percentage or amount</li>
+                      <li><strong>Ethscriptions:</strong> Digital artifacts stored on Ethereum blockchain. They cannot be split and must be allocated 100% to one beneficiary.</li>
+                      <li><strong>Improved NFT Metadata:</strong> NFT images now load more reliably with multiple IPFS gateway fallbacks and better error handling.</li>
                       <li><strong>Spam filtering:</strong> The system automatically hides fake/spam tokens to keep your asset list clean. You can toggle this off if needed.</li>
-                      <li>Asset details show balance, contract address, and wallet provider for easy identification</li>
+                      <li>Asset details show balance, contract address, wallet provider, and wallet name for easy identification</li>
                     </ul>
                   </div>
                 </div>
@@ -148,17 +174,38 @@ export default function GuidePage() {
                     <ol className="list-decimal list-inside space-y-2 text-gray-700 ml-4">
                       <li><strong>Add Beneficiaries:</strong>
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
-                          <li>Enter name, wallet address (or ENS), and optional contact info</li>
+                          <li>Enter name, wallet address (or blockchain name like .eth, .sol, .crypto, etc.)</li>
+                          <li>The system automatically resolves blockchain names to addresses</li>
+                          <li>Enter optional contact info (phone, email, notes)</li>
                           <li>Click "Add Beneficiary"</li>
                           <li>You can add up to 10 beneficiaries</li>
+                          <li><strong>Edit Beneficiaries:</strong> Click the <strong>✏️ edit button</strong> on any beneficiary card to update their information (name, address, email, notes, etc.)</li>
                         </ul>
                       </li>
                       <li><strong>Allocate Assets:</strong>
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
+                          <li>Use <strong>Button-Style Filters</strong> to quickly select asset types:
+                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
+                              <li><strong>"All Fungible"</strong> - Select all currencies</li>
+                              <li><strong>"All NFTs"</strong> - Select all NFTs</li>
+                              <li><strong>"All Ethscriptions"</strong> - Select all ethscriptions (if available)</li>
+                              <li><strong>"Select All"</strong> / <strong>"Clear"</strong> - Bulk selection</li>
+                            </ul>
+                          </li>
                           <li>Select assets from the list (multi-select supported)</li>
-                          <li>Choose allocation type: <strong>Percentage</strong> (e.g., "50%") or <strong>Amount</strong> (e.g., "1.5 ETH")</li>
-                          <li>Select beneficiary from dropdown</li>
-                          <li>Enter percentage or amount (defaults to even split)</li>
+                          <li>Choose allocation type using <strong>Button-Style Controls</strong>:
+                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
+                              <li><strong>"% (Percentage)"</strong> - Allocate by percentage (defaults to 100% for single beneficiary)</li>
+                              <li><strong>"Amount"</strong> - Allocate by specific amount</li>
+                            </ul>
+                          </li>
+                          <li>Select beneficiary using <strong>Button-Style Selection</strong> (click beneficiary name button)</li>
+                          <li>Enter percentage or amount:
+                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
+                              <li><strong>Manual Allocation:</strong> Defaults to 100% when allocating to a single beneficiary</li>
+                              <li><strong>Quick Allocate:</strong> Distributes evenly across all beneficiaries</li>
+                            </ul>
+                          </li>
                           <li>Click "Add Allocation" - system prevents over-allocation automatically</li>
                         </ul>
                       </li>
@@ -173,14 +220,14 @@ export default function GuidePage() {
                       <li><strong>Review Allocations:</strong>
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
                           <li>See summary of all allocations in sortable cards</li>
-                          <li>Sort by: Name, Status, Chain, or Type (with ascending/descending toggle)</li>
-                          <li>Color-coded status: Green (allocated), Yellow (unallocated), Red (over-allocated), Pink (NFTs)</li>
-                          <li>Use "Quick Allocate" to split all assets evenly across beneficiaries</li>
+                          <li>Sort using <strong>Button-Style Controls</strong>: Name, Status, Chain, or Type (with ascending/descending toggle)</li>
+                          <li>Color-coded status: Green (allocated), Yellow (unallocated), Red (over-allocated), Pink (NFTs), Green (Ethscriptions)</li>
+                          <li>Use "Quick Allocate All" to split all assets evenly across beneficiaries</li>
                           <li>Use "Undo Last" to revert recent changes</li>
                           <li>Click ✎ to edit or × to remove any allocation</li>
                         </ul>
                       </li>
-                      <li>Click <strong>"Save to Queue"</strong> when done with this wallet</li>
+                      <li>Click <strong>"Save to Queue"</strong> when done with this wallet (wallet name is preserved in queue)</li>
                       <li>Disconnect and connect another wallet if needed, then repeat</li>
                     </ol>
                   </div>
@@ -189,14 +236,16 @@ export default function GuidePage() {
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
                       <li><strong>Over-allocation Prevention:</strong> System automatically prevents allocating more than 100% or exceeding asset balance</li>
                       <li><strong>Edit Anywhere:</strong> Edit allocations from either the "Add Allocation" form or directly from summary cards (click ✎)</li>
-                      <li><strong>Auto-Reallocation:</strong> If you delete a beneficiary, allocations automatically redistribute evenly to remaining beneficiaries</li>
+                      <li><strong>Edit Beneficiaries:</strong> Click the ✏️ button on any beneficiary card to update their information at any time</li>
+                      <li><strong>Auto-Reallocation:</strong> If you remove a beneficiary, allocations automatically redistribute evenly to remaining beneficiaries (for fungible tokens)</li>
                       <li><strong>Math is Automatic:</strong> System calculates totals and shows remaining available percentage/amount</li>
-                      <li>NFTs must be allocated 100% to one beneficiary (cannot be split)</li>
+                      <li>NFTs and Ethscriptions must be allocated 100% to one beneficiary (cannot be split)</li>
                       <li>Percentages must total 100% for fungible tokens (enforced automatically)</li>
                       <li>You can queue up to 20 wallet sessions</li>
-                      <li>Each session saves assets, allocations, and wallet info</li>
-                      <li><strong>Allocation Summary:</strong> Use sorting to organize by name, status, chain, or type for easier review</li>
+                      <li>Each session saves assets, allocations, and wallet info (including custom wallet names)</li>
+                      <li><strong>Allocation Summary:</strong> Use button-style sorting to organize by name, status, chain, or type for easier review</li>
                       <li>Allocated assets show in yellow in the asset list for easy identification</li>
+                      <li><strong>Button-Style UI:</strong> All filters and sorts now use intuitive colored buttons instead of dropdown menus for better UX</li>
                     </ul>
                   </div>
                 </div>
@@ -212,7 +261,7 @@ export default function GuidePage() {
                       <li><strong>Owner Information:</strong>
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
                           <li>Full Legal Name (required)</li>
-                          <li>ENS Address (optional)</li>
+                          <li>ENS Address (optional) - Supports .eth, .base.eth, and other blockchain domains</li>
                           <li>Street Address, City, State, ZIP (required)</li>
                           <li>Phone (required)</li>
                         </ul>
@@ -220,7 +269,7 @@ export default function GuidePage() {
                       <li><strong>Executor Information:</strong>
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
                           <li>Full Name (required) - Can select from beneficiaries dropdown or enter manually</li>
-                          <li>Wallet Address (optional) - Resolves ENS automatically (.eth, .base.eth, etc.)</li>
+                          <li>Wallet Address (optional) - Resolves blockchain names automatically (.eth, .sol, .crypto, .arb, .bnb, .lens, etc.)</li>
                           <li>Phone (required)</li>
                           <li>Email (required)</li>
                           <li>Twitter/X (optional)</li>
@@ -243,8 +292,8 @@ export default function GuidePage() {
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
                       <li>The executor should know where to find this document</li>
                       <li>Key instructions are critical—be clear and complete</li>
-                      <li><strong>ENS Resolution:</strong> Supports .eth, .base.eth, and attempts resolution for other naming systems (.sol, .btc, etc.)</li>
-                      <li><strong>Visual Verification:</strong> Resolved ENS names show with green checkmark (✓) for easy verification</li>
+                      <li><strong>Multi-Chain Name Resolution:</strong> Supports .eth, .base.eth, .sol, .crypto, .nft, .wallet, .x, .dao, .blockchain, .bitcoin, .zil, .arb, .bnb, .lens, and .farcaster.eth</li>
+                      <li><strong>Visual Verification:</strong> Resolved blockchain names show with green checkmark (✓) for easy verification</li>
                       <li><strong>Executor Selection:</strong> Use the dropdown to quickly select executor from your beneficiaries list</li>
                       <li>Owner ENS name at the top also resolves and shows verification status</li>
                     </ul>
@@ -309,10 +358,10 @@ export default function GuidePage() {
                       <li>Table of contents</li>
                       <li>Legal disclaimer</li>
                       <li>Owner information</li>
-                      <li>Connected wallets with verification status</li>
+                      <li>Connected wallets with verification status and wallet names</li>
                       <li>Beneficiary information</li>
                       <li>Executive summary of asset allocations</li>
-                      <li>Detailed asset allocations by chain</li>
+                      <li>Detailed asset allocations by chain (including NFTs and Ethscriptions)</li>
                       <li>Instructions for executor</li>
                       <li>Notarization section</li>
                     </ul>
@@ -496,7 +545,7 @@ export default function GuidePage() {
                   </div>
                   <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
                     <h4 className="font-bold text-gray-900 mb-2">2. Multi-Chain Support</h4>
-                    <p className="text-gray-700">Ethereum, Base, Arbitrum, Polygon, Bitcoin - handles NFTs, tokens, ethscriptions, and native coins</p>
+                    <p className="text-gray-700">Ethereum, Base, Arbitrum, Polygon, Bitcoin - handles NFTs, tokens, <strong>ethscriptions</strong>, and native coins</p>
                   </div>
                   <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
                     <h4 className="font-bold text-gray-900 mb-2">3. Professional Documentation</h4>
@@ -514,9 +563,25 @@ export default function GuidePage() {
                     <h4 className="font-bold text-gray-900 mb-2">6. Advanced Allocation System</h4>
                     <p className="text-gray-700">Prevent over-allocation, edit from anywhere, auto-reallocate when beneficiaries change</p>
                   </div>
+                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                    <h4 className="font-bold text-gray-900 mb-2">7. Multi-Chain Name Resolution</h4>
+                    <p className="text-gray-700">Automatically resolves wallet names from ENS, Solana Name Service, Unstoppable Domains, Space ID, Lens Protocol, and Farcaster. Manual naming also supported.</p>
+                  </div>
+                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                    <h4 className="font-bold text-gray-900 mb-2">8. Wallet Naming & Organization</h4>
+                    <p className="text-gray-700">Name your wallets for easy identification. Names are preserved in queued sessions and used for sorting assets.</p>
+                  </div>
+                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                    <h4 className="font-bold text-gray-900 mb-2">9. Enhanced NFT & Ethscription Support</h4>
+                    <p className="text-gray-700">Improved metadata loading with multiple IPFS gateway fallbacks. Full support for ethscriptions (digital artifacts on Ethereum).</p>
+                  </div>
+                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                    <h4 className="font-bold text-gray-900 mb-2">10. Modern Button-Style UI</h4>
+                    <p className="text-gray-700">Intuitive colored button filters and sorts replace dropdown menus throughout the application for better user experience.</p>
+                  </div>
                   <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded md:col-span-2">
-                    <h4 className="font-bold text-gray-900 mb-2">7. User-Friendly</h4>
-                    <p className="text-gray-700">No technical knowledge required, step-by-step guidance, real-time validation, enhanced UI with larger containers and detailed asset information</p>
+                    <h4 className="font-bold text-gray-900 mb-2">11. User-Friendly</h4>
+                    <p className="text-gray-700">No technical knowledge required, step-by-step guidance, real-time validation, enhanced UI with larger containers, detailed asset information, and intuitive button-style controls</p>
                   </div>
                 </div>
               </div>
@@ -576,6 +641,13 @@ export default function GuidePage() {
                         <td className="px-4 py-3 text-sm text-gray-700">❌ No</td>
                         <td className="px-4 py-3 text-sm text-gray-700">❌ No</td>
                         <td className="px-4 py-3 text-sm text-gray-700">❌ No</td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 text-sm text-gray-700 font-semibold">Wallet Naming</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">✅ Auto-resolve + Manual</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">❌ No</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">⚠️ Limited</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">⚠️ Manual</td>
                       </tr>
                       <tr className="bg-gray-50">
                         <td className="px-4 py-3 text-sm text-gray-700 font-semibold">Updates</td>
