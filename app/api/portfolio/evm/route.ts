@@ -144,10 +144,12 @@ export async function POST(request: NextRequest) {
                                 nft.metadata.image_url || 
                                 nft.metadata.imageUrl
                     }
-                    // Fallback to token_uri (if it's a direct image URL)
-                    if (!imageUrl && nft.token_uri && (nft.token_uri.startsWith('http') || nft.token_uri.startsWith('ipfs://'))) {
-                      // For now, we'll fetch metadata from token_uri if needed
-                      // This would require an additional API call, so we'll handle it client-side if needed
+                    // Store token_uri in metadata for client-side fetching if image not available
+                    if (!metadata) {
+                      metadata = {}
+                    }
+                    if (nft.token_uri) {
+                      metadata.token_uri = nft.token_uri
                     }
                     
                     allAssets.push({
@@ -162,8 +164,12 @@ export async function POST(request: NextRequest) {
                       tokenId: nft.token_id,
                       collectionName: nft.name,
                       walletAddress: address, // Track which wallet this asset belongs to
-                      imageUrl, // NFT image URL
-                      metadata, // Full metadata for potential client-side processing
+                      imageUrl, // NFT image URL (may be undefined, will be fetched client-side)
+                      metadata: {
+                        ...metadata,
+                        token_uri: nft.token_uri, // Include token_uri for client-side metadata fetching
+                        ...nft, // Include all NFT data for reference
+                      },
                     })
                   }
                 }

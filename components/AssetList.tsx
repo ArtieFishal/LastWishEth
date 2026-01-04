@@ -1,6 +1,7 @@
 'use client'
 
 import { Asset } from '@/types'
+import { NFTImage } from './NFTImage'
 
 interface AssetListProps {
   assets: Asset[]
@@ -79,16 +80,15 @@ export function AssetList({ assets }: AssetListProps) {
                   {asset.contractAddress.slice(0, 10)}...{asset.contractAddress.slice(-8)}
                 </p>
               )}
-              {asset.imageUrl && (asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription') && (
+              {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription') && (
                 <div className="mt-2">
-                  <img 
-                    src={asset.imageUrl} 
+                  <NFTImage
+                    imageUrl={asset.imageUrl}
+                    tokenUri={asset.metadata?.token_uri || asset.metadata?.tokenUri}
+                    contractAddress={asset.contractAddress}
+                    tokenId={asset.tokenId}
                     alt={asset.name}
                     className="w-20 h-20 object-cover rounded border border-gray-200"
-                    onError={(e) => {
-                      // Hide image on error
-                      e.currentTarget.style.display = 'none'
-                    }}
                   />
                 </div>
               )}

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { Asset } from '@/types'
+import { NFTImage } from './NFTImage'
 
 interface AssetSelectorProps {
   assets: Asset[]
@@ -275,15 +276,15 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange }: A
                       </div>
                       <div className="text-right ml-4">
                         <p className="font-bold text-lg text-gray-900">{asset.balanceFormatted} {asset.symbol}</p>
-                        {asset.imageUrl && (asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription') && (
+                        {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription') && (
                           <div className="mt-2">
-                            <img 
-                              src={asset.imageUrl} 
+                            <NFTImage
+                              imageUrl={asset.imageUrl}
+                              tokenUri={asset.metadata?.token_uri || asset.metadata?.tokenUri}
+                              contractAddress={asset.contractAddress}
+                              tokenId={asset.tokenId}
                               alt={asset.name}
                               className="w-16 h-16 object-cover rounded border border-gray-200"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none'
-                              }}
                             />
                           </div>
                         )}

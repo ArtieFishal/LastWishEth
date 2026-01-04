@@ -829,27 +829,49 @@ if (walletsToLoad.length > 0) {
 
   // Load Ethscriptions
   try {
+    console.log(`[Load Assets] Fetching ethscriptions for ${walletsToLoad.length} wallet(s):`, walletsToLoad)
     const ethscriptionsResponse = await axios.post('/api/portfolio/ethscriptions', {
       addresses: walletsToLoad,
     })
+    console.log(`[Load Assets] Ethscriptions API response:`, {
+      hasData: !!ethscriptionsResponse.data,
+      hasAssets: !!ethscriptionsResponse.data?.assets,
+      assetCount: Array.isArray(ethscriptionsResponse.data?.assets) ? ethscriptionsResponse.data.assets.length : 0
+    })
+    
     if (ethscriptionsResponse.data?.assets && Array.isArray(ethscriptionsResponse.data.assets)) {
       const existingIds = new Set(assets.map(a => a.id))
       const uniqueEthscriptions = ethscriptionsResponse.data.assets.filter(
         (a: Asset) => !existingIds.has(a.id)
       )
-      newAssets.push(...uniqueEthscriptions)
-      console.log(`✅ Loaded ${uniqueEthscriptions.length} ethscription(s) from ${walletsToLoad.length} wallet(s)`)
+      console.log(`[Load Assets] Unique ethscriptions after deduplication: ${uniqueEthscriptions.length} (from ${ethscriptionsResponse.data.assets.length} total)`)
+      
       if (uniqueEthscriptions.length > 0) {
+        newAssets.push(...uniqueEthscriptions)
+        console.log(`✅ Loaded ${uniqueEthscriptions.length} ethscription(s) from ${walletsToLoad.length} wallet(s)`)
         console.log('Sample ethscription:', uniqueEthscriptions[0])
         console.log('Ethscription type check:', uniqueEthscriptions[0].type === 'ethscription')
         console.log('All ethscription types:', uniqueEthscriptions.map((e: Asset) => e.type))
+      } else {
+        console.log(`⚠️ All ${ethscriptionsResponse.data.assets.length} ethscriptions were duplicates`)
       }
     } else {
       console.log('⚠️ No ethscriptions in response or invalid format')
       console.log('Response data:', ethscriptionsResponse.data)
+      if (ethscriptionsResponse.data) {
+        console.log('Response keys:', Object.keys(ethscriptionsResponse.data))
+      }
     }
   } catch (err) {
-    console.error('Error loading ethscriptions:', err)
+    console.error('❌ Error loading ethscriptions:', err)
+    if (axios.isAxiosError(err)) {
+      console.error('Axios error details:', {
+        message: err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data
+      })
+    }
     // Don't set error for ethscriptions - it's optional
   }
 }
