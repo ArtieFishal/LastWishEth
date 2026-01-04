@@ -749,14 +749,19 @@ export default function Home() {
  return
  }
 
- if (append) {
- setAssets([...assets, ...newAssets])
- if (newAssets.length > 0) {
- setSelectedAssetIds([...selectedAssetIds, ...newAssets.map(a => a.id)])
- }
- } else {
- setAssets(newAssets)
- if (newAssets.length > 0) {
+if (append) {
+  const finalAssets = [...assets, ...newAssets]
+  const ethscriptionCount = finalAssets.filter(a => a.type === 'ethscription').length
+  console.log(`📊 Setting assets (append): ${finalAssets.length} total, ${ethscriptionCount} ethscriptions`)
+  setAssets(finalAssets)
+  if (newAssets.length > 0) {
+    setSelectedAssetIds([...selectedAssetIds, ...newAssets.map(a => a.id)])
+  }
+} else {
+  const ethscriptionCount = newAssets.filter(a => a.type === 'ethscription').length
+  console.log(`📊 Setting assets (replace): ${newAssets.length} total, ${ethscriptionCount} ethscriptions`)
+  setAssets(newAssets)
+  if (newAssets.length > 0) {
  setSelectedAssetIds(newAssets.map(a => a.id))
  }
  }
@@ -836,9 +841,12 @@ if (walletsToLoad.length > 0) {
       console.log(`✅ Loaded ${uniqueEthscriptions.length} ethscription(s) from ${walletsToLoad.length} wallet(s)`)
       if (uniqueEthscriptions.length > 0) {
         console.log('Sample ethscription:', uniqueEthscriptions[0])
+        console.log('Ethscription type check:', uniqueEthscriptions[0].type === 'ethscription')
+        console.log('All ethscription types:', uniqueEthscriptions.map((e: Asset) => e.type))
       }
     } else {
       console.log('⚠️ No ethscriptions in response or invalid format')
+      console.log('Response data:', ethscriptionsResponse.data)
     }
   } catch (err) {
     console.error('Error loading ethscriptions:', err)
