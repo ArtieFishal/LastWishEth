@@ -110,59 +110,80 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Ethscriptions API] Fetching ethscriptions for ${inputAddress} -> ${address}`)
 
-        // Fetch ethscriptions - query by current_owner (what we're doing now)
-        // The API's ?address parameter returns ethscriptions where address is current_owner
+        // Fetch ethscriptions - query by BOTH current_owner AND creator
+        // Users want to see ethscriptions they created, even if they transferred them
         let allEthscriptionsForAddress: any[] = []
-        let page = 1
-        let hasMore = true
-        const maxPages = 10 // Safety limit
+        const seenIds = new Set<string>() // Track to avoid duplicates
+        
+        // Helper function to fetch and deduplicate
+        const fetchEthscriptions = async (queryParam: string, queryType: string) => {
+          let page = 1
+          let hasMore = true
+          const maxPages = 10
+          const results: any[] = []
+          
+          while (hasMore && page <= maxPages) {
+            try {
+              const response = await fetch(
+                `${ETHSCRIPTIONS_API_BASE}/ethscriptions?${queryParam}=${address}&page=${page}`,
+                {
+                  headers: {
+                    'Accept': 'application/json',
+                  },
+                }
+              )
 
-        // Fetch all pages for current_owner
-        while (hasMore && page <= maxPages) {
-          try {
-            const response = await fetch(
-              `${ETHSCRIPTIONS_API_BASE}/ethscriptions?address=${address}&page=${page}`,
-              {
-                headers: {
-                  'Accept': 'application/json',
-                },
+              if (!response.ok) {
+                if (page === 1) {
+                  console.error(`[Ethscriptions API] Error fetching ethscriptions (${queryType}) for ${address}: ${response.status} ${response.statusText}`)
+                }
+                break
               }
-            )
 
-            if (!response.ok) {
-              if (page === 1) {
-                // Only log error on first page
-                console.error(`[Ethscriptions API] Error fetching ethscriptions for ${address}: ${response.status} ${response.statusText}`)
-                const errorText = await response.text().catch(() => '')
-                console.error(`[Ethscriptions API] Error response: ${errorText}`)
+              const data = await response.json()
+              const ethscriptions = data?.result || []
+              const pagination = data?.pagination || {}
+              
+              console.log(`[Ethscriptions API] Page ${page} (${queryType}): Received ${ethscriptions.length} ethscriptions`)
+              
+              // Deduplicate by transaction_hash
+              for (const eth of ethscriptions) {
+                const id = eth.transaction_hash
+                if (id && !seenIds.has(id)) {
+                  seenIds.add(id)
+                  results.push(eth)
+                }
               }
+
+              hasMore = pagination.has_more === true || 
+                       (pagination.page && pagination.total_pages && pagination.page < pagination.total_pages)
+              
+              if (!hasMore || ethscriptions.length === 0) {
+                break
+              }
+              
+              page++
+            } catch (error) {
+              console.error(`[Ethscriptions API] Error fetching page ${page} (${queryType}):`, error)
               break
             }
-
-            const data = await response.json()
-            const ethscriptions = data?.result || []
-            const pagination = data?.pagination || {}
-            
-            console.log(`[Ethscriptions API] Page ${page}: Received ${ethscriptions.length} ethscriptions (current_owner)`)
-            
-            allEthscriptionsForAddress.push(...ethscriptions)
-
-            // Check if there are more pages
-            hasMore = pagination.has_more === true || 
-                     (pagination.page && pagination.total_pages && pagination.page < pagination.total_pages)
-            
-            if (!hasMore || ethscriptions.length === 0) {
-              break
-            }
-            
-            page++
-          } catch (error) {
-            console.error(`[Ethscriptions API] Error fetching page ${page}:`, error)
-            break
           }
+          
+          return results
         }
 
-        console.log(`[Ethscriptions API] Total ethscriptions found as current_owner: ${allEthscriptionsForAddress.length}`)
+        // Fetch by current_owner
+        const ownedEthscriptions = await fetchEthscriptions('address', 'current_owner')
+        console.log(`[Ethscriptions API] Found ${ownedEthscriptions.length} ethscriptions as current_owner`)
+        
+        // Fetch by creator (to get ethscriptions user created, even if transferred)
+        const createdEthscriptions = await fetchEthscriptions('creator', 'creator')
+        console.log(`[Ethscriptions API] Found ${createdEthscriptions.length} ethscriptions as creator`)
+        
+        // Combine and deduplicate
+        allEthscriptionsForAddress = [...ownedEthscriptions, ...createdEthscriptions]
+        
+        console.log(`[Ethscriptions API] Total unique ethscriptions found: ${allEthscriptionsForAddress.length} (${ownedEthscriptions.length} owned + ${createdEthscriptions.length} created)`)
 
         // Process all ethscriptions found
         if (allEthscriptionsForAddress.length > 0) {
