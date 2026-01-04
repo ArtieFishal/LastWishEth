@@ -1182,13 +1182,31 @@ setError('Failed to load Bitcoin assets. Please try again.')
  // Get assets for this session
  const sessionAssets = assets.filter(a => selectedAssetIds.includes(a.id))
 
- // Get wallet name - use the address that's actually being queued
+ // Get wallet name - check all possible addresses
  const addressToUse = walletAddress || evmAddress || btcAddress
- const walletName = addressToUse ? (
-   walletNames[addressToUse] || 
-   resolvedEnsNames[addressToUse.toLowerCase()] || 
-   undefined
- ) : undefined
+ const normalizedAddress = addressToUse?.toLowerCase()
+ 
+ // Try to get wallet name from any of the possible addresses
+ let walletName: string | undefined = undefined
+ if (normalizedAddress) {
+   walletName = walletNames[normalizedAddress] || 
+                walletNames[addressToUse] || // Try original case too
+                resolvedEnsNames[normalizedAddress] || 
+                undefined
+ }
+ 
+ console.log('[Save to Queue] Wallet name lookup:', {
+   walletAddress,
+   evmAddress,
+   btcAddress,
+   addressToUse,
+   normalizedAddress,
+   walletName,
+   walletNames: Object.keys(walletNames),
+   resolvedEnsNames: Object.keys(resolvedEnsNames),
+   foundInWalletNames: walletNames[normalizedAddress] || walletNames[addressToUse],
+   foundInResolved: resolvedEnsNames[normalizedAddress]
+ })
 
  // Create session
  const session: QueuedWalletSession = {
@@ -1519,12 +1537,23 @@ setError('Failed to load Bitcoin assets. Please try again.')
  const totalAssets = session.assets.length
  const totalAllocations = session.allocations.length
  // Get wallet name (stored walletName > manual name > resolved ENS > ENS from session > address)
+ const sessionAddrLower = session.walletAddress.toLowerCase()
  const walletName = session.walletName || 
                     walletNames[session.walletAddress] || 
-                    resolvedEnsNames[session.walletAddress.toLowerCase()] || 
+                    walletNames[sessionAddrLower] ||
+                    resolvedEnsNames[sessionAddrLower] || 
                     session.ensName || 
                     session.walletAddress
  const displayName = walletName !== session.walletAddress ? walletName : session.walletAddress
+ console.log('[Queued Wallet Display]', {
+   sessionId: session.id,
+   walletAddress: session.walletAddress,
+   sessionWalletName: session.walletName,
+   foundWalletName: walletName,
+   displayName,
+   walletNames: Object.keys(walletNames),
+   resolvedEnsNames: Object.keys(resolvedEnsNames)
+ })
  return (
  <div key={session.id} className="bg-gray-50 rounded-lg border border-gray-300 p-4">
  <div className="flex items-start justify-between">
