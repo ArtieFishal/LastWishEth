@@ -44,6 +44,7 @@ export interface QueuedWalletSession {
   walletType: 'evm' | 'btc'
   walletProvider?: string // Wallet provider name (MetaMask, Rainbow, WalletConnect, Xverse, etc.)
   ensName?: string // Resolved ENS name if available
+  walletName?: string // Custom wallet name (manual or auto-resolved)
   assets: Asset[]
   allocations: Allocation[] // Allocations for assets in this wallet
   verified: boolean

@@ -1182,6 +1182,14 @@ setError('Failed to load Bitcoin assets. Please try again.')
  // Get assets for this session
  const sessionAssets = assets.filter(a => selectedAssetIds.includes(a.id))
 
+ // Get wallet name - use the address that's actually being queued
+ const addressToUse = walletAddress || evmAddress || btcAddress
+ const walletName = addressToUse ? (
+   walletNames[addressToUse] || 
+   resolvedEnsNames[addressToUse.toLowerCase()] || 
+   undefined
+ ) : undefined
+
  // Create session
  const session: QueuedWalletSession = {
  id: `${walletAddress.toLowerCase()}-${Date.now()}`,
@@ -1189,6 +1197,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  walletType: evmAddress ? 'evm' : 'btc',
  walletProvider: evmAddress ? (walletProviders[evmAddress] || 'Unknown') : 'Xverse',
  ensName: evmAddress ? (resolvedEnsNames[evmAddress.toLowerCase()] || undefined) : undefined,
+ walletName: walletName || undefined, // Store custom wallet name
  assets: sessionAssets,
  allocations: sessionAllocations,
  verified: evmAddress ? verifiedAddresses.has(evmAddress) : true,
