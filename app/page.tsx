@@ -1370,10 +1370,10 @@ setTimeout(() => {
       </p>
       <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
         <p className="text-sm text-gray-700 mb-2">
-          <strong>We don't ask for seed phrases or private keys.</strong>
+          <strong>We don't ask for seed phrases or private keys, we don't even collect your email.</strong>
         </p>
         <p className="text-xs text-gray-600 mb-2">
-          By using this utility nothing is permanantly saved, you create a stateless web document with which, you can simply print on the spot.
+          By using this utility nothing is permanently saved, you create a client-side document with which, you can simply print on the spot or save to your device.
         </p>
       </div>
       <p className="text-base sm:text-lg font-bold text-gray-800 mb-2">

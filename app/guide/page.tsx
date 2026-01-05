@@ -30,7 +30,7 @@ export default function GuidePage() {
               <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Overview</h3>
                 <p className="text-gray-700 mb-3">
-                  LastWishCrypto is a <strong>stateless web application</strong> that helps you create a professional, printable PDF document 
+                  LastWishCrypto is a <strong>client-side application</strong> that helps you create a professional, printable PDF document 
                   containing all your crypto inheritance instructions. No accounts, no seed phrases stored, no persistent data—just you, 
                   your wallets, and a secure document.
                 </p>
