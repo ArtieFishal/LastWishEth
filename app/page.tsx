@@ -1296,7 +1296,10 @@ setError('Failed to load Bitcoin assets. Please try again.')
  }
 
  const canProceedToPayment = () => {
- return getPaymentValidationErrors().length === 0
+ // Allow proceeding if only tier limit errors exist (user can select appropriate tier or use discount code)
+ const errors = getPaymentValidationErrors()
+ const nonTierErrors = errors.filter(err => !err.includes('Tier limit'))
+ return nonTierErrors.length === 0
  }
 
  const canGeneratePDF = () => {
