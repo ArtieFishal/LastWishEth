@@ -1391,15 +1391,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
         </p>
       </div>
       <p className="text-sm text-gray-500">
-        Crypto Inheritance Instructions • {pricing.isSpecial ? (
-          <span className="inline-flex items-center gap-2 flex-wrap">
-            <span className="text-green-600 font-bold text-lg animate-pulse">🎉 $20.26</span>
-            <span className="line-through text-gray-400 text-base">$42.00</span>
-            <span className="text-green-600 font-bold">✨ New Year 2026 Special - Limited Time! ✨</span>
-          </span>
-        ) : (
-          <span>${pricing.usdAmount.toFixed(2)} one-time fee</span>
-        )}
+        Crypto Inheritance Instructions
       </p>
       <div className="mt-4">
         <a 
@@ -1413,6 +1405,99 @@ setError('Failed to load Bitcoin assets. Please try again.')
       </div>
     </div>
  </header>
+
+ {/* Tier Selection - Always visible at top */}
+ <div className="max-w-5xl mx-auto mb-8">
+   <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-gray-200">
+     <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 text-center">Choose Your Plan</h2>
+     <p className="text-center text-gray-600 mb-6">Select a plan that fits your needs</p>
+     <div className="grid md:grid-cols-3 gap-4 mb-6">
+       {getAllTiers().map((tier) => {
+         const isSelected = selectedTier === tier.tier
+         const tierPricing = getTierPricing(tier.tier)
+         
+         return (
+           <div
+             key={tier.tier}
+             onClick={() => setSelectedTier(tier.tier)}
+             className={`rounded-lg border-2 p-6 cursor-pointer transition-all ${
+               isSelected
+                 ? tier.tier === 'free' ? 'border-green-500 bg-green-50 shadow-lg scale-105' :
+                   tier.tier === 'premium' ? 'border-purple-500 bg-purple-50 shadow-lg scale-105' :
+                   'border-blue-500 bg-blue-50 shadow-lg scale-105'
+                 : 'border-gray-300 bg-white hover:border-gray-400 hover:shadow-md'
+             }`}
+           >
+             <div className="text-center mb-4">
+               <h3 className={`text-xl font-bold mb-2 ${
+                 tier.tier === 'free' ? 'text-green-700' :
+                 tier.tier === 'premium' ? 'text-purple-700' :
+                 'text-blue-700'
+               }`}>
+                 {tier.name}
+               </h3>
+               <div className="mb-3">
+                 {tier.price === 0 ? (
+                   <p className="text-3xl font-bold text-gray-900">Free</p>
+                 ) : tierPricing.isSpecial && tier.tier === 'standard' ? (
+                   <div>
+                     <p className="text-3xl font-bold text-green-600">${tierPricing.usdAmount.toFixed(2)}</p>
+                     <p className="text-sm line-through text-gray-400">${tierPricing.regularPrice?.toFixed(2)}</p>
+                     <p className="text-xs text-green-600 font-semibold">✨ 2026 Special ✨</p>
+                   </div>
+                 ) : (
+                   <p className="text-3xl font-bold text-gray-900">${tier.price.toFixed(2)}</p>
+                 )}
+               </div>
+             </div>
+             <ul className="space-y-2 mb-4">
+               {tier.features.map((feature, idx) => (
+                 <li key={idx} className="text-sm text-gray-700 flex items-start">
+                   <span className="text-green-500 mr-2">✓</span>
+                   <span>{feature}</span>
+                 </li>
+               ))}
+             </ul>
+             {isSelected && (
+               <div className="mt-4 text-center">
+                 <span className="inline-block px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-full">
+                   ✓ Selected
+                 </span>
+               </div>
+             )}
+           </div>
+         )
+       })}
+     </div>
+     <div className="text-center">
+       <button
+         onClick={() => {
+           if (selectedTier === 'free') {
+             setStep('connect')
+           } else {
+             setStep('connect')
+           }
+         }}
+         className="px-8 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
+       >
+         {selectedTier === 'free' ? (
+           'Start Free Plan →'
+         ) : selectedTier === 'standard' && pricing.isSpecial ? (
+           <span className="inline-flex items-center gap-2">
+             <span>Start with 🎉 ${pricing.usdAmount.toFixed(2)}</span>
+             <span className="line-through text-sm">${pricing.regularPrice?.toFixed(2)}</span>
+             <span className="text-xs">✨ 2026 Special ✨</span>
+           </span>
+         ) : (
+           `Start with $${pricing.usdAmount.toFixed(2)} →`
+         )}
+       </button>
+       <p className="text-xs text-gray-500 mt-3">
+         Payment required on Step 5. Free tier skips payment.
+       </p>
+     </div>
+   </div>
+ </div>
 
  {/* Progress Steps */}
  <div className="mb-4 sm:mb-8 bg-gray-100 rounded-lg shadow-sm p-2 sm:p-4">
