@@ -982,7 +982,12 @@ setError('Failed to load Bitcoin assets. Please try again.')
       // Accept common variations: tryitfree, try-it-free, try_it_free, etc.
       if (code === 'tryitfree') {
  setDiscountApplied(true)
+ setPaymentVerified(true) // Also set payment as verified since discount gives free access
  setError(null)
+ // Automatically navigate to download step when discount is applied
+ setTimeout(() => {
+   setStep('download')
+ }, 500) // Small delay to ensure state updates
  } else if (code) {
  setError('Invalid discount code')
  setDiscountApplied(false)
