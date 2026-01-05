@@ -27,7 +27,7 @@ const buildConnectors = async () => {
           projectId,
           showQrModal: true, // This enables QR code for ALL compatible wallets!
           metadata: {
-            name: 'LastWish.eth',
+            name: 'LastWishCrypto.eth',
             description: 'Crypto Inheritance Instructions Generator',
             url: window.location.origin,
             icons: [`${window.location.origin}/favicon.ico`],

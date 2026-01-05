@@ -241,7 +241,7 @@ export default function Home() {
 
     try {
       // Create a message to sign
-      const message = `I am the owner of this wallet address: ${address}\n\nThis signature proves I control this wallet and authorize LastWish.eth to access my asset information.\n\nTimestamp: ${Date.now()}`
+      const message = `I am the owner of this wallet address: ${address}\n\nThis signature proves I control this wallet and authorize LastWishCrypto.eth to access my asset information.\n\nTimestamp: ${Date.now()}`
       
       // Request signature
       const signature = await signMessageAsync({ 
@@ -459,7 +459,7 @@ export default function Home() {
  setOwnerResolvedAddress(null)
  }
  }
- 
+
  // Debounce name resolution
  const timeoutId = setTimeout(resolveOwnerName, 500)
  return () => clearTimeout(timeoutId)
@@ -629,13 +629,13 @@ export default function Home() {
      // Always show native tokens (ETH, BTC, MATIC) regardless of balance
      if (asset.type === 'native') return true
      
-    // Always show NFTs
-    if (asset.type === 'erc721' || asset.type === 'erc1155') return true
+     // Always show NFTs
+     if (asset.type === 'erc721' || asset.type === 'erc1155') return true
     
     // Always show ethscriptions
     if (asset.type === 'ethscription') return true
-    
-    // For ERC-20 tokens, check balance threshold
+     
+     // For ERC-20 tokens, check balance threshold
      if (asset.type === 'erc20' || asset.type === 'btc') {
        const balance = parseFloat(asset.balance) / Math.pow(10, asset.decimals || 18)
        // Filter out tokens with balance below threshold (0.000001)
@@ -700,13 +700,13 @@ export default function Home() {
  if (filteredCount > 0) {
    console.log(`Filtered out ${filteredCount} spam/dust token(s)`)
  }
-      newAssets.push(...filteredAssets)
+ newAssets.push(...filteredAssets)
       console.log(`Loaded ${filteredAssets.length} assets from wallet (${walletProvider})`)
-    }
-  } catch (err) {
-    console.error('Error loading EVM assets:', err)
-    setError('Failed to load EVM assets. Please try again.')
-  }
+ }
+ } catch (err) {
+ console.error('Error loading EVM assets:', err)
+ setError('Failed to load EVM assets. Please try again.')
+ }
 
   // Load Ethscriptions for this wallet
   try {
@@ -770,25 +770,25 @@ export default function Home() {
     }
     // Don't set error for ethscriptions - it's optional
   }
-} else {
-  setError('Wallet must be verified (signature required) before loading assets.')
-  setLoading(false)
-  return
-}
+ } else {
+ setError('Wallet must be verified (signature required) before loading assets.')
+ setLoading(false)
+ return
+ }
 
-if (append) {
+ if (append) {
   const finalAssets = [...assets, ...newAssets]
   const ethscriptionCount = finalAssets.filter(a => a.type === 'ethscription').length
   console.log(`📊 Setting assets (append): ${finalAssets.length} total, ${ethscriptionCount} ethscriptions`)
   setAssets(finalAssets)
-  if (newAssets.length > 0) {
-    setSelectedAssetIds([...selectedAssetIds, ...newAssets.map(a => a.id)])
-  }
-} else {
+ if (newAssets.length > 0) {
+ setSelectedAssetIds([...selectedAssetIds, ...newAssets.map(a => a.id)])
+ }
+ } else {
   const ethscriptionCount = newAssets.filter(a => a.type === 'ethscription').length
   console.log(`📊 Setting assets (replace): ${newAssets.length} total, ${ethscriptionCount} ethscriptions`)
-  setAssets(newAssets)
-  if (newAssets.length > 0) {
+ setAssets(newAssets)
+ if (newAssets.length > 0) {
  setSelectedAssetIds(newAssets.map(a => a.id))
  }
  }
@@ -830,29 +830,29 @@ if (append) {
  }
  }
 
-// Load EVM assets from all specified wallets
-if (walletsToLoad.length > 0) {
-  try {
-    const evmResponse = await axios.post('/api/portfolio/evm', {
-      addresses: walletsToLoad,
-    })
-    if (evmResponse.data?.assets && Array.isArray(evmResponse.data.assets)) {
-      // Filter out duplicates by checking if asset ID already exists
-      const existingIds = new Set(assets.map(a => a.id))
-      const uniqueAssets = evmResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
-      // Apply spam filtering
-      const filteredAssets = filterSpamTokens(uniqueAssets)
-      const filteredCount = uniqueAssets.length - filteredAssets.length
-      if (filteredCount > 0) {
-        console.log(`Filtered out ${filteredCount} spam/dust token(s)`)
-      }
-      newAssets.push(...filteredAssets)
-      console.log(`Loaded ${filteredAssets.length} assets from ${walletsToLoad.length} wallet(s)`)
-    }
-  } catch (err) {
-    console.error('Error loading EVM assets:', err)
-    setError('Failed to load EVM assets. Please try again.')
-  }
+ // Load EVM assets from all specified wallets
+ if (walletsToLoad.length > 0) {
+ try {
+ const evmResponse = await axios.post('/api/portfolio/evm', {
+ addresses: walletsToLoad,
+ })
+ if (evmResponse.data?.assets && Array.isArray(evmResponse.data.assets)) {
+ // Filter out duplicates by checking if asset ID already exists
+ const existingIds = new Set(assets.map(a => a.id))
+ const uniqueAssets = evmResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
+ // Apply spam filtering
+ const filteredAssets = filterSpamTokens(uniqueAssets)
+ const filteredCount = uniqueAssets.length - filteredAssets.length
+ if (filteredCount > 0) {
+   console.log(`Filtered out ${filteredCount} spam/dust token(s)`)
+ }
+ newAssets.push(...filteredAssets)
+ console.log(`Loaded ${filteredAssets.length} assets from ${walletsToLoad.length} wallet(s)`)
+ }
+ } catch (err) {
+ console.error('Error loading EVM assets:', err)
+ setError('Failed to load EVM assets. Please try again.')
+ }
 
   // Load Ethscriptions
   try {
@@ -901,7 +901,7 @@ if (walletsToLoad.length > 0) {
     }
     // Don't set error for ethscriptions - it's optional
   }
-}
+ }
 
 // Load Bitcoin assets
 if (btcAddress) {
@@ -1135,15 +1135,15 @@ setError('Failed to load Bitcoin assets. Please try again.')
  URL.revokeObjectURL(url)
  }, 5000)
  
-// Reset payment state after successful PDF generation
-// This locks the document again, requiring payment/discount for next generation
+ // Reset payment state after successful PDF generation
+ // This locks the document again, requiring payment/discount for next generation
 // Use setTimeout to ensure PDF download completes before resetting
 setTimeout(() => {
   // Clear payment state
-  setPaymentVerified(false)
-  setDiscountApplied(false)
-  setDiscountCode('')
-  setInvoiceId(null)
+ setPaymentVerified(false)
+ setDiscountApplied(false)
+ setDiscountCode('')
+ setInvoiceId(null)
   
   // Clear payment state from localStorage to prevent restoration
   if (typeof window !== 'undefined') {
@@ -1363,7 +1363,7 @@ setTimeout(() => {
  <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
  {/* Header */}
  <header className="text-center mb-12">
- <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-3">LastWish.eth</h1>
+ <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-3">LastWishCrypto.eth</h1>
     <div className="max-w-2xl mx-auto mb-6 space-y-3">
       <p className="text-base sm:text-lg text-gray-600 font-semibold">
         Do you really want to take your crypto to the grave with you by accident?
@@ -1820,9 +1820,9 @@ setTimeout(() => {
            
            {/* Address display */}
            <div className="mt-1">
-             <p className="text-xs font-mono text-gray-500 break-all">
-               {addr}
-             </p>
+                 <p className="text-xs font-mono text-gray-500 break-all">
+                 {addr}
+               </p>
            </div>
          </div>
          
@@ -2070,9 +2070,9 @@ setTimeout(() => {
  </div>
  )}
 
-{mounted && selectedWalletForLoading && verifiedAddresses.has(selectedWalletForLoading) && !loading && (
-<div className="mt-8 space-y-3">
-<button
+ {mounted && selectedWalletForLoading && verifiedAddresses.has(selectedWalletForLoading) && !loading && (
+ <div className="mt-8 space-y-3">
+ <button
  onClick={async () => {
  // Temporarily set evmAddress context to selected wallet for loading
  const originalEvmAddress = evmAddress
@@ -2176,12 +2176,12 @@ setTimeout(() => {
          <p className="text-sm font-bold text-blue-900 mb-1">
            {walletNames[selectedWalletForLoading] || resolvedEnsNames[selectedWalletForLoading.toLowerCase()] || selectedWalletForLoading.slice(0, 10) + '...' + selectedWalletForLoading.slice(-8)}
          </p>
-         <p className="text-xs text-blue-700 font-mono break-all">
+       <p className="text-xs text-blue-700 font-mono break-all">
            {selectedWalletForLoading}
-           {walletProviders[selectedWalletForLoading] && (
-             <span className="ml-2 text-blue-600">({walletProviders[selectedWalletForLoading]})</span>
-           )}
-         </p>
+         {walletProviders[selectedWalletForLoading] && (
+           <span className="ml-2 text-blue-600">({walletProviders[selectedWalletForLoading]})</span>
+         )}
+       </p>
        </div>
      )}
      {btcAddress && (
@@ -2206,7 +2206,7 @@ setTimeout(() => {
 <AssetSelector
       walletNames={walletNames}
       resolvedEnsNames={resolvedEnsNames}
-      assets={(() => {
+assets={(() => {
   // If no current assets but we have queued sessions, show queued assets
   let assetsToShow = assets.length > 0 ? assets : queuedSessions.flatMap(s => s.assets)
   
@@ -2469,13 +2469,13 @@ onSelectionChange={setSelectedAssetIds}
                      >
                        ✏️
                      </button>
-                     <button
-                       onClick={() => setBeneficiaries(beneficiaries.filter(b => b.id !== ben.id))}
-                       className="text-red-600 hover:text-red-700 text-xs font-semibold"
+                   <button
+                     onClick={() => setBeneficiaries(beneficiaries.filter(b => b.id !== ben.id))}
+                     className="text-red-600 hover:text-red-700 text-xs font-semibold"
                        title="Remove beneficiary"
-                     >
-                       ×
-                     </button>
+                   >
+                     ×
+                   </button>
                    </div>
                  </div>
                  {ben.ensName && ben.ensName !== ben.walletAddress && (
@@ -2914,7 +2914,7 @@ onSelectionChange={setSelectedAssetIds}
  </div>
  )}
 
-{step === 'payment' && !invoiceId && !discountApplied && (
+ {step === 'payment' && !invoiceId && !discountApplied && (
 <div className="max-w-2xl mx-auto">
 <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Payment</h2>
 <p className="text-gray-600 mb-6">
@@ -2975,8 +2975,8 @@ Apply
 </div>
 
 <div className="flex gap-4">
-<button
-onClick={() => setStep('details')}
+ <button
+ onClick={() => setStep('details')}
 className="flex-1 rounded-lg border-2 border-gray-300 p-4 font-semibold hover:bg-gray-50 transition-colors"
 >
 ← Back
@@ -3005,7 +3005,7 @@ setError(error?.response?.data?.error || 'Failed to create invoice')
 }}
 disabled={(!canProceedToPayment() && !discountApplied) || (selectedTier === 'standard' && pricing.usdAmount === 0) || (selectedTier === 'premium' && pricing.usdAmount === 0)}
 className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
->
+ >
 {selectedTier === 'free' ? (
 'Continue to Download (Free)'
 ) : selectedTier === 'standard' && pricing.isSpecial ? (
@@ -3016,10 +3016,10 @@ className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-b
 ) : (
 `Pay $${pricing.usdAmount.toFixed(2)}`
 )}
-</button>
-</div>
-</div>
-)}
+ </button>
+ </div>
+ </div>
+ )}
 
  {step === 'payment' && invoiceId && (
  <div className="max-w-2xl mx-auto">
@@ -3328,36 +3328,36 @@ className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-b
   }
 
   return (
-    <div className="max-w-2xl mx-auto text-center">
-      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Document Ready!</h2>
-      <p className="text-gray-600 mb-8">
-        Your crypto inheritance instructions document is ready to download
-      </p>
-      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-8 border-2 border-green-200">
-        <div className="mb-6">
-          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <p className="text-lg font-semibold text-gray-900 mb-2">
-            {discountApplied ? 'Discount Applied - FREE' : 'Payment Verified'}
-          </p>
-          <p className="text-sm text-gray-600">
-            Your document has been generated and is ready to download
-          </p>
+ <div className="max-w-2xl mx-auto text-center">
+ <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Document Ready!</h2>
+ <p className="text-gray-600 mb-8">
+ Your crypto inheritance instructions document is ready to download
+ </p>
+ <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-8 border-2 border-green-200">
+ <div className="mb-6">
+ <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+ <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+ </svg>
+ </div>
+ <p className="text-lg font-semibold text-gray-900 mb-2">
+ {discountApplied ? 'Discount Applied - FREE' : 'Payment Verified'}
+ </p>
+ <p className="text-sm text-gray-600">
+ Your document has been generated and is ready to download
+ </p>
+ </div>
+ <button
+ onClick={handleDownloadPDF}
+ className="w-full rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg mb-4"
+ >
+ Download PDF
+ </button>
+ <p className="text-xs text-gray-500">
+ Print this document and have it notarized. Keep it in a safe place.
+ </p>
+ </div>
         </div>
-        <button
-          onClick={handleDownloadPDF}
-          className="w-full rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg mb-4"
-        >
-          Download PDF
-        </button>
-        <p className="text-xs text-gray-500">
-          Print this document and have it notarized. Keep it in a safe place.
-        </p>
-      </div>
-    </div>
   )
 })()}
 
@@ -3381,7 +3381,7 @@ className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-b
 
  <footer className="mt-12 text-center text-sm text-gray-500">
  <p className="mb-2">
- LastWish is a backup plan tool. It does not store your keys or execute transactions.
+ LastWishCrypto.eth is a backup plan tool. It does not store your keys or execute transactions.
  </p>
  <p>
  This document is for informational purposes only and does not constitute legal advice.

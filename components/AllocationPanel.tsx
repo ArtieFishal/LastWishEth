@@ -317,8 +317,8 @@ export function AllocationPanel({
     
     // Remove the allocation
     let updatedAllocations = allocations.filter(
-      (a) => !(a.assetId === assetId && a.beneficiaryId === beneficiaryId)
-    )
+        (a) => !(a.assetId === assetId && a.beneficiaryId === beneficiaryId)
+      )
     
     // For non-NFTs with percentage allocations, redistribute the removed percentage
     if (!assetIsNFT && removedAllocation?.type === 'percentage' && removedAllocation.percentage) {
@@ -591,7 +591,7 @@ export function AllocationPanel({
                             {isEthscription ? (
                               <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700">ETHSCRIPTION</span>
                             ) : (
-                              <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-700">NFT</span>
+                            <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-700">NFT</span>
                             )}
                           </div>
                           {asset.chain && (

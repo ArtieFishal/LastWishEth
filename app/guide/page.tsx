@@ -5,7 +5,7 @@ export default function GuidePage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 py-12">
         <header className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">LastWish.eth</h1>
+          <h1 className="text-5xl font-bold text-gray-900 mb-4">LastWishCrypto.eth</h1>
           <h2 className="text-3xl font-semibold text-gray-700 mb-2">Complete User Guide & Impact Analysis</h2>
           <p className="text-gray-600">Everything you need to know about protecting your crypto legacy</p>
         </header>
@@ -18,7 +18,7 @@ export default function GuidePage() {
               <li><a href="#navigation-guide" className="text-blue-600 hover:underline">1. Step-by-Step Navigation Guide</a></li>
               <li><a href="#crisis-benefits" className="text-blue-600 hover:underline">2. Benefits in Times of Crisis</a></li>
               <li><a href="#lost-crypto-stats" className="text-blue-600 hover:underline">3. The Cost of Inaction: Lost Crypto Statistics</a></li>
-              <li><a href="#why-matters" className="text-blue-600 hover:underline">4. Why LastWish.eth Matters</a></li>
+              <li><a href="#why-matters" className="text-blue-600 hover:underline">4. Why LastWishCrypto.eth Matters</a></li>
             </ul>
           </section>
 
@@ -30,7 +30,7 @@ export default function GuidePage() {
               <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Overview</h3>
                 <p className="text-gray-700 mb-3">
-                  LastWish.eth is a <strong>stateless web application</strong> that helps you create a professional, printable PDF document 
+                  LastWishCrypto.eth is a <strong>stateless web application</strong> that helps you create a professional, printable PDF document 
                   containing all your crypto inheritance instructions. No accounts, no seed phrases stored, no persistent data—just you, 
                   your wallets, and a secure document.
                 </p>
@@ -458,7 +458,7 @@ export default function GuidePage() {
               <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded">
                 <h3 className="text-xl font-bold text-gray-900 mb-3">6. Multi-Wallet Support</h3>
                 <p className="text-gray-700 mb-2"><strong>Problem:</strong> Many people use multiple wallets across different chains.</p>
-                <p className="text-gray-700 mb-2"><strong>Solution:</strong> LastWish.eth supports up to 20 wallets across multiple blockchains.</p>
+                <p className="text-gray-700 mb-2"><strong>Solution:</strong> LastWishCrypto.eth supports up to 20 wallets across multiple blockchains.</p>
                 <p className="text-gray-700"><strong>Impact:</strong> Complete coverage of your crypto holdings.</p>
               </div>
 
@@ -569,7 +569,7 @@ export default function GuidePage() {
 
           {/* Why LastWish.eth Matters */}
           <section id="why-matters" className="pb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">💎 Why LastWish.eth Matters</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">💎 Why LastWishCrypto.eth Matters</h2>
             
             <div className="space-y-6">
               <div>
@@ -629,7 +629,7 @@ export default function GuidePage() {
                     <thead className="bg-gray-100">
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-b">Feature</th>
-                        <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-b">LastWish.eth</th>
+                        <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-b">LastWishCrypto.eth</th>
                         <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-b">Traditional Will</th>
                         <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-b">Crypto Custodians</th>
                         <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-b">DIY Documentation</th>
@@ -710,7 +710,7 @@ export default function GuidePage() {
           <section className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg p-8 mt-8">
             <h2 className="text-3xl font-bold mb-4">Conclusion</h2>
             <p className="text-lg mb-4">
-              LastWish.eth helps prevent the loss of billions in crypto assets by providing a simple, secure way to document your crypto inheritance. 
+              LastWishCrypto.eth helps prevent the loss of billions in crypto assets by providing a simple, secure way to document your crypto inheritance. 
               With proper documentation, your family can access your assets quickly and avoid the stress and cost of recovery.
             </p>
             <div className="bg-white/20 rounded-lg p-6 mt-6">
@@ -733,8 +733,8 @@ export default function GuidePage() {
           {/* Footer Note */}
           <div className="mt-8 pt-8 border-t border-gray-300 text-center text-sm text-gray-500">
             <p>
-              <em>This document was generated by an AI assistant analyzing the LastWish.eth codebase and industry statistics. 
-              For the most current information, visit the LastWish.eth application.</em>
+              <em>This document was generated by an AI assistant analyzing the LastWishCrypto.eth codebase and industry statistics. 
+              For the most current information, visit the LastWishCrypto.eth application.</em>
             </p>
             <p className="mt-2">
               <strong>Note:</strong> The statistics provided are based on industry research and estimates. Actual numbers may vary. 

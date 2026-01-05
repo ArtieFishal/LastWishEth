@@ -1,5 +1,5 @@
 /**
- * Pricing configuration for LastWish.eth
+ * Pricing configuration for LastWishCrypto.eth
  * Tiered pricing system:
  * - Free: $0 (1 wallet, 2 beneficiaries)
  * - Standard: $20.26 special / $42.00 regular (20 wallets, 10 beneficiaries)

@@ -57,8 +57,8 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
         
         // Fallback: if it's an address, just use it
         if (input.startsWith('0x') && input.length === 42) {
-          setEnsName(null)
-          setResolvedAddress(input.toLowerCase())
+            setEnsName(null)
+            setResolvedAddress(input.toLowerCase())
         } else {
           // Not a valid name or address
           setEnsName(null)
@@ -234,13 +234,13 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
             </button>
           </div>
         ) : (
-          <button
-            onClick={handleAdd}
-            disabled={!name.trim() || !walletAddress.trim() || beneficiaries.length >= 10}
-            className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-          >
-            Add ({beneficiaries.length}/10)
-          </button>
+        <button
+          onClick={handleAdd}
+          disabled={!name.trim() || !walletAddress.trim() || beneficiaries.length >= 10}
+          className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+        >
+          Add ({beneficiaries.length}/10)
+        </button>
         )}
       </div>
 
