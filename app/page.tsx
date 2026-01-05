@@ -1247,17 +1247,19 @@ setError('Failed to load Bitcoin assets. Please try again.')
  errors.push('No wallets queued - please connect wallets, add assets, and save to queue')
  }
 
- // Check tier limits
- const tierInfo = getTierPricing(selectedTier)
- const totalWallets = queuedSessions.length
- const totalBeneficiaries = beneficiaries.length
- 
- if (tierInfo.maxWallets !== null && totalWallets > tierInfo.maxWallets) {
-   errors.push(`Tier limit: ${tierInfo.maxWallets} wallet${tierInfo.maxWallets !== 1 ? 's' : ''} (you have ${totalWallets})`)
- }
- 
- if (tierInfo.maxBeneficiaries !== null && totalBeneficiaries > tierInfo.maxBeneficiaries) {
-   errors.push(`Tier limit: ${tierInfo.maxBeneficiaries} beneficiar${tierInfo.maxBeneficiaries !== 1 ? 'ies' : 'y'} (you have ${totalBeneficiaries})`)
+ // Check tier limits (skip if discount code is applied - gives premium/unlimited access)
+ if (!discountApplied) {
+   const tierInfo = getTierPricing(selectedTier)
+   const totalWallets = queuedSessions.length
+   const totalBeneficiaries = beneficiaries.length
+   
+   if (tierInfo.maxWallets !== null && totalWallets > tierInfo.maxWallets) {
+     errors.push(`Tier limit: ${tierInfo.maxWallets} wallet${tierInfo.maxWallets !== 1 ? 's' : ''} (you have ${totalWallets})`)
+   }
+   
+   if (tierInfo.maxBeneficiaries !== null && totalBeneficiaries > tierInfo.maxBeneficiaries) {
+     errors.push(`Tier limit: ${tierInfo.maxBeneficiaries} beneficiar${tierInfo.maxBeneficiaries !== 1 ? 'ies' : 'y'} (you have ${totalBeneficiaries})`)
+   }
  }
 
  // Check required owner fields
@@ -2834,13 +2836,13 @@ const totalWallets = queuedSessions.length
 const totalBeneficiaries = beneficiaries.length
 const exceedsWallets = tier.maxWallets !== null && totalWallets > tier.maxWallets
 const exceedsBeneficiaries = tier.maxBeneficiaries !== null && totalBeneficiaries > tier.maxBeneficiaries
-const canSelect = !exceedsWallets && !exceedsBeneficiaries
+const canSelect = !exceedsWallets && !exceedsBeneficiaries || discountApplied // Allow selection if discount applied
 
 return (
 <div
 key={tier.tier}
 onClick={() => {
-if (canSelect) {
+if (canSelect || discountApplied) {
 setSelectedTier(tier.tier)
 }
 }}
@@ -2928,7 +2930,7 @@ setError(error?.response?.data?.error || 'Failed to create invoice')
 }
 }
 }}
-disabled={!canProceedToPayment() || (selectedTier === 'standard' && pricing.usdAmount === 0) || (selectedTier === 'premium' && pricing.usdAmount === 0)}
+disabled={(!canProceedToPayment() && !discountApplied) || (selectedTier === 'standard' && pricing.usdAmount === 0) || (selectedTier === 'premium' && pricing.usdAmount === 0)}
 className="px-8 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
 >
 {selectedTier === 'free' ? (
@@ -2944,7 +2946,7 @@ className="px-8 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg hover:b
 )}
 </button>
 </div>
-{!canProceedToPayment() && (
+{!canProceedToPayment() && !discountApplied && (
 <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4">
 <p className="text-red-800 font-semibold mb-2">Please complete the following:</p>
 <ul className="list-disc list-inside space-y-1 text-red-700 text-sm">
@@ -2954,6 +2956,39 @@ className="px-8 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg hover:b
 </ul>
 </div>
 )}
+{discountApplied && (
+<div className="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-4">
+<p className="text-green-800 font-semibold mb-2">✓ Discount Code Applied!</p>
+<p className="text-green-700 text-sm">Tier limits bypassed - you have unlimited access with the discount code.</p>
+</div>
+)}
+<div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-4">
+<label className="block text-sm font-semibold text-gray-700 mb-2">
+Discount Code (Optional)
+</label>
+<div className="flex gap-2">
+<input
+type="text"
+value={discountCode}
+onChange={(e) => {
+setDiscountCode(e.target.value)
+setError(null)
+}}
+onBlur={handleDiscountCode}
+className="flex-1 rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors uppercase"
+placeholder="Enter discount code (e.g., tryitfree)"
+/>
+<button
+onClick={handleDiscountCode}
+className="px-4 rounded-lg bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition-colors"
+>
+Apply
+</button>
+</div>
+{discountApplied && (
+<p className="mt-2 text-sm text-green-600 font-semibold">✓ Discount applied! 100% off - Tier limits bypassed</p>
+)}
+</div>
 </div>
 )}
 
