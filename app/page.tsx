@@ -18,7 +18,7 @@ import { resolveBlockchainName, reverseResolveAddress } from '@/lib/name-resolve
 import { Asset, Beneficiary, Allocation, UserData, QueuedWalletSession } from '@/types'
 import axios from 'axios'
 import { generatePDF } from '@/lib/pdf-generator'
-import { getCurrentPricing, getPaymentAmountETH, getFormattedPrice } from '@/lib/pricing'
+import { getCurrentPricing, getPaymentAmountETH, getFormattedPrice, getTierPricing, getAllTiers, PricingTier } from '@/lib/pricing'
 
 type Step = 'connect' | 'assets' | 'allocate' | 'details' | 'payment' | 'download'
 
@@ -95,10 +95,11 @@ export default function Home() {
  const [discountCode, setDiscountCode] = useState('')
  const [discountApplied, setDiscountApplied] = useState(false)
  const [paymentWalletAddress, setPaymentWalletAddress] = useState<string | null>(null) // First verified wallet for payment
+ const [selectedTier, setSelectedTier] = useState<PricingTier>('free') // Default to free tier
  
- // Get current pricing (special or regular) - memoized to avoid recalculation
- const pricing = useMemo(() => getCurrentPricing(), [])
- const paymentAmountETH = useMemo(() => getPaymentAmountETH(), [])
+ // Get current pricing based on selected tier - memoized to avoid recalculation
+ const pricing = useMemo(() => getTierPricing(selectedTier), [selectedTier])
+ const paymentAmountETH = useMemo(() => getPaymentAmountETH(selectedTier), [selectedTier])
  const [selectedWalletForLoading, setSelectedWalletForLoading] = useState<string | null>(null) // Currently selected wallet for loading assets
  const [queuedSessions, setQueuedSessions] = useState<QueuedWalletSession[]>([])
  const [currentSessionWallet, setCurrentSessionWallet] = useState<string | null>(null)
@@ -140,6 +141,7 @@ export default function Home() {
  if (parsed.discountCode) setDiscountCode(parsed.discountCode)
  if (parsed.discountApplied) setDiscountApplied(parsed.discountApplied)
  if (parsed.queuedSessions) setQueuedSessions(parsed.queuedSessions)
+ if (parsed.selectedTier) setSelectedTier(parsed.selectedTier)
  }
  } catch (err) {
  console.error('Error loading saved state:', err)
@@ -179,6 +181,7 @@ export default function Home() {
  discountCode,
  discountApplied,
  queuedSessions,
+ selectedTier,
  }
  localStorage.setItem('lastwish_state', JSON.stringify(stateToSave))
  } catch (err) {
@@ -213,6 +216,7 @@ export default function Home() {
  discountCode,
  discountApplied,
  queuedSessions,
+ selectedTier,
  mounted,
  ])
 
@@ -969,32 +973,8 @@ setError('Failed to load Bitcoin assets. Please try again.')
  }
 
  const handleCreateInvoice = async () => {
- try {
- setError(null)
- const response = await axios.post('/api/invoice/create', {
- discountCode: (discountCode || '').trim().toLowerCase(),
- })
- if (response?.data?.invoice?.id) {
- setInvoiceId(response.data.invoice.id)
- if (response.data.discountApplied) {
- setDiscountApplied(true)
- setPaymentVerified(true) // Skip payment if 100% discount
- setError(null) // Clear any errors
- // Use setTimeout to ensure state updates are applied before navigation
- setTimeout(() => {
- setStep('download')
- }, 100)
- } else {
+ // Navigate to payment step where tier selection happens
  setStep('payment')
- }
- } else {
- setError('Failed to create invoice')
- }
- } catch (error: any) {
- console.error('Error creating invoice:', error)
- const errorMessage = error?.response?.data?.error || error?.message || 'Unknown error'
- setError(`Failed to create invoice: ${errorMessage}. Please try again.`)
- }
  }
 
     const handleDiscountCode = () => {
@@ -1265,6 +1245,19 @@ setError('Failed to load Bitcoin assets. Please try again.')
  // Must have at least one queued session
  if (queuedSessions.length === 0) {
  errors.push('No wallets queued - please connect wallets, add assets, and save to queue')
+ }
+
+ // Check tier limits
+ const tierInfo = getTierPricing(selectedTier)
+ const totalWallets = queuedSessions.length
+ const totalBeneficiaries = beneficiaries.length
+ 
+ if (tierInfo.maxWallets !== null && totalWallets > tierInfo.maxWallets) {
+   errors.push(`Tier limit: ${tierInfo.maxWallets} wallet${tierInfo.maxWallets !== 1 ? 's' : ''} (you have ${totalWallets})`)
+ }
+ 
+ if (tierInfo.maxBeneficiaries !== null && totalBeneficiaries > tierInfo.maxBeneficiaries) {
+   errors.push(`Tier limit: ${tierInfo.maxBeneficiaries} beneficiar${tierInfo.maxBeneficiaries !== 1 ? 'ies' : 'y'} (you have ${totalBeneficiaries})`)
  }
 
  // Check required owner fields
@@ -2824,38 +2817,145 @@ onSelectionChange={setSelectedAssetIds}
  className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
  title={!canProceedToPayment() ? `Missing: ${getPaymentValidationErrors().join(', ')}` : ''}
  >
-              {discountApplied ? (
-                'Unlock & Generate (FREE)'
-              ) : pricing.isSpecial ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="text-yellow-300 font-bold text-lg animate-pulse">🎉 $20.26</span>
-                  <span className="line-through text-gray-300 text-sm">$42.00</span>
-                  <span className="text-green-400 font-bold text-xs">✨ 2026 Special! ✨</span>
-                </span>
-              ) : (
-                `$${pricing.usdAmount.toFixed(2)} / ${paymentAmountETH} ETH`
-              )} →
+              Continue to Payment →
  </button>
  </div>
  </div>
  )}
 
- {step === 'payment' && !invoiceId && !discountApplied && (
- <div className="max-w-2xl mx-auto text-center">
- <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-8">
- <h2 className="text-2xl font-bold text-yellow-900 mb-4">Invoice Required</h2>
- <p className="text-yellow-800 mb-4">
- Please go back to the Details step and click "Unlock & Generate" to create an invoice.
- </p>
- <button
- onClick={() => setStep('details')}
- className="px-6 py-3 bg-yellow-600 text-white font-semibold rounded-lg hover:bg-yellow-700 transition-colors"
- >
- ← Go to Details Step
- </button>
- </div>
- </div>
- )}
+{step === 'payment' && !invoiceId && !discountApplied && (
+<div className="max-w-4xl mx-auto">
+<h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 text-center">Choose Your Plan</h2>
+<div className="grid md:grid-cols-3 gap-4 mb-8">
+{getAllTiers().map((tier) => {
+const isSelected = selectedTier === tier.tier
+const tierPricing = getTierPricing(tier.tier)
+const totalWallets = queuedSessions.length
+const totalBeneficiaries = beneficiaries.length
+const exceedsWallets = tier.maxWallets !== null && totalWallets > tier.maxWallets
+const exceedsBeneficiaries = tier.maxBeneficiaries !== null && totalBeneficiaries > tier.maxBeneficiaries
+const canSelect = !exceedsWallets && !exceedsBeneficiaries
+
+return (
+<div
+key={tier.tier}
+onClick={() => {
+if (canSelect) {
+setSelectedTier(tier.tier)
+}
+}}
+className={`rounded-lg border-2 p-6 cursor-pointer transition-all ${
+isSelected
+? tier.tier === 'free' ? 'border-green-500 bg-green-50 shadow-lg' :
+tier.tier === 'premium' ? 'border-purple-500 bg-purple-50 shadow-lg' :
+'border-blue-500 bg-blue-50 shadow-lg'
+: canSelect
+? 'border-gray-300 bg-white hover:border-gray-400 hover:shadow-md'
+: 'border-red-300 bg-red-50 opacity-60 cursor-not-allowed'
+}`}
+>
+<div className="text-center mb-4">
+<h3 className={`text-xl font-bold mb-2 ${
+tier.tier === 'free' ? 'text-green-700' :
+tier.tier === 'premium' ? 'text-purple-700' :
+'text-blue-700'
+}`}>
+{tier.name}
+</h3>
+<div className="mb-3">
+{tier.price === 0 ? (
+<p className="text-3xl font-bold text-gray-900">Free</p>
+) : tierPricing.isSpecial && tier.tier === 'standard' ? (
+<div>
+<p className="text-3xl font-bold text-green-600">${tierPricing.usdAmount.toFixed(2)}</p>
+<p className="text-sm line-through text-gray-400">${tierPricing.regularPrice?.toFixed(2)}</p>
+<p className="text-xs text-green-600 font-semibold">✨ 2026 Special ✨</p>
+</div>
+) : (
+<p className="text-3xl font-bold text-gray-900">${tier.price.toFixed(2)}</p>
+)}
+</div>
+</div>
+<ul className="space-y-2 mb-4">
+{tier.features.map((feature, idx) => (
+<li key={idx} className="text-sm text-gray-700 flex items-start">
+<span className="text-green-500 mr-2">✓</span>
+<span>{feature}</span>
+</li>
+))}
+</ul>
+{exceedsWallets && (
+<p className="text-xs text-red-600 font-semibold mb-2">
+⚠️ {totalWallets} wallets (limit: {tier.maxWallets})
+</p>
+)}
+{exceedsBeneficiaries && (
+<p className="text-xs text-red-600 font-semibold mb-2">
+⚠️ {totalBeneficiaries} beneficiaries (limit: {tier.maxBeneficiaries})
+</p>
+)}
+{isSelected && (
+<div className="mt-4 text-center">
+<span className="inline-block px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full">
+Selected
+</span>
+</div>
+)}
+</div>
+)
+})}
+</div>
+<div className="text-center mb-6">
+<button
+onClick={async () => {
+if (selectedTier === 'free') {
+setPaymentVerified(true)
+setStep('download')
+} else {
+try {
+const response = await axios.post('/api/invoice/create', {
+tier: selectedTier,
+discountCode: discountCode.trim() || undefined,
+})
+setInvoiceId(response.data.invoice.id)
+setDiscountApplied(response.data.discountApplied)
+if (response.data.discountApplied) {
+setPaymentVerified(true)
+setStep('download')
+}
+} catch (error: any) {
+setError(error?.response?.data?.error || 'Failed to create invoice')
+}
+}
+}}
+disabled={!canProceedToPayment() || (selectedTier === 'standard' && pricing.usdAmount === 0) || (selectedTier === 'premium' && pricing.usdAmount === 0)}
+className="px-8 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+>
+{selectedTier === 'free' ? (
+'Continue to Download (Free)'
+) : selectedTier === 'standard' && pricing.isSpecial ? (
+<span className="inline-flex items-center gap-2">
+<span>🎉 ${pricing.usdAmount.toFixed(2)}</span>
+<span className="line-through text-sm">${pricing.regularPrice?.toFixed(2)}</span>
+<span className="text-xs">✨ 2026 Special ✨</span>
+</span>
+) : (
+`Continue to Payment - $${pricing.usdAmount.toFixed(2)}`
+)}
+</button>
+</div>
+{!canProceedToPayment() && (
+<div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4">
+<p className="text-red-800 font-semibold mb-2">Please complete the following:</p>
+<ul className="list-disc list-inside space-y-1 text-red-700 text-sm">
+{getPaymentValidationErrors().map((error, index) => (
+<li key={index}>{error}</li>
+))}
+</ul>
+</div>
+)}
+</div>
+)}
 
  {step === 'payment' && invoiceId && (
  <div className="max-w-2xl mx-auto">

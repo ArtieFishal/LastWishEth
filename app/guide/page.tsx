@@ -35,13 +35,41 @@ export default function GuidePage() {
                   your wallets, and a secure document.
                 </p>
                 <div className="bg-white p-4 rounded border-2 border-blue-300 mt-3">
+                  <h4 className="font-bold text-gray-900 mb-2">💰 Pricing Tiers:</h4>
+                  <div className="space-y-3 mb-4">
+                    <div className="border-l-4 border-green-500 pl-3">
+                      <h5 className="font-bold text-gray-900">Free Tier</h5>
+                      <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4 text-sm">
+                        <li>1 wallet</li>
+                        <li>2 beneficiaries</li>
+                        <li>Full Color PDF</li>
+                      </ul>
+                    </div>
+                    <div className="border-l-4 border-blue-500 pl-3">
+                      <h5 className="font-bold text-gray-900">Standard: <span className="text-green-600">🎉 $20.26</span> <span className="line-through text-gray-400">$42.00</span> <span className="text-green-600 text-sm">✨ 2026 Special ✨</span></h5>
+                      <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4 text-sm">
+                        <li>20 wallets</li>
+                        <li>10 beneficiaries</li>
+                        <li>Full Color PDF</li>
+                      </ul>
+                    </div>
+                    <div className="border-l-4 border-purple-500 pl-3">
+                      <h5 className="font-bold text-gray-900">Premium: $99</h5>
+                      <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4 text-sm">
+                        <li>Unlimited wallets</li>
+                        <li>Unlimited beneficiaries</li>
+                        <li>Priority support</li>
+                        <li>PDF updates (2 years)</li>
+                      </ul>
+                    </div>
+                  </div>
                   <h4 className="font-bold text-gray-900 mb-2">📊 System Limits & Maximums:</h4>
                   <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
-                    <li><strong>Wallets:</strong> Maximum 20 wallets total (including queued sessions)</li>
-                    <li><strong>Beneficiaries:</strong> Maximum 10 beneficiaries per document</li>
+                    <li><strong>Wallets:</strong> Varies by tier (Free: 1, Standard: 20, Premium: Unlimited)</li>
+                    <li><strong>Beneficiaries:</strong> Varies by tier (Free: 2, Standard: 10, Premium: Unlimited)</li>
                     <li><strong>Assets:</strong> No limit - all assets from connected wallets can be included</li>
                     <li><strong>Allocations:</strong> No limit per asset, but must total 100% for fungible tokens</li>
-                    <li><strong>Queued Sessions:</strong> Up to 20 wallet sessions can be saved to queue</li>
+                    <li><strong>Queued Sessions:</strong> Limited by selected tier</li>
                   </ul>
                 </div>
               </div>
@@ -79,7 +107,7 @@ export default function GuidePage() {
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
                       <li>You can connect <strong>multiple wallets</strong> (up to 20 total including queued)</li>
                       <li>Each wallet must be verified separately (signature required)</li>
-                      <li>Bitcoin wallets can be added manually if Xverse doesn't work</li>
+                      <li>Bitcoin wallets can be added manually</li>
                       <li><strong>WalletConnect Session Management:</strong> System automatically disconnects previous sessions when adding new wallets to prevent connection limits</li>
                       <li>You can see all queued wallets in the container (shows up to 10 without scrolling)</li>
                       <li><strong>Multi-Chain Name Resolution:</strong> The system automatically resolves wallet names from:
@@ -308,8 +336,15 @@ export default function GuidePage() {
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-2">What to do:</h4>
                     <ol className="list-decimal list-inside space-y-2 text-gray-700 ml-4">
-                      <li>Review the payment amount: <strong className="text-green-600 font-bold text-lg">🎉 $20.26</strong> <span className="line-through text-gray-400">$42.00</span> <span className="text-green-600 font-semibold">✨ New Year 2026 Special - Limited Time! ✨</span> Regular price $42.00 after February 1st</li>
-                      <li><strong>Pay with Connected Wallet:</strong>
+                      <li><strong>Select Your Plan:</strong>
+                        <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
+                          <li><strong>Free:</strong> 1 wallet, 2 beneficiaries - $0</li>
+                          <li><strong>Standard:</strong> 20 wallets, 10 beneficiaries - <span className="text-green-600 font-bold">🎉 $20.26</span> <span className="line-through text-gray-400">$42.00</span> <span className="text-green-600">✨ New Year 2026 Special! ✨</span></li>
+                          <li><strong>Premium:</strong> Unlimited wallets & beneficiaries, priority support, 2-year updates - $99</li>
+                          <li>The system will show warnings if your current setup exceeds tier limits</li>
+                        </ul>
+                      </li>
+                      <li><strong>Pay with Connected Wallet (if not Free tier):</strong>
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
                           <li>Click "Send Payment from Connected Wallet"</li>
                           <li>Approve the transaction in your wallet</li>
@@ -322,16 +357,17 @@ export default function GuidePage() {
                           <li>Scan and approve from your phone</li>
                         </ul>
                       </li>
-                      <li>Wait for payment verification (automatic after transaction confirms)</li>
+                      <li>Wait for payment verification (automatic after transaction confirms, or instant for Free tier)</li>
                     </ol>
                   </div>
                   <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
                     <h4 className="font-semibold text-gray-900 mb-2">💡 Tips:</h4>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
-                      <li>Payment is verified on-chain automatically</li>
+                      <li><strong>Tier Selection:</strong> Choose the plan that fits your needs. Free tier is perfect for simple setups, Standard for most users, Premium for complex estates.</li>
+                      <li>Payment is verified on-chain automatically (Free tier skips payment)</li>
                       <li>You can proceed manually if verification is delayed</li>
                       <li><strong>Payment State Reset:</strong> After downloading PDF, payment state resets - you'll need to pay again for additional downloads</li>
-                      <li>This ensures each PDF generation requires payment verification</li>
+                      <li>This ensures each PDF generation requires payment verification (except Free tier)</li>
                     </ul>
                   </div>
                 </div>
