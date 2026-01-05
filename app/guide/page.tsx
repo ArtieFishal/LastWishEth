@@ -576,7 +576,7 @@ export default function GuidePage() {
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Unique Advantages</h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                    <h4 className="font-bold text-gray-900 mb-2">1. Stateless & Secure</h4>
+                    <h4 className="font-bold text-gray-900 mb-2">1. Client-Side & Secure</h4>
                     <p className="text-gray-700">No accounts, no stored private keys, everything is client-side, PDF generated locally</p>
                   </div>
                   <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
