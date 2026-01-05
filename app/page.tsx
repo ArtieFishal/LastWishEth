@@ -1362,68 +1362,7 @@ setTimeout(() => {
     <div className="min-h-screen bg-gradient-to-br from-gray-200 to-gray-300">
  <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
  {/* Header */}
- <header className="text-center mb-12 relative">
- <div className="absolute top-0 right-0">
- <button
- onClick={async () => {
- if (confirm('Start over? This will disconnect all wallets, clear all verifications, and reset everything to the beginning.')) {
- // Disconnect all wallets first
- if (isConnected) {
- disconnect()
- }
- 
- // Clear all wallet connections and verifications
- setConnectedEVMAddresses(new Set())
- setBtcAddress(null)
- setVerifiedAddresses(new Set())
- setLoadedWallets(new Set())
- setSelectedWalletForLoading(null)
- setPaymentWalletAddress(null)
- setPendingVerification(null)
- 
- // Clear all state
- setStep('connect')
- setAssets([])
- setBeneficiaries([])
- setAllocations([])
- setSelectedAssetIds([])
- setQueuedSessions([])
-    setOwnerName('')
-    setOwnerFullName('')
-    setOwnerEnsName('')
-    setOwnerAddress('')
- setOwnerCity('')
- setOwnerState('')
- setOwnerZipCode('')
- setOwnerPhone('')
- setExecutorName('')
- setExecutorAddress('')
- setExecutorPhone('')
- setExecutorEmail('')
- setExecutorTwitter('')
- setExecutorLinkedIn('')
- setExecutorEnsName(null)
- setExecutorResolvedAddress(null)
- setKeyInstructions('')
- setInvoiceId(null)
- setPaymentVerified(false)
- setDiscountCode('')
- setDiscountApplied(false)
- setWalletNames({})
- setResolvedEnsNames({})
- setError(null)
- 
- // Clear localStorage
- if (typeof window !== 'undefined') {
- localStorage.removeItem('lastwish_state')
- }
- }
- }}
- className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors"
- >
- ↻ Start Over
- </button>
- </div>
+ <header className="text-center mb-12">
  <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-3">LastWish.eth</h1>
     <div className="max-w-2xl mx-auto mb-6 space-y-3">
       <p className="text-base sm:text-lg text-gray-600 font-semibold">
