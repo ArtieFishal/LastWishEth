@@ -2802,9 +2802,24 @@ onSelectionChange={setSelectedAssetIds}
  ⚠️ Please complete the following to unlock PDF generation:
  </p>
  <ul className="text-sm text-yellow-800 list-disc list-inside space-y-1">
- {getPaymentValidationErrors().map((error, index) => (
+ {getPaymentValidationErrors().filter(err => !err.includes('Tier limit')).map((error, index) => (
  <li key={index}>{error}</li>
  ))}
+ </ul>
+ </div>
+ )}
+ {getPaymentValidationErrors().some(err => err.includes('Tier limit')) && (
+ <div className="mt-6 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
+ <p className="text-sm font-semibold text-blue-900 mb-2">
+ 💡 Tier Limit Notice:
+ </p>
+ <p className="text-sm text-blue-700 mb-2">
+ Your current setup exceeds the selected tier limits. You can:
+ </p>
+ <ul className="text-sm text-blue-700 list-disc list-inside space-y-1 ml-4">
+ <li>Select a higher tier (Standard or Premium) on the Payment step</li>
+ <li>Use a discount code (e.g., "tryitfree") to bypass limits</li>
+ <li>Reduce wallets/beneficiaries to fit your selected tier</li>
  </ul>
  </div>
  )}
@@ -2820,7 +2835,7 @@ onSelectionChange={setSelectedAssetIds}
  onClick={handleCreateInvoice}
  disabled={!canProceedToPayment()}
  className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
- title={!canProceedToPayment() ? `Missing: ${getPaymentValidationErrors().join(', ')}` : ''}
+ title={!canProceedToPayment() ? `Missing: ${getPaymentValidationErrors().filter(err => !err.includes('Tier limit')).join(', ')}` : 'Continue to select your plan and payment'}
  >
               Continue to Payment →
  </button>
