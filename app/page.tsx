@@ -3136,7 +3136,10 @@ Apply
 </button>
 </div>
 {discountApplied && (
-<p className="mt-2 text-sm text-green-600 font-semibold">✓ Discount applied! 100% off - Tier limits bypassed</p>
+<div className="mt-2">
+<p className="text-sm text-green-600 font-semibold mb-1">✓ Discount applied! 100% off - Tier limits bypassed</p>
+<p className="text-xs text-green-600">Redirecting to download...</p>
+</div>
 )}
 </div>
 </div>
