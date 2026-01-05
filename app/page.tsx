@@ -2976,88 +2976,72 @@ onSelectionChange={setSelectedAssetIds}
  )}
 
 {step === 'payment' && !invoiceId && !discountApplied && (
-<div className="max-w-4xl mx-auto">
-<h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 text-center">Choose Your Plan</h2>
-<div className="grid md:grid-cols-3 gap-4 mb-8">
-{getAllTiers().map((tier) => {
-const isSelected = selectedTier === tier.tier
-const tierPricing = getTierPricing(tier.tier)
-const totalWallets = queuedSessions.length
-const totalBeneficiaries = beneficiaries.length
-const exceedsWallets = tier.maxWallets !== null && totalWallets > tier.maxWallets
-const exceedsBeneficiaries = tier.maxBeneficiaries !== null && totalBeneficiaries > tier.maxBeneficiaries
-const canSelect = !exceedsWallets && !exceedsBeneficiaries || discountApplied // Allow selection if discount applied
-
-return (
-<div
-key={tier.tier}
-onClick={() => {
-if (canSelect || discountApplied) {
-setSelectedTier(tier.tier)
-}
-}}
-className={`rounded-lg border-2 p-6 cursor-pointer transition-all ${
-isSelected
-? tier.tier === 'free' ? 'border-green-500 bg-green-50 shadow-lg' :
-tier.tier === 'premium' ? 'border-purple-500 bg-purple-50 shadow-lg' :
-'border-blue-500 bg-blue-50 shadow-lg'
-: canSelect
-? 'border-gray-300 bg-white hover:border-gray-400 hover:shadow-md'
-: 'border-red-300 bg-red-50 opacity-60 cursor-not-allowed'
-}`}
->
-<div className="text-center mb-4">
-<h3 className={`text-xl font-bold mb-2 ${
-tier.tier === 'free' ? 'text-green-700' :
-tier.tier === 'premium' ? 'text-purple-700' :
-'text-blue-700'
-}`}>
-{tier.name}
-</h3>
-<div className="mb-3">
-{tier.price === 0 ? (
-<p className="text-3xl font-bold text-gray-900">Free</p>
-) : tierPricing.isSpecial && tier.tier === 'standard' ? (
-<div>
-<p className="text-3xl font-bold text-green-600">${tierPricing.usdAmount.toFixed(2)}</p>
-<p className="text-sm line-through text-gray-400">${tierPricing.regularPrice?.toFixed(2)}</p>
-<p className="text-xs text-green-600 font-semibold">✨ 2026 Special ✨</p>
-</div>
+<div className="max-w-2xl mx-auto">
+<h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Payment</h2>
+<p className="text-gray-600 mb-6">
+{selectedTier === 'free' ? (
+'Free tier selected - no payment required'
 ) : (
-<p className="text-3xl font-bold text-gray-900">${tier.price.toFixed(2)}</p>
+`Selected plan: ${selectedTier === 'standard' ? 'Standard' : 'Premium'} - $${pricing.usdAmount.toFixed(2)}`
 )}
-</div>
-</div>
-<ul className="space-y-2 mb-4">
-{tier.features.map((feature, idx) => (
-<li key={idx} className="text-sm text-gray-700 flex items-start">
-<span className="text-green-500 mr-2">✓</span>
-<span>{feature}</span>
-</li>
+</p>
+
+{!canProceedToPayment() && !discountApplied && (
+<div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-6">
+<p className="text-red-800 font-semibold mb-2">⚠️ Please complete the following:</p>
+<ul className="list-disc list-inside space-y-1 text-red-700 text-sm">
+{getPaymentValidationErrors().map((error, index) => (
+<li key={index}>{error}</li>
 ))}
 </ul>
-{exceedsWallets && (
-<p className="text-xs text-red-600 font-semibold mb-2">
-⚠️ {totalWallets} wallets (limit: {tier.maxWallets})
-</p>
+</div>
 )}
-{exceedsBeneficiaries && (
-<p className="text-xs text-red-600 font-semibold mb-2">
-⚠️ {totalBeneficiaries} beneficiaries (limit: {tier.maxBeneficiaries})
-</p>
+
+{discountApplied && (
+<div className="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-6">
+<p className="text-green-800 font-semibold mb-2">✓ Discount Code Applied!</p>
+<p className="text-green-700 text-sm">Tier limits bypassed - you have unlimited access with the discount code.</p>
+</div>
 )}
-{isSelected && (
-<div className="mt-4 text-center">
-<span className="inline-block px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full">
-Selected
-</span>
+
+<div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-6 mb-6">
+<label className="block text-sm font-semibold text-gray-700 mb-3">
+Discount Code (Optional)
+</label>
+<div className="flex gap-2 mb-3">
+<input
+type="text"
+value={discountCode}
+onChange={(e) => {
+setDiscountCode(e.target.value)
+setError(null)
+}}
+onBlur={handleDiscountCode}
+className="flex-1 rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors uppercase"
+placeholder="Enter discount code"
+/>
+<button
+onClick={handleDiscountCode}
+className="px-6 rounded-lg bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition-colors"
+>
+Apply
+</button>
+</div>
+{discountApplied && (
+<div className="mt-2">
+<p className="text-sm text-green-600 font-semibold mb-1">✓ Discount applied! 100% off - Tier limits bypassed</p>
+<p className="text-xs text-green-600">Redirecting to download...</p>
 </div>
 )}
 </div>
-)
-})}
-</div>
-<div className="text-center mb-6">
+
+<div className="flex gap-4">
+<button
+onClick={() => setStep('details')}
+className="flex-1 rounded-lg border-2 border-gray-300 p-4 font-semibold hover:bg-gray-50 transition-colors"
+>
+← Back
+</button>
 <button
 onClick={async () => {
 if (selectedTier === 'free') {
@@ -3081,66 +3065,19 @@ setError(error?.response?.data?.error || 'Failed to create invoice')
 }
 }}
 disabled={(!canProceedToPayment() && !discountApplied) || (selectedTier === 'standard' && pricing.usdAmount === 0) || (selectedTier === 'premium' && pricing.usdAmount === 0)}
-className="px-8 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
 >
 {selectedTier === 'free' ? (
 'Continue to Download (Free)'
 ) : selectedTier === 'standard' && pricing.isSpecial ? (
 <span className="inline-flex items-center gap-2">
-<span>🎉 ${pricing.usdAmount.toFixed(2)}</span>
+<span>Pay ${pricing.usdAmount.toFixed(2)}</span>
 <span className="line-through text-sm">${pricing.regularPrice?.toFixed(2)}</span>
-<span className="text-xs">✨ 2026 Special ✨</span>
 </span>
 ) : (
-`Continue to Payment - $${pricing.usdAmount.toFixed(2)}`
+`Pay $${pricing.usdAmount.toFixed(2)}`
 )}
 </button>
-</div>
-{!canProceedToPayment() && !discountApplied && (
-<div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4">
-<p className="text-red-800 font-semibold mb-2">Please complete the following:</p>
-<ul className="list-disc list-inside space-y-1 text-red-700 text-sm">
-{getPaymentValidationErrors().map((error, index) => (
-<li key={index}>{error}</li>
-))}
-</ul>
-</div>
-)}
-{discountApplied && (
-<div className="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-4">
-<p className="text-green-800 font-semibold mb-2">✓ Discount Code Applied!</p>
-<p className="text-green-700 text-sm">Tier limits bypassed - you have unlimited access with the discount code.</p>
-</div>
-)}
-<div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-4">
-<label className="block text-sm font-semibold text-gray-700 mb-2">
-Discount Code (Optional)
-</label>
-<div className="flex gap-2">
-<input
-type="text"
-value={discountCode}
-onChange={(e) => {
-setDiscountCode(e.target.value)
-setError(null)
-}}
-onBlur={handleDiscountCode}
-className="flex-1 rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors uppercase"
-placeholder="Enter discount code"
-/>
-<button
-onClick={handleDiscountCode}
-className="px-4 rounded-lg bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition-colors"
->
-Apply
-</button>
-</div>
-{discountApplied && (
-<div className="mt-2">
-<p className="text-sm text-green-600 font-semibold mb-1">✓ Discount applied! 100% off - Tier limits bypassed</p>
-<p className="text-xs text-green-600">Redirecting to download...</p>
-</div>
-)}
 </div>
 </div>
 )}
