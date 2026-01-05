@@ -241,7 +241,7 @@ export default function Home() {
 
     try {
       // Create a message to sign
-      const message = `I am the owner of this wallet address: ${address}\n\nThis signature proves I control this wallet and authorize LastWishCrypto.eth to access my asset information.\n\nTimestamp: ${Date.now()}`
+      const message = `I am the owner of this wallet address: ${address}\n\nThis signature proves I control this wallet and authorize LastWishCrypto to access my asset information.\n\nTimestamp: ${Date.now()}`
       
       // Request signature
       const signature = await signMessageAsync({ 
@@ -1363,7 +1363,7 @@ setTimeout(() => {
  <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
  {/* Header */}
  <header className="text-center mb-12">
- <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-3">LastWishCrypto.eth</h1>
+ <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-3">LastWishCrypto</h1>
     <div className="max-w-2xl mx-auto mb-6 space-y-3">
       <p className="text-base sm:text-lg text-gray-600 font-semibold">
         Do you really want to take your crypto to the grave with you by accident?
@@ -1376,8 +1376,8 @@ setTimeout(() => {
           By using this utility nothing is permanantly saved, you create a stateless web document with which, you can simply print on the spot.
         </p>
       </div>
-      <p className="text-sm text-gray-500">
-        Crypto Inheritance Instructions
+      <p className="text-base sm:text-lg font-bold text-gray-800 mb-2">
+        📋 Crypto Inheritance Instructions
       </p>
       <div className="mt-4">
         <a 
@@ -3381,7 +3381,7 @@ className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-b
 
  <footer className="mt-12 text-center text-sm text-gray-500">
  <p className="mb-2">
- LastWishCrypto.eth is a backup plan tool. It does not store your keys or execute transactions.
+ LastWishCrypto is a backup plan tool. It does not store your keys or execute transactions.
  </p>
  <p>
  This document is for informational purposes only and does not constitute legal advice.
