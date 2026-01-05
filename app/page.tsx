@@ -3379,38 +3379,78 @@ Apply
  </div>
  )}
 
- {step === 'download' && (paymentVerified || discountApplied) && (
- <div className="max-w-2xl mx-auto text-center">
- <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Document Ready!</h2>
- <p className="text-gray-600 mb-8">
- Your crypto inheritance instructions document is ready to download
- </p>
- <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-8 border-2 border-green-200">
- <div className="mb-6">
- <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
- <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
- <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
- </svg>
- </div>
- <p className="text-lg font-semibold text-gray-900 mb-2">
- {discountApplied ? 'Discount Applied - FREE' : 'Payment Verified'}
- </p>
- <p className="text-sm text-gray-600">
- Your document has been generated and is ready to download
- </p>
- </div>
- <button
- onClick={handleDownloadPDF}
- className="w-full rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg mb-4"
- >
- Download PDF
- </button>
- <p className="text-xs text-gray-500">
- Print this document and have it notarized. Keep it in a safe place.
- </p>
- </div>
+{step === 'download' && (paymentVerified || discountApplied) && (() => {
+  // Check tier limits before showing download button
+  const tierInfo = getTierPricing(selectedTier)
+  const totalWallets = queuedSessions.length
+  const totalBeneficiaries = beneficiaries.length
+  const exceedsWallets = !discountApplied && tierInfo.maxWallets !== null && totalWallets > tierInfo.maxWallets
+  const exceedsBeneficiaries = !discountApplied && tierInfo.maxBeneficiaries !== null && totalBeneficiaries > tierInfo.maxBeneficiaries
+  const canDownload = !exceedsWallets && !exceedsBeneficiaries
+
+  if (!canDownload) {
+    return (
+      <div className="max-w-2xl mx-auto text-center">
+        <div className="bg-red-50 border-2 border-red-300 rounded-lg p-8">
+          <h2 className="text-2xl font-bold text-red-900 mb-4">Tier Limit Exceeded</h2>
+          <p className="text-red-800 mb-4">
+            Your current setup exceeds your selected tier limits:
+          </p>
+          <ul className="text-red-700 list-disc list-inside space-y-2 mb-6 text-left max-w-md mx-auto">
+            {exceedsWallets && (
+              <li>You have {totalWallets} wallets but {selectedTier} tier only allows {tierInfo.maxWallets}</li>
+            )}
+            {exceedsBeneficiaries && (
+              <li>You have {totalBeneficiaries} beneficiaries but {selectedTier} tier only allows {tierInfo.maxBeneficiaries}</li>
+            )}
+          </ul>
+          <p className="text-red-700 mb-4">
+            Please upgrade to a higher tier or use a discount code to proceed.
+          </p>
+          <button
+            onClick={() => setStep('payment')}
+            className="px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Go to Payment to Upgrade
+          </button>
         </div>
- )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto text-center">
+      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Document Ready!</h2>
+      <p className="text-gray-600 mb-8">
+        Your crypto inheritance instructions document is ready to download
+      </p>
+      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-8 border-2 border-green-200">
+        <div className="mb-6">
+          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <p className="text-lg font-semibold text-gray-900 mb-2">
+            {discountApplied ? 'Discount Applied - FREE' : 'Payment Verified'}
+          </p>
+          <p className="text-sm text-gray-600">
+            Your document has been generated and is ready to download
+          </p>
+        </div>
+        <button
+          onClick={handleDownloadPDF}
+          className="w-full rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg mb-4"
+        >
+          Download PDF
+        </button>
+        <p className="text-xs text-gray-500">
+          Print this document and have it notarized. Keep it in a safe place.
+        </p>
+      </div>
+    </div>
+  )
+})()}
 
  {step === 'download' && !paymentVerified && !discountApplied && (
  <div className="max-w-2xl mx-auto text-center">
