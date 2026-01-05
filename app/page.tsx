@@ -2903,7 +2903,7 @@ onSelectionChange={setSelectedAssetIds}
  </p>
  <ul className="text-sm text-blue-700 list-disc list-inside space-y-1 ml-4">
  <li>Select a higher tier (Standard or Premium) on the Payment step</li>
- <li>Use a discount code (e.g., "tryitfree") to bypass limits</li>
+ <li>Use a discount code to bypass limits</li>
  <li>Reduce wallets/beneficiaries to fit your selected tier</li>
  </ul>
  </div>
@@ -3079,7 +3079,7 @@ setError(null)
 }}
 onBlur={handleDiscountCode}
 className="flex-1 rounded-lg border-2 border-gray-300 p-3 focus:border-blue-500 focus:outline-none transition-colors uppercase"
-placeholder="Enter discount code (e.g., tryitfree)"
+placeholder="Enter discount code"
 />
 <button
 onClick={handleDiscountCode}
