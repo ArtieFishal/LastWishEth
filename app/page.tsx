@@ -998,6 +998,23 @@ setError('Failed to load Bitcoin assets. Please try again.')
  return
  }
 
+ // Check tier limits (unless discount code is applied - gives premium/unlimited access)
+ if (!discountApplied) {
+   const tierInfo = getTierPricing(selectedTier)
+   const totalWallets = queuedSessions.length
+   const totalBeneficiaries = beneficiaries.length
+   
+   if (tierInfo.maxWallets !== null && totalWallets > tierInfo.maxWallets) {
+     setError(`Tier limit exceeded: You have ${totalWallets} wallets but your ${selectedTier} tier only allows ${tierInfo.maxWallets}. Please upgrade to a higher tier or use a discount code.`)
+     return
+   }
+   
+   if (tierInfo.maxBeneficiaries !== null && totalBeneficiaries > tierInfo.maxBeneficiaries) {
+     setError(`Tier limit exceeded: You have ${totalBeneficiaries} beneficiaries but your ${selectedTier} tier only allows ${tierInfo.maxBeneficiaries}. Please upgrade to a higher tier or use a discount code.`)
+     return
+   }
+ }
+
  // Merge all queued sessions
  const allQueuedAssets = queuedSessions.flatMap(s => s.assets)
  const allQueuedAllocations = queuedSessions.flatMap(s => s.allocations)
