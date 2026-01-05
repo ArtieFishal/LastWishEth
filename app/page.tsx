@@ -1134,10 +1134,30 @@ setError('Failed to load Bitcoin assets. Please try again.')
 // This locks the document again, requiring payment/discount for next generation
 // Use setTimeout to ensure PDF download completes before resetting
 setTimeout(() => {
+  // Clear payment state
   setPaymentVerified(false)
   setDiscountApplied(false)
   setDiscountCode('')
   setInvoiceId(null)
+  
+  // Clear payment state from localStorage to prevent restoration
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('lastwish_state')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        // Remove payment-related fields
+        delete parsed.paymentVerified
+        delete parsed.discountApplied
+        delete parsed.discountCode
+        delete parsed.invoiceId
+        localStorage.setItem('lastwish_state', JSON.stringify(parsed))
+      }
+    } catch (err) {
+      console.error('Error clearing payment state from localStorage:', err)
+    }
+  }
+  
   // Also reset step to payment so user must pay again for another download
   setStep('payment')
 }, 2000) // Wait 2 seconds to ensure download completes
