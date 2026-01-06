@@ -2330,17 +2330,30 @@ assets={(() => {
       console.log(`[Assets Step] Selected wallet: ${selectedWalletForLoading}, Resolved: ${selectedWalletResolved}`)
     }
   } else if (btcAddress) {
-    filtered = assetsToShow.filter(a => a.chain === 'bitcoin' && (a.walletAddress === btcAddress || a.contractAddress === btcAddress))
+    // Filter Bitcoin assets - include ordinals from ordinals address too
+    filtered = assetsToShow.filter(a => {
+      if (a.chain !== 'bitcoin') return false
+      // For ordinals, check both payment address and ordinals address
+      if (a.type === 'ordinal') {
+        // Ordinals can be in either the payment address or ordinals address
+        return a.walletAddress === btcAddress || 
+               a.contractAddress === btcAddress ||
+               (btcOrdinalsAddress && (a.walletAddress === btcOrdinalsAddress || a.contractAddress === btcOrdinalsAddress))
+      }
+      // For other Bitcoin assets, check payment address
+      return a.walletAddress === btcAddress || a.contractAddress === btcAddress
+    })
     const ordinalsInAll = assetsToShow.filter(a => a.type === 'ordinal').length
     const ordinalsInFiltered = filtered.filter(a => a.type === 'ordinal').length
     console.log('[Assets Step] Filtering Bitcoin assets:', {
       btcAddress,
+      btcOrdinalsAddress,
       allAssets: assetsToShow.length,
       bitcoinAssets: assetsToShow.filter(a => a.chain === 'bitcoin').length,
       ordinalsInAll: ordinalsInAll,
       filtered: filtered.length,
       ordinalsInFiltered: ordinalsInFiltered,
-      filteredAssets: filtered.map(a => ({ id: a.id, type: a.type, name: a.name }))
+      filteredAssets: filtered.map(a => ({ id: a.id, type: a.type, name: a.name, walletAddress: a.walletAddress }))
     })
     if (ordinalsInAll > 0 && ordinalsInFiltered === 0) {
       console.warn('[Assets Step] ⚠️ All ordinals were filtered out!')
@@ -2348,7 +2361,8 @@ assets={(() => {
       console.log('[Assets Step] Sample ordinal:', {
         walletAddress: sampleOrdinal?.walletAddress,
         contractAddress: sampleOrdinal?.contractAddress,
-        btcAddress: btcAddress
+        btcAddress: btcAddress,
+        btcOrdinalsAddress: btcOrdinalsAddress
       })
     }
   }
