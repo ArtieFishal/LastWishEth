@@ -931,8 +931,47 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                         }
                       }
                       
-                      // Extract addresses (both payment and ordinals)
-                      if (accounts) {
+                      // Extract address from accounts - match the old working code
+                      if (accounts && accounts.length > 0) {
+                        // Xverse might return account objects with different structures
+                        const account = accounts[0]
+                        
+                        // Try different address formats
+                        if (typeof account === 'string') {
+                          address = account
+                        } else if (account.address) {
+                          address = account.address
+                        } else if (account.paymentsAddress) {
+                          address = account.paymentsAddress
+                        } else if (account.payments_address) {
+                          address = account.payments_address
+                        } else if (account.paymentAddress) {
+                          address = account.paymentAddress
+                        } else if (account.payment_address) {
+                          address = account.payment_address
+                        } else if (account.legacyAddress) {
+                          address = account.legacyAddress
+                        } else if (account.legacy_address) {
+                          address = account.legacy_address
+                        }
+                        
+                        // Also check for ordinals address if multiple accounts
+                        if (accounts.length > 1) {
+                          const ordinalsAccount = accounts.find((acc: any) => acc.purpose === 'ordinals')
+                          if (ordinalsAccount) {
+                            ordinalsAddress = extractBitcoinAddress(ordinalsAccount)
+                          }
+                        }
+                        
+                        console.log(`[Bitcoin Wallet] Account object:`, account)
+                        console.log(`[Bitcoin Wallet] Extracted address:`, address)
+                      } else if (accounts) {
+                        // Handle non-array responses
+                        address = extractBitcoinAddress(accounts)
+                      }
+                      
+                      // If we still don't have an address, try the more complex extraction
+                      if (!address && accounts) {
                         console.log(`[Bitcoin Wallet] Processing accounts response:`, accounts, 'Type:', typeof accounts, 'IsArray:', Array.isArray(accounts))
                         
                         // Handle JSON-RPC response format
