@@ -27,6 +27,8 @@ export async function POST(request: NextRequest) {
     for (const address of addresses) {
       for (const chain of chains) {
         try {
+          console.log(`[EVM Portfolio API] Fetching ${chain} data for ${address}`)
+          
           // Get native balance
           const nativeResponse = await fetch(
             `https://deep-index.moralis.io/api/v2/${address}/balance?chain=${chain}`,
@@ -36,18 +38,40 @@ export async function POST(request: NextRequest) {
               },
             }
           )
+          
+          console.log(`[EVM Portfolio API] ${chain} native balance response status:`, nativeResponse.status)
 
           if (nativeResponse.ok) {
             try {
               const nativeData = await nativeResponse.json()
               if (nativeData && typeof nativeData === 'object' && nativeData.balance && nativeData.balance !== '0') {
                 const balance = nativeData.balance.toString()
+                // Determine native token symbol and name based on chain
+                let symbol = 'ETH'
+                let name = 'Ethereum'
+                if (chain === 'eth') {
+                  symbol = 'ETH'
+                  name = 'Ethereum'
+                } else if (chain === 'base') {
+                  symbol = 'ETH'
+                  name = 'Base Ethereum'
+                } else if (chain === 'arbitrum') {
+                  symbol = 'ETH'
+                  name = 'Arbitrum Ethereum'
+                } else if (chain === 'polygon') {
+                  symbol = 'MATIC'
+                  name = 'Polygon'
+                } else if (chain === 'apechain') {
+                  symbol = 'APE'
+                  name = 'ApeCoin'
+                }
+                
                 allAssets.push({
                   id: `${chain}-${address}-native`,
                   chain,
                   type: 'native',
-                  symbol: chain === 'eth' ? 'ETH' : chain === 'base' ? 'ETH' : chain === 'arbitrum' ? 'ETH' : 'MATIC',
-                  name: chain === 'eth' ? 'Ethereum' : chain === 'base' ? 'Base Ethereum' : chain === 'arbitrum' ? 'Arbitrum Ethereum' : 'Polygon',
+                  symbol,
+                  name,
                   balance: balance,
                   balanceFormatted: (parseInt(balance) / 1e18).toFixed(6),
                   contractAddress: undefined,
@@ -114,6 +138,8 @@ export async function POST(request: NextRequest) {
             }
           )
 
+          console.log(`[EVM Portfolio API] ${chain} NFTs response status:`, nftsResponse.status)
+          
           if (nftsResponse.ok) {
             try {
               const nftsData = await nftsResponse.json()
@@ -175,11 +201,14 @@ export async function POST(request: NextRequest) {
                 }
               }
             } catch (error) {
-              console.error(`Error parsing NFTs for ${chain}:`, error)
+              console.error(`[EVM Portfolio API] Error parsing NFTs for ${chain}:`, error)
             }
+          } else {
+            const errorText = await nftsResponse.text().catch(() => 'Unknown error')
+            console.warn(`[EVM Portfolio API] ${chain} NFTs request failed (${nftsResponse.status}):`, errorText)
           }
-        } catch (error) {
-          console.error(`Error fetching ${chain} data for ${address}:`, error)
+        } catch (error: any) {
+          console.error(`[EVM Portfolio API] Error fetching ${chain} data for ${address}:`, error.message || error)
         }
       }
     }
