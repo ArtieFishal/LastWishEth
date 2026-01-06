@@ -874,20 +874,57 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                       if (isXverse && hasConnect) {
                         try {
                           console.log(`[Bitcoin Wallet] 🎯 Trying Xverse connect() - popup should appear, please click Connect...`)
-                          const connectResult = await selectedProvider.connect()
+                          // Try connect() - it may or may not need parameters
+                          let connectResult: any = null
+                          try {
+                            connectResult = await selectedProvider.connect()
+                          } catch (connectErr: any) {
+                            // If connect() fails, try with empty object
+                            console.log(`[Bitcoin Wallet] connect() failed, trying with options...`)
+                            try {
+                              connectResult = await selectedProvider.connect({})
+                            } catch (connectErr2: any) {
+                              throw connectErr // Throw original error
+                            }
+                          }
+                          
                           console.log(`[Bitcoin Wallet] ✅ Xverse connect() result:`, connectResult)
-                          // Xverse connect() returns account info
+                          console.log(`[Bitcoin Wallet] Connect result type:`, typeof connectResult, 'IsArray:', Array.isArray(connectResult))
+                          
+                          // Xverse connect() returns account info - handle various formats
                           if (connectResult) {
-                            accounts = connectResult
-                            if (connectResult.accounts && Array.isArray(connectResult.accounts)) {
+                            // Check if it's already an array of accounts
+                            if (Array.isArray(connectResult)) {
+                              accounts = connectResult
+                            } else if (connectResult.accounts && Array.isArray(connectResult.accounts)) {
                               accounts = connectResult.accounts
                             } else if (connectResult.addresses && Array.isArray(connectResult.addresses)) {
                               accounts = connectResult.addresses
                             } else if (connectResult.address) {
-                              // Single address
-                              accounts = [{ address: connectResult.address }]
-                            } else if (!Array.isArray(accounts)) {
-                              accounts = [accounts]
+                              // Single address - wrap in array with proper structure
+                              accounts = [{ address: connectResult.address, purpose: 'payment' }]
+                            } else if (connectResult.result && Array.isArray(connectResult.result)) {
+                              // JSON-RPC format
+                              accounts = connectResult.result
+                            } else if (typeof connectResult === 'object' && connectResult !== null) {
+                              // Try to extract address from object
+                              const address = connectResult.address || 
+                                            connectResult.paymentsAddress || 
+                                            connectResult.paymentAddress ||
+                                            connectResult.payments_address ||
+                                            connectResult.payment_address
+                              if (address) {
+                                accounts = [{ address: address, purpose: 'payment' }]
+                              } else {
+                                // Wrap the whole object in array
+                                accounts = [connectResult]
+                              }
+                            } else if (typeof connectResult === 'string') {
+                              // If it's just a string address
+                              accounts = [{ address: connectResult, purpose: 'payment' }]
+                            } else {
+                              // Fallback - wrap in array
+                              accounts = [connectResult]
                             }
                             console.log(`[Bitcoin Wallet] Processed connect() result into accounts:`, accounts)
                           }
