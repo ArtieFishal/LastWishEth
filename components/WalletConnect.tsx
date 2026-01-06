@@ -865,9 +865,11 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                       
                       // Xverse uses 'connect' method, not 'requestAccounts'
                       // Try connect() first for Xverse - this is the PRIMARY method
-                      const isXverse = wallet.name === 'Xverse' || wallet.name.toLowerCase().includes('xverse')
+                      // Check both wallet.name and providerName for Xverse
+                      const isXverse = (wallet.name === 'Xverse' || wallet.name.toLowerCase().includes('xverse')) ||
+                                      (providerName === 'Xverse' || providerName.toLowerCase().includes('xverse'))
                       const hasConnect = typeof selectedProvider.connect === 'function'
-                      console.log(`[Bitcoin Wallet] Checking Xverse connect: isXverse=${isXverse}, hasConnect=${hasConnect}, wallet.name="${wallet.name}"`)
+                      console.log(`[Bitcoin Wallet] Checking Xverse connect: isXverse=${isXverse}, hasConnect=${hasConnect}, wallet.name="${wallet.name}", providerName="${providerName}"`)
                       
                       if (isXverse && hasConnect) {
                         try {
