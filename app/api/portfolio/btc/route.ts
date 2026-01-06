@@ -270,18 +270,32 @@ export async function POST(request: NextRequest) {
           // If no direct image URL, try to construct from inscription ID
           // Many ordinal APIs serve images via inscription ID
           if (!imageUrl && inscriptionId) {
-            // Try common ordinal image URL patterns
             const inscriptionIdStr = inscriptionId.toString()
             // Remove 'i0' suffix if present for URL construction
             const cleanId = inscriptionIdStr.replace(/i\d+$/, '')
             
-            // Try Ord.io image URL pattern
+            // Try multiple ordinal image URL patterns
+            // Ord.io - direct image URL
+            imageUrl = `https://ord.io/content/${inscriptionIdStr}`
+            
+            // If that doesn't work, try preview URL
             if (!imageUrl) {
-              imageUrl = `https://ord.io/${inscriptionIdStr}.png`
+              imageUrl = `https://ord.io/preview/${inscriptionIdStr}`
             }
-            // Try Hiro image URL pattern
+            
+            // Hiro API - content endpoint
             if (!imageUrl) {
               imageUrl = `https://api.hiro.so/ordinals/v1/inscriptions/${inscriptionIdStr}/content`
+            }
+            
+            // Ordinals.com
+            if (!imageUrl) {
+              imageUrl = `https://ordinals.com/content/${inscriptionIdStr}`
+            }
+            
+            // Gamma.io
+            if (!imageUrl) {
+              imageUrl = `https://gamma.io/api/ordinals/inscription/${inscriptionIdStr}/content`
             }
           }
           
@@ -296,7 +310,10 @@ export async function POST(request: NextRequest) {
           const contentUrl = inscription.content_url || 
                             inscription.media_url || 
                             imageUrl ||
-                            (inscriptionId ? `https://ord.io/${inscriptionId.toString()}` : null)
+                            (inscriptionId ? `https://ord.io/content/${inscriptionId.toString()}` : null)
+          
+          // Log image URL for debugging
+          console.log(`[BTC API] Ordinal ${inscriptionId}: imageUrl=${imageUrl}, contentUrl=${contentUrl}, contentType=${contentType}`)
           
           assets.push({
             id: `ordinal-${inscriptionId}-${address}`,

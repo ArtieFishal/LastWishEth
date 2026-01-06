@@ -33,7 +33,10 @@ export function NFTImage({
       if (initialImageUrl.startsWith('data:')) {
         setImageUrl(initialImageUrl)
       } else {
-        setImageUrl(getImageUrlWithIPFSFallback(initialImageUrl))
+        // For ordinals, try the URL as-is first (ord.io, hiro.so, etc.)
+        const normalizedUrl = getImageUrlWithIPFSFallback(initialImageUrl)
+        setImageUrl(normalizedUrl)
+        console.log(`[NFTImage] Using imageUrl: ${normalizedUrl} (original: ${initialImageUrl})`)
       }
       return
     }
