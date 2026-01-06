@@ -77,6 +77,12 @@ export function AllocationPanel({
   }
 
   const toggleAsset = (assetId: string) => {
+    // Prevent selecting BTC assets with ordinals
+    const asset = assets.find(a => a.id === assetId)
+    if (asset && asset.type === 'btc' && asset.metadata?.hasOrdinals) {
+      return // Cannot select BTC with ordinals
+    }
+    
     if (selectedAssets.includes(assetId)) {
       setSelectedAssets(selectedAssets.filter(id => id !== assetId))
     } else {
@@ -85,7 +91,9 @@ export function AllocationPanel({
   }
 
   const selectAllAssets = () => {
-    setSelectedAssets(assets.map(a => a.id))
+    // Exclude BTC assets with ordinals
+    const selectableAssets = assets.filter(a => !(a.type === 'btc' && a.metadata?.hasOrdinals))
+    setSelectedAssets(selectableAssets.map(a => a.id))
   }
 
   const deselectAllAssets = () => {
