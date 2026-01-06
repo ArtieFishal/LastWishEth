@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
 
       const assets: any[] = []
       let ordinalsFound = 0 // Track if we find ordinals
+      let ordinalsAddress: string | null = null // Track ordinals address if different
 
       // Fetch ordinals/inscriptions FIRST to know if we should show the warning
       // Note: Ordinals are typically stored in Taproot addresses (bc1p...), but can also be in other address types

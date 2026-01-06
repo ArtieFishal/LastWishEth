@@ -343,6 +343,11 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
                                 ORDINAL
                               </span>
                             ) : null}
+                            {asset.type === 'btc' && asset.metadata?.hasOrdinals ? (
+                              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded font-semibold">
+                                HAS ORDINALS ({asset.metadata.ordinalsCount})
+                              </span>
+                            ) : null}
                             {asset.walletProvider && asset.walletProvider !== 'Unknown' ? (
                               <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-medium">
                                 {getWalletProviderName(asset.walletProvider)}
@@ -350,6 +355,11 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
                             ) : null}
                           </div>
                           <p className="text-sm text-gray-600 font-medium">{asset.name}</p>
+                          {asset.type === 'btc' && asset.walletAddress && (
+                            <p className="text-xs text-gray-500 font-mono mt-1 break-all" title={asset.walletAddress}>
+                              Address: {asset.walletAddress}
+                            </p>
+                          )}
                           {asset.tokenId && (
                             <p className="text-xs text-gray-500 font-mono mt-1">Token ID: {asset.tokenId}</p>
                           )}

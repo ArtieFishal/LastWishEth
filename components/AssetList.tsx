@@ -41,7 +41,7 @@ export function AssetList({ assets }: AssetListProps) {
         >
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <span className="font-bold text-lg text-gray-900">{asset.symbol}</span>
                 <span className={`text-xs font-semibold uppercase px-2 py-0.5 rounded ${getChainColor(asset.chain)}`}>
                   {asset.chain}
@@ -61,8 +61,18 @@ export function AssetList({ assets }: AssetListProps) {
                     ORDINAL
                   </span>
                 ) : null}
+                {asset.type === 'btc' && asset.metadata?.hasOrdinals ? (
+                  <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded font-semibold">
+                    HAS ORDINALS ({asset.metadata.ordinalsCount})
+                  </span>
+                ) : null}
               </div>
               <p className="text-sm text-gray-600 font-medium">{asset.name}</p>
+              {asset.type === 'btc' && asset.walletAddress && (
+                <p className="text-xs text-gray-500 font-mono mt-1 break-all" title={asset.walletAddress}>
+                  Address: {asset.walletAddress}
+                </p>
+              )}
               {asset.tokenId && (
                 <p className="text-xs text-gray-500 font-mono mt-1">Token ID: {asset.tokenId}</p>
               )}
