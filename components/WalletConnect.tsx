@@ -810,21 +810,24 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                       console.log(`[Bitcoin Wallet] Available methods on ${providerName}:`, Object.keys(selectedProvider))
                       
                       // Check if extension is available (for Xverse)
-                      if ((wallet.name === 'Xverse' || wallet.name.includes('Xverse')) && typeof chrome !== 'undefined' && chrome.runtime) {
-                        try {
-                          // Try to ping the extension to see if it's active
-                          await new Promise((resolve, reject) => {
-                            chrome.runtime.sendMessage(wallet.provider.id || 'unknown', { method: 'ping' }, (response: any) => {
-                              if (chrome.runtime.lastError) {
-                                console.warn(`[Bitcoin Wallet] Extension may be inactive:`, chrome.runtime.lastError.message)
-                              } else {
-                                console.log(`[Bitcoin Wallet] Extension is active`)
-                              }
-                              resolve(response)
+                      if ((wallet.name === 'Xverse' || wallet.name.includes('Xverse'))) {
+                        const win = window as any
+                        if (typeof win.chrome !== 'undefined' && win.chrome.runtime) {
+                          try {
+                            // Try to ping the extension to see if it's active
+                            await new Promise((resolve) => {
+                              win.chrome.runtime.sendMessage(wallet.provider.id || 'unknown', { method: 'ping' }, (response: any) => {
+                                if (win.chrome.runtime.lastError) {
+                                  console.warn(`[Bitcoin Wallet] Extension may be inactive:`, win.chrome.runtime.lastError.message)
+                                } else {
+                                  console.log(`[Bitcoin Wallet] Extension is active`)
+                                }
+                                resolve(response)
+                              })
                             })
-                          })
-                        } catch (pingError) {
-                          console.warn(`[Bitcoin Wallet] Could not ping extension, but continuing anyway:`, pingError)
+                          } catch (pingError) {
+                            console.warn(`[Bitcoin Wallet] Could not ping extension, but continuing anyway:`, pingError)
+                          }
                         }
                       }
                       
