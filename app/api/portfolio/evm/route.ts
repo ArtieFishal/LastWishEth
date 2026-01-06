@@ -21,17 +21,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch tokens for all addresses across supported chains
+    // Note: Moralis may not support all chains - check their documentation for supported chain identifiers
+    // ApeChain might need a different identifier or might not be supported yet
     const chains = ['eth', 'base', 'arbitrum', 'polygon', 'apechain']
     const allAssets = []
+    
+    // Map chain names to Moralis chain identifiers (in case they differ)
+    const chainIdMap: Record<string, string> = {
+      'eth': 'eth',
+      'base': 'base',
+      'arbitrum': 'arbitrum',
+      'polygon': 'polygon',
+      'apechain': 'apechain', // Try 'apechain', might need 'ape-chain' or not be supported
+    }
 
     for (const address of addresses) {
       for (const chain of chains) {
         try {
-          console.log(`[EVM Portfolio API] Fetching ${chain} data for ${address}`)
+          const moralisChainId = chainIdMap[chain] || chain
+          console.log(`[EVM Portfolio API] Fetching ${chain} data for ${address} (Moralis ID: ${moralisChainId})`)
           
           // Get native balance
           const nativeResponse = await fetch(
-            `https://deep-index.moralis.io/api/v2/${address}/balance?chain=${chain}`,
+            `https://deep-index.moralis.io/api/v2/${address}/balance?chain=${moralisChainId}`,
             {
               headers: {
                 'X-API-Key': MORALIS_API_KEY,
@@ -86,7 +98,7 @@ export async function POST(request: NextRequest) {
 
           // Get ERC-20 tokens
           const tokensResponse = await fetch(
-            `https://deep-index.moralis.io/api/v2/${address}/erc20?chain=${chain}`,
+            `https://deep-index.moralis.io/api/v2/${address}/erc20?chain=${moralisChainId}`,
             {
               headers: {
                 'X-API-Key': MORALIS_API_KEY,
@@ -130,7 +142,7 @@ export async function POST(request: NextRequest) {
 
           // Get NFTs (ERC-721 and ERC-1155)
           const nftsResponse = await fetch(
-            `https://deep-index.moralis.io/api/v2/${address}/nft?chain=${chain}&format=decimal`,
+            `https://deep-index.moralis.io/api/v2/${address}/nft?chain=${moralisChainId}&format=decimal`,
             {
               headers: {
                 'X-API-Key': MORALIS_API_KEY,
