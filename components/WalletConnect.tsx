@@ -863,82 +863,61 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                         }
                       }
                       
-                      // Xverse uses 'connect' method, not 'requestAccounts'
-                      // Try connect() first for Xverse - this is the PRIMARY method
+                      // Xverse connection - try request('getAccounts') first as it's more reliable
                       // Check both wallet.name and providerName for Xverse
                       const isXverse = (wallet.name === 'Xverse' || wallet.name.toLowerCase().includes('xverse')) ||
                                       (providerName === 'Xverse' || providerName.toLowerCase().includes('xverse'))
-                      const hasConnect = typeof selectedProvider.connect === 'function'
-                      console.log(`[Bitcoin Wallet] Checking Xverse connect: isXverse=${isXverse}, hasConnect=${hasConnect}, wallet.name="${wallet.name}", providerName="${providerName}"`)
+                      console.log(`[Bitcoin Wallet] Checking Xverse: isXverse=${isXverse}, wallet.name="${wallet.name}", providerName="${providerName}"`)
                       
-                      if (isXverse && hasConnect) {
+                      // For Xverse, use request('getAccounts') with purposes - this is more reliable than connect()
+                      if (isXverse && typeof selectedProvider.request === 'function') {
                         try {
-                          console.log(`[Bitcoin Wallet] 🎯 Trying Xverse connect() - popup should appear, please click Connect...`)
-                          // Try connect() - it may or may not need parameters
-                          let connectResult: any = null
-                          try {
-                            connectResult = await selectedProvider.connect()
-                          } catch (connectErr: any) {
-                            // If connect() fails, try with empty object
-                            console.log(`[Bitcoin Wallet] connect() failed, trying with options...`)
+                          console.log(`[Bitcoin Wallet] 🎯 Trying Xverse request('getAccounts') with purposes ['payment', 'ordinals'] - popup should appear...`)
+                          const getAccountsResult = await selectedProvider.request('getAccounts', { purposes: ['payment', 'ordinals'] })
+                          console.log(`[Bitcoin Wallet] ✅ Xverse getAccounts result:`, getAccountsResult)
+                          
+                          // Check for JSON-RPC error
+                          if (getAccountsResult && typeof getAccountsResult === 'object' && getAccountsResult.error) {
+                            console.log(`[Bitcoin Wallet] ❌ JSON-RPC error in getAccounts:`, getAccountsResult.error)
+                            // Try with just payment purpose
                             try {
-                              connectResult = await selectedProvider.connect({})
-                            } catch (connectErr2: any) {
-                              throw connectErr // Throw original error
-                            }
-                          }
-                          
-                          console.log(`[Bitcoin Wallet] ✅ Xverse connect() result:`, connectResult)
-                          console.log(`[Bitcoin Wallet] Connect result type:`, typeof connectResult, 'IsArray:', Array.isArray(connectResult))
-                          
-                          // Xverse connect() returns account info - handle various formats
-                          if (connectResult) {
-                            // Check if it's already an array of accounts
-                            if (Array.isArray(connectResult)) {
-                              accounts = connectResult
-                            } else if (connectResult.accounts && Array.isArray(connectResult.accounts)) {
-                              accounts = connectResult.accounts
-                            } else if (connectResult.addresses && Array.isArray(connectResult.addresses)) {
-                              accounts = connectResult.addresses
-                            } else if (connectResult.address) {
-                              // Single address - wrap in array with proper structure
-                              accounts = [{ address: connectResult.address, purpose: 'payment' }]
-                            } else if (connectResult.result && Array.isArray(connectResult.result)) {
-                              // JSON-RPC format
-                              accounts = connectResult.result
-                            } else if (typeof connectResult === 'object' && connectResult !== null) {
-                              // Try to extract address from object
-                              const address = connectResult.address || 
-                                            connectResult.paymentsAddress || 
-                                            connectResult.paymentAddress ||
-                                            connectResult.payments_address ||
-                                            connectResult.payment_address
-                              if (address) {
-                                accounts = [{ address: address, purpose: 'payment' }]
-                              } else {
-                                // Wrap the whole object in array
-                                accounts = [connectResult]
+                              console.log(`[Bitcoin Wallet] Trying with just payment purpose...`)
+                              const paymentResult = await selectedProvider.request('getAccounts', { purposes: ['payment'] })
+                              if (paymentResult && typeof paymentResult === 'object' && paymentResult.error) {
+                                accounts = null
+                              } else if (paymentResult) {
+                                accounts = paymentResult.result && Array.isArray(paymentResult.result) ? paymentResult.result : 
+                                          (Array.isArray(paymentResult) ? paymentResult : [paymentResult])
                               }
-                            } else if (typeof connectResult === 'string') {
-                              // If it's just a string address
-                              accounts = [{ address: connectResult, purpose: 'payment' }]
-                            } else {
-                              // Fallback - wrap in array
-                              accounts = [connectResult]
+                            } catch (err2: any) {
+                              console.log(`[Bitcoin Wallet] ❌ Payment-only getAccounts failed:`, err2.message)
                             }
-                            console.log(`[Bitcoin Wallet] Processed connect() result into accounts:`, accounts)
+                          } else if (getAccountsResult) {
+                            // Handle successful response
+                            if (getAccountsResult.result && Array.isArray(getAccountsResult.result)) {
+                              accounts = getAccountsResult.result
+                            } else if (Array.isArray(getAccountsResult)) {
+                              accounts = getAccountsResult
+                            } else {
+                              accounts = [getAccountsResult]
+                            }
+                            console.log(`[Bitcoin Wallet] Processed getAccounts result:`, accounts)
                           }
                         } catch (err: any) {
-                          console.log(`[Bitcoin Wallet] ❌ Xverse connect() failed:`, err.message, err)
+                          console.log(`[Bitcoin Wallet] ❌ Xverse getAccounts failed:`, err.message, err)
                           if (err.message?.includes('reject') || err.message?.includes('cancel') || err.code === 4001) {
                             setConnecting(false)
                             alert('Connection cancelled. Please try again and click "Connect" in the Xverse popup.')
                             return
                           }
                         }
-                      } else if (isXverse && !hasConnect) {
-                        console.log(`[Bitcoin Wallet] ⚠️ Xverse detected but connect() method not available`)
                       }
+                      
+                      // Fallback: Try connect() if getAccounts didn't work
+                      // But skip it for now since it's causing issues in Xverse's extension
+                      // if (!accounts && isXverse && typeof selectedProvider.connect === 'function') {
+                      //   console.log(`[Bitcoin Wallet] ⚠️ Skipping connect() - using getAccounts instead`)
+                      // }
                       
                       // Try requestAccounts first (shows popup) - this is the standard method for other wallets
                       if (!accounts && typeof selectedProvider.requestAccounts === 'function') {
