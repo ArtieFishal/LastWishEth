@@ -948,16 +948,46 @@ export default function Home() {
   }
  }
 
-// Load Bitcoin assets
+// Load Bitcoin assets with retry logic
 if (btcAddress) {
 try {
 console.log('[Bitcoin] Loading assets for payment address:', btcAddress)
 console.log('[Bitcoin] Ordinals address:', btcOrdinalsAddress)
 
+// Retry function for Bitcoin API calls
+const fetchBitcoinAssetsWithRetry = async (address: string, retries = 3, delay = 1000): Promise<any> => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`[Bitcoin] Attempt ${attempt}/${retries} to fetch assets for ${address}`)
+      const response = await axios.post('/api/portfolio/btc', {
+        address: address,
+      }, {
+        timeout: 30000, // 30 second timeout
+      })
+      
+      if (response.data?.assets && Array.isArray(response.data.assets)) {
+        console.log(`[Bitcoin] ✅ Successfully fetched ${response.data.assets.length} assets on attempt ${attempt}`)
+        return response
+      } else {
+        console.warn(`[Bitcoin] ⚠️ Empty or invalid response on attempt ${attempt}`)
+        if (attempt === retries) {
+          return response // Return even if empty on last attempt
+        }
+      }
+    } catch (error: any) {
+      console.error(`[Bitcoin] ❌ Attempt ${attempt}/${retries} failed:`, error.message)
+      if (attempt === retries) {
+        throw error // Throw on last attempt
+      }
+      // Wait before retrying with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delay * attempt))
+    }
+  }
+  throw new Error('All retry attempts failed')
+}
+
 // Fetch from payment address (for BTC balance and any ordinals there)
-const btcResponse = await axios.post('/api/portfolio/btc', {
-address: btcAddress,
-})
+const btcResponse = await fetchBitcoinAssetsWithRetry(btcAddress)
 console.log('[Bitcoin] API response for payment address:', btcResponse.data)
 if (btcResponse.data?.assets && Array.isArray(btcResponse.data.assets)) {
 console.log('[Bitcoin] Found', btcResponse.data.assets.length, 'assets from payment address')
@@ -984,9 +1014,7 @@ console.warn('[Bitcoin] No assets in response or invalid format:', btcResponse.d
 if (btcOrdinalsAddress && btcOrdinalsAddress !== btcAddress) {
 try {
 console.log('[Bitcoin] Loading ordinals from dedicated ordinals address:', btcOrdinalsAddress)
-const ordinalsResponse = await axios.post('/api/portfolio/btc', {
-address: btcOrdinalsAddress,
-})
+const ordinalsResponse = await fetchBitcoinAssetsWithRetry(btcOrdinalsAddress)
 console.log('[Bitcoin] API response for ordinals address:', ordinalsResponse.data)
 if (ordinalsResponse.data?.assets && Array.isArray(ordinalsResponse.data.assets)) {
 // Filter to only ordinals from ordinals address
