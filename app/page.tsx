@@ -2328,13 +2328,26 @@ assets={(() => {
     }
   } else if (btcAddress) {
     filtered = assetsToShow.filter(a => a.chain === 'bitcoin' && (a.walletAddress === btcAddress || a.contractAddress === btcAddress))
+    const ordinalsInAll = assetsToShow.filter(a => a.type === 'ordinal').length
+    const ordinalsInFiltered = filtered.filter(a => a.type === 'ordinal').length
     console.log('[Assets Step] Filtering Bitcoin assets:', {
       btcAddress,
       allAssets: assetsToShow.length,
       bitcoinAssets: assetsToShow.filter(a => a.chain === 'bitcoin').length,
+      ordinalsInAll: ordinalsInAll,
       filtered: filtered.length,
-      filteredAssets: filtered
+      ordinalsInFiltered: ordinalsInFiltered,
+      filteredAssets: filtered.map(a => ({ id: a.id, type: a.type, name: a.name }))
     })
+    if (ordinalsInAll > 0 && ordinalsInFiltered === 0) {
+      console.warn('[Assets Step] ⚠️ All ordinals were filtered out!')
+      const sampleOrdinal = assetsToShow.find(a => a.type === 'ordinal')
+      console.log('[Assets Step] Sample ordinal:', {
+        walletAddress: sampleOrdinal?.walletAddress,
+        contractAddress: sampleOrdinal?.contractAddress,
+        btcAddress: btcAddress
+      })
+    }
   }
   // Apply spam filtering if enabled
   if (hideSpamTokens) {
