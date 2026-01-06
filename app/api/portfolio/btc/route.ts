@@ -235,6 +235,15 @@ export async function POST(request: NextRequest) {
 
         console.log(`[BTC API] Total unique inscriptions found: ${allInscriptions.length}`)
         ordinalsFound = allInscriptions.length
+        
+        // Log if no ordinals found for debugging
+        if (allInscriptions.length === 0) {
+          console.log(`[BTC API] ⚠️ No ordinals found for address ${address}`)
+          console.log(`[BTC API] This could mean:`)
+          console.log(`[BTC API] 1. Ordinals are in a different address (check ordinals address if using Xverse)`)
+          console.log(`[BTC API] 2. Ordinals are not indexed yet by the APIs`)
+          console.log(`[BTC API] 3. Address format may not be supported by ordinal APIs`)
+        }
 
         // Add each ordinal as a separate asset
         allInscriptions.forEach((inscription: any, index: number) => {

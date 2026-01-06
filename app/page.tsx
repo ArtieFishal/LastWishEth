@@ -936,17 +936,22 @@ address: btcOrdinalsAddress,
 })
 console.log('[Bitcoin] API response for ordinals address:', ordinalsResponse.data)
 if (ordinalsResponse.data?.assets && Array.isArray(ordinalsResponse.data.assets)) {
-// Add all assets from ordinals address (they should mostly be ordinals)
-console.log('[Bitcoin] Found', ordinalsResponse.data.assets.length, 'assets from ordinals address')
-const existingIds = new Set(assets.map(a => a.id))
-const uniqueOrdinals = ordinalsResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
-console.log('[Bitcoin] After deduplication:', uniqueOrdinals.length, 'unique ordinals')
+// Filter to only ordinals from ordinals address
+const ordinalsFromOrdinalsAddr = ordinalsResponse.data.assets.filter((a: Asset) => a.type === 'ordinal')
+console.log('[Bitcoin] Found', ordinalsFromOrdinalsAddr.length, 'ordinals from ordinals address (out of', ordinalsResponse.data.assets.length, 'total assets)')
+const existingIds = new Set(newAssets.map(a => a.id))
+const uniqueOrdinals = ordinalsFromOrdinalsAddr.filter((a: Asset) => !existingIds.has(a.id))
+console.log('[Bitcoin] After deduplication:', uniqueOrdinals.length, 'unique ordinals from ordinals address')
 newAssets.push(...uniqueOrdinals)
+} else {
+console.warn('[Bitcoin] No assets in ordinals address response or invalid format')
 }
 } catch (ordinalsErr) {
 console.error('[Bitcoin] Error loading ordinals from ordinals address:', ordinalsErr)
 // Don't fail the whole request if ordinals fail
 }
+} else {
+console.log('[Bitcoin] No separate ordinals address found, ordinals may be in payment address')
 }
 } catch (err) {
 console.error('[Bitcoin] Error loading BTC assets:', err)
