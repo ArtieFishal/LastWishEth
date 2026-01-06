@@ -127,6 +127,13 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
     }
   }, [mounted])
 
+  // Detect if we're on a mobile device
+  const isMobileDevice = () => {
+    if (typeof window === 'undefined') return false
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /MacIntel/.test(navigator.platform))
+  }
+
   // Function to scan for available Bitcoin wallets
   const scanForBitcoinWallets = async () => {
     if (typeof window === 'undefined') return
@@ -134,9 +141,12 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
     setScanningWallets(true)
     const win = window as any
     const providers: Array<{ name: string; provider: any; method: string; icon: string }> = []
+    const isMobile = isMobileDevice()
     
-    // Wait a bit for extensions to inject
-    await new Promise(resolve => setTimeout(resolve, 500))
+    console.log(`[Bitcoin Wallet Scan] Scanning for wallets (Mobile: ${isMobile})...`)
+    
+    // Wait a bit for extensions to inject (longer on mobile)
+    await new Promise(resolve => setTimeout(resolve, isMobile ? 1000 : 500))
     
         // Check for btc_providers array (standard for multiple wallets) - PRIMARY METHOD
         if (win.btc_providers && Array.isArray(win.btc_providers)) {
@@ -245,6 +255,11 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             icon: '₿'
           })
         }
+    
+    // On mobile, add a manual entry option prominently
+    if (isMobile && providers.length === 0) {
+      console.log(`[Bitcoin Wallet Scan] Mobile device detected, no wallets found. Adding manual entry option.`)
+    }
     
     setDetectedBtcWallets(providers)
     setScanningWallets(false)
