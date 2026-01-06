@@ -70,9 +70,9 @@ export async function POST(request: NextRequest) {
 
         // Try multiple ordinal APIs with different formats
         const ordinalApis = [
-          // Hiro API - most reliable
+          // Hiro API - most reliable (limit is 60)
           {
-            url: `https://api.hiro.so/ordinals/v1/inscriptions?address=${address}&limit=100`,
+            url: `https://api.hiro.so/ordinals/v1/inscriptions?address=${address}&limit=60`,
             name: 'Hiro',
             extract: (data: any) => {
               if (Array.isArray(data)) return data
@@ -81,9 +81,20 @@ export async function POST(request: NextRequest) {
               return []
             }
           },
+          // Ordinals.com explorer API
+          {
+            url: `https://ordinals.com/api/address/${address}/inscriptions`,
+            name: 'Ordinals.com (address)',
+            extract: (data: any) => {
+              if (Array.isArray(data)) return data
+              if (data?.inscriptions && Array.isArray(data.inscriptions)) return data.inscriptions
+              if (data?.results && Array.isArray(data.results)) return data.results
+              return []
+            }
+          },
           // Ordinals.com API
           {
-            url: `https://ordinals.com/api/inscriptions?address=${address}&limit=100`,
+            url: `https://ordinals.com/api/inscriptions?address=${address}`,
             name: 'Ordinals.com',
             extract: (data: any) => {
               if (Array.isArray(data)) return data
@@ -94,7 +105,7 @@ export async function POST(request: NextRequest) {
           },
           // Ord.io API
           {
-            url: `https://api.ord.io/inscriptions?address=${address}&limit=100`,
+            url: `https://api.ord.io/inscriptions?address=${address}`,
             name: 'Ord.io',
             extract: (data: any) => {
               if (Array.isArray(data)) return data
@@ -105,7 +116,7 @@ export async function POST(request: NextRequest) {
           },
           // Gamma API
           {
-            url: `https://api.gamma.io/ordinals/v1/inscriptions?address=${address}&limit=100`,
+            url: `https://api.gamma.io/ordinals/v1/inscriptions?address=${address}`,
             name: 'Gamma',
             extract: (data: any) => {
               if (Array.isArray(data)) return data
@@ -169,9 +180,11 @@ export async function POST(request: NextRequest) {
         }
 
         // Also check UTXOs for inscriptions (some APIs require UTXO-based queries)
-        if (utxos.length > 0 && allInscriptions.length === 0) {
-          console.log(`[BTC API] Checking UTXOs for inscriptions...`)
-          for (const utxo of utxos.slice(0, 10)) { // Limit to first 10 UTXOs
+        // Check ALL UTXOs, not just when no inscriptions found - ordinals might be in UTXOs
+        if (utxos.length > 0) {
+          console.log(`[BTC API] Checking ${utxos.length} UTXOs for inscriptions...`)
+          // Check more UTXOs (up to 50) to find ordinals
+          for (const utxo of utxos.slice(0, 50)) {
             try {
               const utxoId = `${utxo.txid}:${utxo.vout}`
               // Try Hiro API with UTXO
@@ -188,8 +201,31 @@ export async function POST(request: NextRequest) {
                   if (inscriptionId && !seenIds.has(inscriptionId)) {
                     seenIds.add(inscriptionId)
                     allInscriptions.push(inscription)
+                    console.log(`[BTC API] Found ordinal in UTXO ${utxoId}: ${inscriptionId}`)
                   }
                 })
+              }
+              // Also try OrdinalsBot with UTXO
+              try {
+                const ordinalsBotResponse = await fetch(`https://api.ordinalsbot.com/api/inscriptions?output=${utxoId}`, {
+                  headers: { 'Accept': 'application/json' },
+                  signal: AbortSignal.timeout(5000),
+                })
+                if (ordinalsBotResponse.ok) {
+                  const botData = await ordinalsBotResponse.json()
+                  const botInscriptions = Array.isArray(botData) ? botData : 
+                                         (botData?.inscriptions || botData?.results || [])
+                  botInscriptions.forEach((inscription: any) => {
+                    const inscriptionId = inscription.id || inscription.inscription_id || inscription.inscriptionId
+                    if (inscriptionId && !seenIds.has(inscriptionId)) {
+                      seenIds.add(inscriptionId)
+                      allInscriptions.push(inscription)
+                      console.log(`[BTC API] Found ordinal via OrdinalsBot in UTXO ${utxoId}: ${inscriptionId}`)
+                    }
+                  })
+                }
+              } catch (botError) {
+                // Silent fail
               }
             } catch (utxoError) {
               // Silent fail for UTXO checks
