@@ -52,6 +52,12 @@ export async function POST(request: NextRequest) {
           )
           
           console.log(`[EVM Portfolio API] ${chain} native balance response status:`, nativeResponse.status)
+          
+          // Log error response for debugging
+          if (!nativeResponse.ok) {
+            const errorText = await nativeResponse.text().catch(() => 'Unknown error')
+            console.warn(`[EVM Portfolio API] ${chain} native balance failed (${nativeResponse.status}):`, errorText.substring(0, 200))
+          }
 
           if (nativeResponse.ok) {
             try {
@@ -106,6 +112,12 @@ export async function POST(request: NextRequest) {
             }
           )
 
+          // Log error response for ERC-20 tokens
+          if (!tokensResponse.ok) {
+            const errorText = await tokensResponse.text().catch(() => 'Unknown error')
+            console.warn(`[EVM Portfolio API] ${chain} ERC-20 tokens failed (${tokensResponse.status}):`, errorText.substring(0, 200))
+          }
+          
           if (tokensResponse.ok) {
             try {
               const tokensData = await tokensResponse.json()
