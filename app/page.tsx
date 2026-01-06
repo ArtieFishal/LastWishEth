@@ -917,11 +917,20 @@ address: btcAddress,
 console.log('[Bitcoin] API response for payment address:', btcResponse.data)
 if (btcResponse.data?.assets && Array.isArray(btcResponse.data.assets)) {
 console.log('[Bitcoin] Found', btcResponse.data.assets.length, 'assets from payment address')
+// Count ordinals in payment address
+const ordinalsInPayment = btcResponse.data.assets.filter((a: Asset) => a.type === 'ordinal')
+console.log('[Bitcoin] Found', ordinalsInPayment.length, 'ordinals in payment address')
 // Filter out duplicates
 const existingIds = new Set(assets.map(a => a.id))
 const uniqueAssets = btcResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
 console.log('[Bitcoin] After deduplication:', uniqueAssets.length, 'unique assets')
 console.log('[Bitcoin] Asset details:', uniqueAssets)
+// Log asset types
+const assetTypes = uniqueAssets.reduce((acc: Record<string, number>, asset: Asset) => {
+  acc[asset.type] = (acc[asset.type] || 0) + 1
+  return acc
+}, {})
+console.log('[Bitcoin] Asset types:', assetTypes)
 newAssets.push(...uniqueAssets)
 } else {
 console.warn('[Bitcoin] No assets in response or invalid format:', btcResponse.data)
