@@ -854,10 +854,16 @@ export default function Home() {
 
  // Load assets when wallets are connected (but don't auto-load, let user control it)
  const loadAssets = async (append = false, loadFromAllWallets = false) => {
+ // Prevent duplicate concurrent loads
+ if (loading) {
+   console.log('[Load Assets] Already loading, skipping duplicate request')
+   return
+ }
+ 
  setLoading(true)
  setError(null)
  // Show loading message
- console.log('Loading assets, be patient...')
+ console.log('[Load Assets] Starting asset load (append:', append, ', loadFromAllWallets:', loadFromAllWallets, ')')
  try {
  const newAssets: Asset[] = []
  
