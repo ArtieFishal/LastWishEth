@@ -627,7 +627,7 @@ export default function Home() {
    if (!hideSpamTokens) return assets
    
   return assets.filter(asset => {
-    // Always show native tokens (ETH, BTC, MATIC) regardless of balance
+    // Always show native tokens (ETH, BTC, MATIC, APE) regardless of balance
     if (asset.type === 'native') return true
     
     // Always show NFTs
@@ -639,11 +639,15 @@ export default function Home() {
     // Always show ordinals
     if (asset.type === 'ordinal') return true
      
-     // For ERC-20 tokens, check balance threshold
+     // For ERC-20 tokens, check balance threshold and spam indicators
      if (asset.type === 'erc20' || asset.type === 'btc') {
        const balance = parseFloat(asset.balance) / Math.pow(10, asset.decimals || 18)
+       
        // Filter out tokens with balance below threshold (0.000001)
-       if (balance < 0.000001) return false
+       if (balance < 0.000001) {
+         console.log(`[Spam Filter] Filtered ${asset.symbol} (${asset.name}): balance too low (${balance})`)
+         return false
+       }
        
        // Additional spam detection: filter tokens with suspicious names
        const suspiciousPatterns = [
@@ -658,6 +662,27 @@ export default function Home() {
          /unnamed/i,
          /^token$/i,
          /^coin$/i,
+         /^new/i, // Often spam tokens start with "new"
+         /^moon/i, // "Moon" tokens are often spam
+         /^pump/i, // "Pump" tokens
+         /^safe/i, // Many "safe" tokens are scams
+         /^baby/i, // "Baby" tokens are often spam
+         /^mini/i, // "Mini" tokens
+         /^mini/i, // "Mini" tokens
+         /^meme/i, // Many meme tokens are spam
+         /^doge/i, // Many doge variants are spam
+         /^shib/i, // Many shib variants are spam
+         /^floki/i, // Many floki variants are spam
+         /^pepe/i, // Many pepe variants are spam
+         /^elon/i, // Many elon tokens are spam
+         /^trump/i, // Many trump tokens are spam
+         /^biden/i, // Many biden tokens are spam
+         /^christ/i, // Religious tokens are often spam
+         /^jesus/i, // Religious tokens
+         /^god/i, // Religious tokens
+         /jack/i, // "Jack" tokens are often spam
+         /^gmeow/i, // Specific spam pattern
+         /^ada$/i, // ADA is a legitimate coin, but many spam tokens use this name
        ]
        
        const name = (asset.name || '').toLowerCase()
@@ -665,6 +690,22 @@ export default function Home() {
        
        // If name or symbol matches suspicious patterns, filter out
        if (suspiciousPatterns.some(pattern => pattern.test(name) || pattern.test(symbol))) {
+         console.log(`[Spam Filter] Filtered ${asset.symbol} (${asset.name}): matches suspicious pattern`)
+         return false
+       }
+       
+       // Filter tokens with very generic or single-word names that aren't well-known
+       // This is more aggressive - only keep if it's a known token or has a proper name
+       const wellKnownTokens = ['usdc', 'usdt', 'dai', 'weth', 'wbtc', 'link', 'uni', 'aave', 'mkr', 'comp', 'snx', 'crv', 'yfi', '1inch', 'sushi', 'bal', 'ren', 'knc', 'zrx', 'bat', 'mana', 'sand', 'enj', 'grt', 'matic', 'ftm', 'avax', 'atom', 'dot', 'sol', 'ada', 'xrp', 'ltc', 'bch', 'etc', 'xlm', 'eos', 'trx', 'xmr', 'zec', 'dash', 'bch', 'xem', 'neo', 'vet', 'icp', 'theta', 'fil', 'hbar', 'algo', 'xtz', 'egld', 'axs', 'spl', 'chz', 'mkr', 'enj', 'mana', 'sand', 'gala', 'ape', 'imx', 'flow', 'rndr', 'grt', 'lrc', 'skl', 'audius', 'api3', 'band', 'comp', 'crv', 'enj', 'knc', 'link', 'mana', 'mkr', 'ren', 'snx', 'uma', 'yfi', 'zrx']
+       
+       // If it's a single word and not in well-known list, might be spam
+       // But be less aggressive - only filter if it's clearly suspicious
+       const isSingleWord = name.split(/\s+/).length === 1 && symbol.split(/\s+/).length === 1
+       const isWellKnown = wellKnownTokens.includes(symbol.toLowerCase()) || wellKnownTokens.includes(name.toLowerCase())
+       
+       // Filter if single word, not well-known, and balance is very small (likely dust)
+       if (isSingleWord && !isWellKnown && balance < 0.01) {
+         console.log(`[Spam Filter] Filtered ${asset.symbol} (${asset.name}): single word, not well-known, small balance (${balance})`)
          return false
        }
        
