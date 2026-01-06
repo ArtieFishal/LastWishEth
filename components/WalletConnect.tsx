@@ -864,10 +864,14 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                       }
                       
                       // Xverse uses 'connect' method, not 'requestAccounts'
-                      // Try connect() first for Xverse
-                      if ((wallet.name === 'Xverse' || wallet.name.includes('Xverse')) && typeof selectedProvider.connect === 'function') {
+                      // Try connect() first for Xverse - this is the PRIMARY method
+                      const isXverse = wallet.name === 'Xverse' || wallet.name.toLowerCase().includes('xverse')
+                      const hasConnect = typeof selectedProvider.connect === 'function'
+                      console.log(`[Bitcoin Wallet] Checking Xverse connect: isXverse=${isXverse}, hasConnect=${hasConnect}, wallet.name="${wallet.name}"`)
+                      
+                      if (isXverse && hasConnect) {
                         try {
-                          console.log(`[Bitcoin Wallet] Trying Xverse connect() - popup should appear...`)
+                          console.log(`[Bitcoin Wallet] 🎯 Trying Xverse connect() - popup should appear, please click Connect...`)
                           const connectResult = await selectedProvider.connect()
                           console.log(`[Bitcoin Wallet] ✅ Xverse connect() result:`, connectResult)
                           // Xverse connect() returns account info
@@ -877,9 +881,13 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                               accounts = connectResult.accounts
                             } else if (connectResult.addresses && Array.isArray(connectResult.addresses)) {
                               accounts = connectResult.addresses
+                            } else if (connectResult.address) {
+                              // Single address
+                              accounts = [{ address: connectResult.address }]
                             } else if (!Array.isArray(accounts)) {
                               accounts = [accounts]
                             }
+                            console.log(`[Bitcoin Wallet] Processed connect() result into accounts:`, accounts)
                           }
                         } catch (err: any) {
                           console.log(`[Bitcoin Wallet] ❌ Xverse connect() failed:`, err.message, err)
@@ -889,6 +897,8 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                             return
                           }
                         }
+                      } else if (isXverse && !hasConnect) {
+                        console.log(`[Bitcoin Wallet] ⚠️ Xverse detected but connect() method not available`)
                       }
                       
                       // Try requestAccounts first (shows popup) - this is the standard method for other wallets
