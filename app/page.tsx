@@ -2657,13 +2657,27 @@ onSelectionChange={setSelectedAssetIds}
    >
      ← Back to Assets
    </button>
-   <button
-     onClick={handleSaveToQueue}
-     disabled={selectedAssetIds.length === 0 || allocations.filter(a => selectedAssetIds.includes(a.assetId)).length === 0}
-     className="flex-1 rounded-lg bg-green-600 text-white p-4 font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-   >
-     ✓ Save to Queue ({queuedSessions.length}/20)
-   </button>
+  <button
+    onClick={() => {
+      console.log('[Save to Queue Button] Clicked')
+      console.log('[Save to Queue Button] selectedAssetIds:', selectedAssetIds)
+      console.log('[Save to Queue Button] allocations:', allocations)
+      console.log('[Save to Queue Button] filtered allocations:', allocations.filter(a => selectedAssetIds.includes(a.assetId)))
+      handleSaveToQueue()
+    }}
+    disabled={(() => {
+      const hasSelectedAssets = selectedAssetIds.length > 0
+      const hasAllocations = allocations.filter(a => selectedAssetIds.includes(a.assetId)).length > 0
+      const isDisabled = !hasSelectedAssets || !hasAllocations
+      if (isDisabled) {
+        console.log('[Save to Queue Button] Disabled - hasSelectedAssets:', hasSelectedAssets, 'hasAllocations:', hasAllocations)
+      }
+      return isDisabled
+    })()}
+    className="flex-1 rounded-lg bg-green-600 text-white p-4 font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+  >
+    ✓ Save to Queue ({queuedSessions.length}/20)
+  </button>
    {queuedSessions.length > 0 && (
      <button
        onClick={() => setStep('details')}
