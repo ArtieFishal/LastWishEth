@@ -630,6 +630,12 @@ export default function Home() {
     // Always show native tokens (ETH, BTC, MATIC, APE) regardless of balance
     if (asset.type === 'native') return true
     
+    // Always show Bitcoin (BTC) - it uses type 'btc' not 'native'
+    if (asset.type === 'btc') {
+      console.log(`[Spam Filter] Keeping BTC asset: ${asset.symbol} (${asset.name}) - balance: ${asset.balanceFormatted}`)
+      return true
+    }
+    
     // Always show NFTs
     if (asset.type === 'erc721' || asset.type === 'erc1155') return true
    
@@ -639,8 +645,8 @@ export default function Home() {
     // Always show ordinals
     if (asset.type === 'ordinal') return true
      
-     // For ERC-20 tokens, check balance threshold and spam indicators
-     if (asset.type === 'erc20' || asset.type === 'btc') {
+     // For ERC-20 tokens only, check balance threshold and spam indicators
+     if (asset.type === 'erc20') {
        const balance = parseFloat(asset.balance) / Math.pow(10, asset.decimals || 18)
        
        // Filter out tokens with balance below threshold (0.000001)
