@@ -1232,9 +1232,11 @@ setTimeout(() => {
  }
 
  // Check if we have selected assets
+ console.log('[Save to Queue] Checking selected assets:', selectedAssetIds.length)
  if (selectedAssetIds.length === 0) {
- setError('Please select at least one asset to save to queue.')
- return
+   console.log('[Save to Queue] ❌ No assets selected')
+   setError('Please select at least one asset to save to queue.')
+   return
  }
 
  // Check if we have allocations
@@ -1253,15 +1255,20 @@ setTimeout(() => {
  console.log('[Save to Queue] ✅ All checks passed, proceeding to save')
 
  // Check queue limit
+ console.log('[Save to Queue] Checking queue limit:', queuedSessions.length)
  if (queuedSessions.length >= 20) {
- setError('Maximum 20 wallets allowed. Please remove a queued wallet first.')
- return
+   console.log('[Save to Queue] ❌ Queue limit reached')
+   setError('Maximum 20 wallets allowed. Please remove a queued wallet first.')
+   return
  }
 
  // Check if this wallet is already queued
- if (queuedSessions.some(s => s.walletAddress.toLowerCase() === walletAddress.toLowerCase())) {
- setError('This wallet is already in the queue. Please disconnect and connect a different wallet.')
- return
+ const isAlreadyQueued = queuedSessions.some(s => s.walletAddress.toLowerCase() === walletAddress.toLowerCase())
+ console.log('[Save to Queue] Checking if wallet already queued:', isAlreadyQueued)
+ if (isAlreadyQueued) {
+   console.log('[Save to Queue] ❌ Wallet already in queue')
+   setError('This wallet is already in the queue. Please disconnect and connect a different wallet.')
+   return
  }
 
  // Get assets for this session
