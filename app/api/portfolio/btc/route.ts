@@ -347,7 +347,7 @@ export async function POST(request: NextRequest) {
         // If ordinals are found, they're shown as separate assets, so update the message
         const note = ordinalsFound === 0 
           ? 'This balance includes all satoshis. Ordinals and rare SATs are detected and shown separately above. When allocating, consider that rare SATs should be preserved separately from regular Bitcoin.'
-          : `This balance includes all satoshis. ${ordinalsFound} ordinal(s) detected and shown separately above. When allocating, consider that rare SATs should be preserved separately from regular Bitcoin.`
+          : `This address contains ${ordinalsFound} ordinal(s) and rare SATs. The BTC balance cannot be selected or split - only individual ordinals can be allocated to preserve rare SATs.`
         
         assets.push({
           id: `btc-${address}`,
