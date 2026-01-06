@@ -26,18 +26,22 @@ export function AllocationPanel({
   const [sortBy, setSortBy] = useState<'name' | 'status' | 'chain' | 'type'>('name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
-  // Helper to check if asset is NFT (non-fungible) - includes ethscriptions
-  const isNFT = (asset: Asset) => asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription'
+  // Helper to check if asset is NFT (non-fungible) - includes ethscriptions and ordinals
+  const isNFT = (asset: Asset) => asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription' || asset.type === 'ordinal'
   
   // Helper to check if asset is fungible (can be split)
-  const isFungible = (asset: Asset) => asset.type === 'native' || asset.type === 'erc20' || asset.type === 'btc'
+  const isFungible = (asset: Asset) => asset.type === 'native' || asset.type === 'erc20' || (asset.type === 'btc' && asset.metadata?.assetType === 'regular')
   
   // Helper to check if asset is ethscription
   const isEthscription = (asset: Asset) => asset.type === 'ethscription'
   
-  // Separate assets into NFTs (including ethscriptions), ethscriptions, and fungible tokens
+  // Helper to check if asset is ordinal
+  const isOrdinal = (asset: Asset) => asset.type === 'ordinal'
+  
+  // Separate assets into NFTs (including ethscriptions and ordinals), ethscriptions, ordinals, and fungible tokens
   const nftAssets = assets.filter(isNFT)
   const ethscriptionAssets = assets.filter(isEthscription)
+  const ordinalAssets = assets.filter(isOrdinal)
   const fungibleAssets = assets.filter(isFungible)
 
   // Calculate default percentage for quick allocate (evenly across all beneficiaries)

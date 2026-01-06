@@ -906,13 +906,22 @@ export default function Home() {
 // Load Bitcoin assets
 if (btcAddress) {
 try {
-console.log('[Bitcoin] Loading assets for address:', btcAddress)
+console.log('[Bitcoin] Loading assets for payment address:', btcAddress)
+// Check if we have an ordinals address stored
+const ordinalsAddress = walletProviders[`${btcAddress}-ordinals`]
+const addressesToCheck = ordinalsAddress && ordinalsAddress !== btcAddress 
+  ? [btcAddress, ordinalsAddress] 
+  : [btcAddress]
+
+console.log('[Bitcoin] Checking addresses:', addressesToCheck)
+
+// Fetch from payment address (for BTC balance)
 const btcResponse = await axios.post('/api/portfolio/btc', {
 address: btcAddress,
 })
-console.log('[Bitcoin] API response:', btcResponse.data)
+console.log('[Bitcoin] API response for payment address:', btcResponse.data)
 if (btcResponse.data?.assets && Array.isArray(btcResponse.data.assets)) {
-console.log('[Bitcoin] Found', btcResponse.data.assets.length, 'assets')
+console.log('[Bitcoin] Found', btcResponse.data.assets.length, 'assets from payment address')
 // Filter out duplicates
 const existingIds = new Set(assets.map(a => a.id))
 const uniqueAssets = btcResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
@@ -921,6 +930,29 @@ console.log('[Bitcoin] Asset details:', uniqueAssets)
 newAssets.push(...uniqueAssets)
 } else {
 console.warn('[Bitcoin] No assets in response or invalid format:', btcResponse.data)
+}
+
+// If we have an ordinals address, also fetch from it
+if (ordinalsAddress && ordinalsAddress !== btcAddress) {
+try {
+console.log('[Bitcoin] Loading ordinals from ordinals address:', ordinalsAddress)
+const ordinalsResponse = await axios.post('/api/portfolio/btc', {
+address: ordinalsAddress,
+})
+console.log('[Bitcoin] API response for ordinals address:', ordinalsResponse.data)
+if (ordinalsResponse.data?.assets && Array.isArray(ordinalsResponse.data.assets)) {
+// Only add ordinals (not regular BTC) from ordinals address
+const ordinalsAssets = ordinalsResponse.data.assets.filter((a: Asset) => a.type === 'ordinal')
+console.log('[Bitcoin] Found', ordinalsAssets.length, 'ordinals from ordinals address')
+const existingIds = new Set(assets.map(a => a.id))
+const uniqueOrdinals = ordinalsAssets.filter((a: Asset) => !existingIds.has(a.id))
+console.log('[Bitcoin] After deduplication:', uniqueOrdinals.length, 'unique ordinals')
+newAssets.push(...uniqueOrdinals)
+}
+} catch (ordinalsErr) {
+console.error('[Bitcoin] Error loading ordinals from ordinals address:', ordinalsErr)
+// Don't fail the whole request if ordinals fail
+}
 }
 } catch (err) {
 console.error('[Bitcoin] Error loading BTC assets:', err)
@@ -1973,9 +2005,13 @@ setTimeout(() => {
  Connect more wallets to add their assets. You can connect multiple EVM wallets and Bitcoin wallets.
  </p>
  <WalletConnect
-              onBitcoinConnect={async (addr) => {
+              onBitcoinConnect={async (addr, provider) => {
                 if (!addr) return
                 setBtcAddress(addr)
+                // Store Bitcoin wallet provider (Xverse, OKX, Blockchain.com, Manual, etc.)
+                if (provider) {
+                  setWalletProviders((prev) => ({ ...prev, [addr]: provider }))
+                }
                 setSelectedWalletForLoading(null) // Clear EVM selection when Bitcoin is connected
                 setError(null)
                 // Stay on connect step - user can manually load assets when ready

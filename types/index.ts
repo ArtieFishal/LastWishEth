@@ -1,7 +1,7 @@
 export interface Asset {
   id: string
   chain: string
-  type: 'native' | 'erc20' | 'erc721' | 'erc1155' | 'btc' | 'ethscription'
+  type: 'native' | 'erc20' | 'erc721' | 'erc1155' | 'btc' | 'ethscription' | 'ordinal'
   symbol: string
   name: string
   balance: string
@@ -12,9 +12,18 @@ export interface Asset {
   collectionName?: string
   decimals?: number
   walletAddress?: string // Wallet address this asset belongs to
-  walletProvider?: string // Wallet provider name (MetaMask, Rainbow, WalletConnect, Xverse, etc.)
+  walletProvider?: string // Wallet provider name (MetaMask, Rainbow, WalletConnect, Xverse, OKX, Blockchain.com, etc.)
   imageUrl?: string // NFT image URL
-  metadata?: any // Full NFT metadata
+  metadata?: {
+    sats?: string
+    satsFormatted?: string
+    assetType?: 'regular' | 'ordinal' | 'rare_sat' // Bitcoin asset type
+    inscriptionId?: string // Ordinal inscription ID
+    contentType?: string // Ordinal content type
+    contentUrl?: string // Ordinal content URL
+    note?: string
+    [key: string]: any // Full NFT metadata
+  }
   // Ethscription-specific fields
   ethscriptionId?: string // The transaction hash or ethscription ID
   contentUri?: string // The content URI for the ethscription

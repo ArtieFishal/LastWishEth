@@ -14,6 +14,7 @@ const getChainColor = (chain: string) => {
     arbitrum: 'bg-cyan-100 text-cyan-800',
     polygon: 'bg-purple-100 text-purple-800',
     bitcoin: 'bg-orange-100 text-orange-800',
+    apechain: 'bg-yellow-100 text-yellow-800',
   }
   return colors[chain.toLowerCase()] || 'bg-gray-100 text-gray-800'
 }
@@ -55,10 +56,29 @@ export function AssetList({ assets }: AssetListProps) {
                     ETHSCRIPTION
                   </span>
                 ) : null}
+                {asset.type === 'ordinal' ? (
+                  <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded font-semibold">
+                    ORDINAL
+                  </span>
+                ) : null}
               </div>
               <p className="text-sm text-gray-600 font-medium">{asset.name}</p>
               {asset.tokenId && (
                 <p className="text-xs text-gray-500 font-mono mt-1">Token ID: {asset.tokenId}</p>
+              )}
+              {asset.type === 'ordinal' && (
+                <div className="mt-2 space-y-1">
+                  {asset.metadata?.inscriptionId && (
+                    <p className="text-xs text-gray-600 font-semibold">
+                      Inscription #{asset.metadata.inscriptionId}
+                    </p>
+                  )}
+                  {asset.metadata?.contentType && (
+                    <p className="text-xs text-gray-500">
+                      Type: {asset.metadata.contentType}
+                    </p>
+                  )}
+                </div>
               )}
               {asset.type === 'ethscription' && (
                 <div className="mt-2 space-y-1">
@@ -109,12 +129,12 @@ export function AssetList({ assets }: AssetListProps) {
                   )}
                 </p>
               )}
-              {asset.contractAddress && asset.type !== 'native' && asset.type !== 'btc' && asset.type !== 'ethscription' && (
+              {asset.contractAddress && asset.type !== 'native' && asset.type !== 'btc' && asset.type !== 'ethscription' && asset.type !== 'ordinal' && (
                 <p className="text-xs text-gray-500 font-mono mt-1 truncate">
                   {asset.contractAddress.slice(0, 10)}...{asset.contractAddress.slice(-8)}
                 </p>
               )}
-              {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription') && (
+              {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription' || asset.type === 'ordinal') && (
                 <div className="mt-3">
                   <NFTImage
                     imageUrl={asset.imageUrl}

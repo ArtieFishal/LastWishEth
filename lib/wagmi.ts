@@ -1,5 +1,28 @@
 import { createConfig, http } from 'wagmi'
 import { base, arbitrum, polygon, mainnet } from 'wagmi/chains'
+import { defineChain } from 'viem'
+
+// ApeChain network definition
+const apeChain = defineChain({
+  id: 33139,
+  name: 'ApeChain',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'ApeCoin',
+    symbol: 'APE',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://apechain.calderachain.xyz/http'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'ApeChain Explorer',
+      url: 'https://apechain.calderaexplorer.xyz',
+    },
+  },
+})
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || ''
 
@@ -68,13 +91,14 @@ let _ssrConfig: ReturnType<typeof createConfig> | null = null
 export const getSSRConfig = () => {
   if (!_ssrConfig) {
     _ssrConfig = createConfig({
-      chains: [mainnet, base, arbitrum, polygon],
+      chains: [mainnet, base, arbitrum, polygon, apeChain],
       connectors: [], // Empty connectors during SSR - no indexedDB access
       transports: {
         [mainnet.id]: http(),
         [base.id]: http(),
         [arbitrum.id]: http(),
         [polygon.id]: http(),
+        [apeChain.id]: http(),
       },
       ssr: false,
     })
@@ -93,13 +117,14 @@ export const getConfig = async () => {
     _configPromise = (async () => {
       const connectors = await buildConnectors()
       _config = createConfig({
-        chains: [mainnet, base, arbitrum, polygon],
+        chains: [mainnet, base, arbitrum, polygon, apeChain],
         connectors,
         transports: {
           [mainnet.id]: http(),
           [base.id]: http(),
           [arbitrum.id]: http(),
           [polygon.id]: http(),
+          [apeChain.id]: http(),
         },
         ssr: false,
       })

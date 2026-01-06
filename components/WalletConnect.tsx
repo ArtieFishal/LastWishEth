@@ -4,7 +4,7 @@ import { useAccount, useConnect, useDisconnect, useConnectorClient } from 'wagmi
 import { useState, useEffect, useRef } from 'react'
 
 interface WalletConnectProps {
-  onBitcoinConnect?: (address: string, provider?: string) => void
+  onBitcoinConnect?: (address: string, provider?: string, ordinalsAddress?: string) => void
   onEvmConnect?: (address: string, provider?: string) => void
 }
 
@@ -110,12 +110,104 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
   const [btcAddress, setBtcAddress] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [detectedBtcWallets, setDetectedBtcWallets] = useState<Array<{ name: string; provider: any; method: string; icon: string }>>([])
+  const [scanningWallets, setScanningWallets] = useState(false)
   const manualBtcInputRef = useRef<HTMLInputElement>(null)
 
   // Prevent hydration mismatch by only rendering after mount
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Scan for Bitcoin wallets on mount
+  useEffect(() => {
+    if (mounted && typeof window !== 'undefined') {
+      scanForBitcoinWallets()
+    }
+  }, [mounted])
+
+  // Function to scan for available Bitcoin wallets
+  const scanForBitcoinWallets = async () => {
+    if (typeof window === 'undefined') return
+    
+    setScanningWallets(true)
+    const win = window as any
+    const providers: Array<{ name: string; provider: any; method: string; icon: string }> = []
+    
+    // Wait a bit for extensions to inject
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // Check for btc_providers array (standard for multiple wallets)
+    if (win.btc_providers && Array.isArray(win.btc_providers)) {
+      for (const provider of win.btc_providers) {
+        const providerName = provider.name || provider.id || 'Unknown Bitcoin Wallet'
+        // Determine icon based on name
+        let icon = '₿'
+        if (providerName.toLowerCase().includes('xverse')) icon = '₿'
+        else if (providerName.toLowerCase().includes('okx')) icon = '🔷'
+        else if (providerName.toLowerCase().includes('blockchain')) icon = '🔗'
+        
+        if (!providers.some(p => p.name === providerName)) {
+          providers.push({
+            name: providerName,
+            provider: provider,
+            method: 'btc_providers',
+            icon: icon
+          })
+        }
+      }
+    }
+    
+    // Check for individual wallet providers
+    if (win.btc && !providers.some(p => p.method === 'window.btc')) {
+      providers.push({
+        name: 'Bitcoin Provider',
+        provider: win.btc,
+        method: 'window.btc',
+        icon: '₿'
+      })
+    }
+    
+    if (win.XverseProviders?.BitcoinProvider && !providers.some(p => p.name === 'Xverse')) {
+      providers.push({
+        name: 'Xverse',
+        provider: win.XverseProviders.BitcoinProvider,
+        method: 'XverseProviders',
+        icon: '₿'
+      })
+    }
+    
+    if (win.okxwallet?.bitcoin && !providers.some(p => p.name === 'OKX')) {
+      providers.push({
+        name: 'OKX',
+        provider: win.okxwallet.bitcoin,
+        method: 'okxwallet',
+        icon: '🔷'
+      })
+    }
+    
+    if (win.blockchain?.bitcoin && !providers.some(p => p.name === 'Blockchain.com')) {
+      providers.push({
+        name: 'Blockchain.com',
+        provider: win.blockchain.bitcoin,
+        method: 'blockchain',
+        icon: '🔗'
+      })
+    }
+    
+    if (win.bitcoin && !providers.some(p => p.method === 'window.bitcoin')) {
+      providers.push({
+        name: 'Bitcoin Wallet',
+        provider: win.bitcoin,
+        method: 'window.bitcoin',
+        icon: '₿'
+      })
+    }
+    
+    setDetectedBtcWallets(providers)
+    setScanningWallets(false)
+    console.log(`[Bitcoin Wallet Scan] Detected ${providers.length} wallet(s):`, providers.map(p => p.name))
+  }
 
   // Call onEvmConnect when EVM wallet connects
   useEffect(() => {
@@ -164,7 +256,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
     setConnecting(true)
     try {
       if (typeof window === 'undefined') {
-        alert('Please install Xverse wallet extension from https://www.xverse.app/')
+        alert('Please install a Bitcoin wallet extension (Xverse, OKX, Blockchain.com, etc.)')
         return
       }
 
@@ -176,586 +268,389 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
         console.warn('Running on localhost - some extensions may not inject properly')
       }
       
-      // Try to wake up the extension service worker by attempting to communicate with it
-      // This might help if the service worker is inactive
-      // Based on Xverse troubleshooting: https://support.xverse.app/hc/en-us/categories/23262882625293-Troubleshooting-Errors
-      console.log('Attempting to wake up Xverse extension...')
+      console.log('[Bitcoin Wallet] Detecting available Bitcoin wallet providers...')
       
-      // Try to trigger service worker activation by accessing extension APIs
-      // Some extensions need a user interaction to activate
-      try {
-        // Attempt to access extension context
-        if (win.btc_providers) {
-          console.log('[Xverse] Extension context detected, attempting activation...')
+      // Wait for extensions to inject (poll for up to 10 seconds)
+      let attempts = 0
+      const maxAttempts = 100
+      
+      // Detect all available Bitcoin wallet providers
+      const detectProviders = () => {
+        const providers: Array<{ name: string; provider: any; method: string }> = []
+        
+        // Check for btc_providers array (standard for multiple wallets)
+        // This is the PRIMARY method - most wallets use this
+        if (win.btc_providers && Array.isArray(win.btc_providers)) {
+          for (const provider of win.btc_providers) {
+            const providerName = provider.name || provider.id || 'Unknown Bitcoin Wallet'
+            // Don't add duplicates - if we already have this provider, skip it
+            if (!providers.some(p => p.name === providerName)) {
+              providers.push({
+                name: providerName,
+                provider: provider,
+                method: 'btc_providers'
+              })
+            }
+          }
         }
-      } catch (e) {
-        console.log('[Xverse] Extension context check:', e)
+        
+        // Check for individual wallet providers (fallback methods)
+        // window.btc is a standard Bitcoin Provider API
+        if (win.btc && !providers.some(p => p.method === 'window.btc')) {
+          providers.push({
+            name: 'Bitcoin Provider',
+            provider: win.btc,
+            method: 'window.btc'
+          })
+        }
+        
+        // XverseProviders is Xverse-specific
+        if (win.XverseProviders?.BitcoinProvider && !providers.some(p => p.name === 'Xverse')) {
+          providers.push({
+            name: 'Xverse',
+            provider: win.XverseProviders.BitcoinProvider,
+            method: 'XverseProviders'
+          })
+        }
+        
+        // Check for OKX wallet
+        if (win.okxwallet?.bitcoin) {
+          providers.push({
+            name: 'OKX',
+            provider: win.okxwallet.bitcoin,
+            method: 'okxwallet'
+          })
+        }
+        
+        // Check for Blockchain.com wallet
+        if (win.blockchain?.bitcoin) {
+          providers.push({
+            name: 'Blockchain.com',
+            provider: win.blockchain.bitcoin,
+            method: 'blockchain'
+          })
+        }
+        
+        // Check for window.bitcoin
+        if (win.bitcoin) {
+          providers.push({
+            name: 'Bitcoin Wallet',
+            provider: win.bitcoin,
+            method: 'window.bitcoin'
+          })
+        }
+        
+        return providers
       }
       
-      // Wait for extension to inject (poll for up to 10 seconds to allow service worker to activate)
-      let attempts = 0
-      const maxAttempts = 100 // 10 seconds with 100ms intervals (longer to allow service worker to wake up)
+      // Poll for providers
+      let detectedProviders = detectProviders()
+      while (detectedProviders.length === 0 && attempts < maxAttempts) {
+        attempts++
+        await new Promise(resolve => setTimeout(resolve, 100))
+        detectedProviders = detectProviders()
+      }
       
-      // Always poll at least once to ensure attempts is tracked
-      // Check immediately first, then poll if not found
-      let hasProvider = win.btc || 
-        (win.btc_providers && Array.isArray(win.btc_providers) && win.btc_providers.length > 0) || 
-        win.XverseProviders || 
-        win.bitcoin
+      console.log(`[Bitcoin Wallet] Detected ${detectedProviders.length} provider(s) after ${attempts} attempts`)
       
-      if (!hasProvider) {
-        // Provider not found immediately, start polling
-        while (attempts < maxAttempts) {
-          attempts++
-          await new Promise(resolve => setTimeout(resolve, 100))
+      // If no providers found, offer manual entry
+      if (detectedProviders.length === 0) {
+        const useManual = confirm('No Bitcoin wallet detected. Would you like to manually enter your Bitcoin address?')
+        if (useManual) {
+          const address = prompt('Please enter your Bitcoin address:')
+          if (address && address.trim()) {
+            const btcAddressRegex = /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/
+            const trimmedAddress = address.trim()
+            if (btcAddressRegex.test(trimmedAddress)) {
+              setBtcAddress(trimmedAddress)
+              onBitcoinConnect?.(trimmedAddress, 'Manual')
+              setConnecting(false)
+              return
+            } else {
+              alert('Invalid Bitcoin address format. Please enter a valid address (starts with 1, 3, or bc1).')
+            }
+          }
+        }
+        setConnecting(false)
+        return
+      }
+      
+      // Select provider
+      let selectedProvider = null
+      let providerName = 'Unknown'
+      
+      if (detectedProviders.length === 1) {
+        selectedProvider = detectedProviders[0].provider
+        providerName = detectedProviders[0].name
+        console.log(`[Bitcoin Wallet] Using single provider: ${providerName}`)
+      } else {
+        // Multiple providers - show selection dialog
+        const providerList = detectedProviders.map((p, i) => `${i + 1}. ${p.name}`).join('\n')
+        const choice = prompt(`Multiple Bitcoin wallets detected:\n\n${providerList}\n\nEnter the number of the wallet you want to connect (or Cancel to use manual entry):`)
+        const index = parseInt(choice || '') - 1
+        if (index >= 0 && index < detectedProviders.length) {
+          selectedProvider = detectedProviders[index].provider
+          providerName = detectedProviders[index].name
+          console.log(`[Bitcoin Wallet] User selected: ${providerName}`)
+        } else {
+          // User cancelled or invalid choice, offer manual entry
+          const useManual = confirm('Would you like to manually enter your Bitcoin address instead?')
+          if (useManual) {
+            const address = prompt('Please enter your Bitcoin address:')
+            if (address && address.trim()) {
+              const btcAddressRegex = /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/
+              const trimmedAddress = address.trim()
+              if (btcAddressRegex.test(trimmedAddress)) {
+                setBtcAddress(trimmedAddress)
+                onBitcoinConnect?.(trimmedAddress, 'Manual')
+                setConnecting(false)
+                return
+              } else {
+                alert('Invalid Bitcoin address format.')
+              }
+            }
+          }
+          setConnecting(false)
+          return
+        }
+      }
+      
+      // Try to connect with selected provider
+      console.log(`[Bitcoin Wallet] Attempting to connect with ${providerName}...`)
+      let accounts = null
+      let address = null
+      let ordinalsAddress: string | null = null
+      
+      // Try requestAccounts first (shows popup) - this is the standard method
+      if (typeof selectedProvider.requestAccounts === 'function') {
+        try {
+          console.log(`[Bitcoin Wallet] Trying requestAccounts() - popup should appear...`)
+          accounts = await selectedProvider.requestAccounts()
+          console.log(`[Bitcoin Wallet] ✅ requestAccounts result:`, accounts)
+          // Normalize response - some wallets return arrays, some return objects
+          if (accounts && !Array.isArray(accounts) && typeof accounts === 'object') {
+            // If it's an object, try to extract array from common properties
+            if (accounts.accounts && Array.isArray(accounts.accounts)) {
+              accounts = accounts.accounts
+            } else if (accounts.result && Array.isArray(accounts.result)) {
+              accounts = accounts.result
+            } else if (accounts.addresses && Array.isArray(accounts.addresses)) {
+              accounts = accounts.addresses
+            }
+          }
+        } catch (err: any) {
+          console.log(`[Bitcoin Wallet] ❌ requestAccounts failed:`, err.message, err)
+          if (err.message?.includes('reject') || err.message?.includes('cancel') || err.code === 4001) {
+            setConnecting(false)
+            return
+          }
+        }
+      }
+      
+      // Try request('requestAccounts') - alternative API format
+      if (!accounts && typeof selectedProvider.request === 'function') {
+        try {
+          console.log(`[Bitcoin Wallet] Trying request("requestAccounts") - popup should appear...`)
+          accounts = await selectedProvider.request('requestAccounts', {})
+          console.log(`[Bitcoin Wallet] ✅ request("requestAccounts") result:`, accounts)
+          // Normalize response
+          if (accounts && !Array.isArray(accounts) && typeof accounts === 'object') {
+            if (accounts.accounts && Array.isArray(accounts.accounts)) {
+              accounts = accounts.accounts
+            } else if (accounts.result && Array.isArray(accounts.result)) {
+              accounts = accounts.result
+            } else if (accounts.addresses && Array.isArray(accounts.addresses)) {
+              accounts = accounts.addresses
+            }
+          }
+        } catch (err: any) {
+          console.log(`[Bitcoin Wallet] ❌ request("requestAccounts") failed:`, err.message, err)
+          if (err.message?.includes('reject') || err.message?.includes('cancel') || err.code === 4001) {
+            setConnecting(false)
+            return
+          }
+        }
+      }
+      
+      // Try getAccounts (may not show popup)
+      if (!accounts && typeof selectedProvider.getAccounts === 'function') {
+        try {
+          console.log(`[Bitcoin Wallet] Trying getAccounts()...`)
+          accounts = await selectedProvider.getAccounts()
+          console.log(`[Bitcoin Wallet] ✅ getAccounts result:`, accounts)
+        } catch (err: any) {
+          console.log(`[Bitcoin Wallet] ❌ getAccounts failed:`, err.message)
+        }
+      }
+      
+      // For XverseProviders, try getAccounts with purposes (Xverse-specific API)
+      if (!accounts && (providerName === 'Xverse' || providerName.includes('Xverse')) && typeof selectedProvider.request === 'function') {
+        try {
+          console.log(`[Bitcoin Wallet] Trying Xverse getAccounts with purposes...`)
+          accounts = await selectedProvider.request('getAccounts', { purposes: ['payment', 'ordinals'] })
+          console.log(`[Bitcoin Wallet] ✅ Xverse getAccounts result:`, accounts)
+        } catch (err: any) {
+          console.log(`[Bitcoin Wallet] ❌ Xverse getAccounts failed:`, err.message)
+          // Try with just payment purpose
+          try {
+            console.log(`[Bitcoin Wallet] Trying Xverse with just payment purpose...`)
+            accounts = await selectedProvider.request('getAccounts', { purposes: ['payment'] })
+            console.log(`[Bitcoin Wallet] ✅ Xverse payment-only result:`, accounts)
+          } catch (err2: any) {
+            console.log(`[Bitcoin Wallet] ❌ Xverse payment-only failed:`, err2.message)
+          }
+        }
+      }
+      
+      // For XverseProviders, also try getAddresses if available
+      if (!accounts && (providerName === 'Xverse' || providerName.includes('Xverse')) && typeof selectedProvider.getAddresses === 'function') {
+        try {
+          console.log(`[Bitcoin Wallet] Trying Xverse getAddresses()...`)
+          const addresses = await selectedProvider.getAddresses()
+          console.log(`[Bitcoin Wallet] ✅ Xverse getAddresses result:`, addresses)
+          if (addresses && Array.isArray(addresses) && addresses.length > 0) {
+            accounts = addresses
+          }
+        } catch (err: any) {
+          console.log(`[Bitcoin Wallet] ❌ Xverse getAddresses failed:`, err.message)
+        }
+      }
+      
+      // Extract address from accounts
+      if (accounts) {
+        console.log(`[Bitcoin Wallet] Processing accounts response:`, accounts, 'Type:', typeof accounts, 'IsArray:', Array.isArray(accounts))
+        
+        // Handle JSON-RPC response format
+        if (typeof accounts === 'object' && accounts !== null && accounts.result && Array.isArray(accounts.result)) {
+          const resultArray = accounts.result
+          console.log(`[Bitcoin Wallet] JSON-RPC format detected, ${resultArray.length} accounts`)
+          if (resultArray.length > 0) {
+            const paymentAccount = resultArray.find((acc: any) => acc.purpose === 'payment')
+            const ordinalsAccount = resultArray.find((acc: any) => acc.purpose === 'ordinals')
+            const account = paymentAccount || resultArray[0]
+            console.log(`[Bitcoin Wallet] Selected account:`, account)
+            address = extractBitcoinAddress(account)
+            if (ordinalsAccount) {
+              ordinalsAddress = extractBitcoinAddress(ordinalsAccount)
+              console.log(`[Bitcoin Wallet] Found ordinals address:`, ordinalsAddress)
+            }
+            console.log(`[Bitcoin Wallet] Extracted payment address:`, address)
+          }
+        } else if (Array.isArray(accounts)) {
+          // Prefer payment address over ordinals address, but also extract ordinals address
+          console.log(`[Bitcoin Wallet] Array format detected, ${accounts.length} accounts`)
+          const paymentAccount = accounts.find((acc: any) => acc.purpose === 'payment')
+          const ordinalsAccount = accounts.find((acc: any) => acc.purpose === 'ordinals')
+          const account = paymentAccount || accounts[0]
+          console.log(`[Bitcoin Wallet] Selected account:`, account)
+          address = extractBitcoinAddress(account)
+          if (ordinalsAccount) {
+            ordinalsAddress = extractBitcoinAddress(ordinalsAccount)
+            console.log(`[Bitcoin Wallet] Found ordinals address:`, ordinalsAddress)
+          }
+          console.log(`[Bitcoin Wallet] Extracted payment address:`, address)
+        } else if (typeof accounts === 'string') {
+          console.log(`[Bitcoin Wallet] String format detected:`, accounts)
+          address = accounts
+        } else if (typeof accounts === 'object' && accounts !== null) {
+          // Try to extract address from object directly
+          console.log(`[Bitcoin Wallet] Object format detected, keys:`, Object.keys(accounts))
+          address = extractBitcoinAddress(accounts)
+          console.log(`[Bitcoin Wallet] Extracted address:`, address)
           
-          // Check if any wallet provider is available
-          hasProvider = win.btc || 
-            (win.btc_providers && Array.isArray(win.btc_providers) && win.btc_providers.length > 0) || 
-            win.XverseProviders || 
-            win.bitcoin
-          
-          if (hasProvider) {
-            break // Found a provider, exit loop
+          // If that didn't work, try common nested structures
+          if (!address) {
+            if (accounts.accounts && Array.isArray(accounts.accounts) && accounts.accounts.length > 0) {
+              const paymentAccount = accounts.accounts.find((acc: any) => acc.purpose === 'payment')
+              const ordinalsAccount = accounts.accounts.find((acc: any) => acc.purpose === 'ordinals')
+              const account = paymentAccount || accounts.accounts[0]
+              address = extractBitcoinAddress(account)
+              if (ordinalsAccount) {
+                ordinalsAddress = extractBitcoinAddress(ordinalsAccount)
+              }
+            } else if (accounts.addresses && Array.isArray(accounts.addresses) && accounts.addresses.length > 0) {
+              address = accounts.addresses[0]
+            } else if (accounts.address) {
+              address = accounts.address
+            }
           }
         }
       } else {
-        // Provider found immediately, but we still want to log that we checked
-        attempts = 1
+        console.log(`[Bitcoin Wallet] No accounts returned from any method`)
       }
       
-      // Debug: Log what's available on window
-      console.log(`[Xverse Detection] Checked ${attempts} time(s) (max: ${maxAttempts})`)
-      console.log('[Xverse Detection] Checking for Xverse wallet...')
-      console.log('[Xverse Detection] window.btc:', !!win.btc, typeof win.btc)
-      console.log('[Xverse Detection] window.btc_providers:', !!win.btc_providers, Array.isArray(win.btc_providers), win.btc_providers)
-      console.log('[Xverse Detection] window.XverseProviders:', !!win.XverseProviders, typeof win.XverseProviders)
-      console.log('[Xverse Detection] window.bitcoin:', !!win.bitcoin, typeof win.bitcoin)
-      
-      // Also check for any injected properties
-      const allWindowKeys = Object.keys(win)
-      const relevantKeys = allWindowKeys.filter(k => 
-        k.toLowerCase().includes('btc') || 
-        k.toLowerCase().includes('bitcoin') || 
-        k.toLowerCase().includes('xverse') ||
-        k.toLowerCase().includes('stacks')
-      )
-      console.log('Relevant window properties:', relevantKeys)
-      
-      // Check if any of these properties exist
-      if (relevantKeys.length > 0) {
-        console.log('Found potentially relevant properties:', relevantKeys.map(k => ({ key: k, value: typeof win[k] })))
-      }
-      
-      // Method 1: Check for window.btc_providers array (Xverse uses this)
-      if (win.btc_providers && Array.isArray(win.btc_providers)) {
-        try {
-          console.log('[Xverse Detection] ✅ Found btc_providers array with', win.btc_providers.length, 'provider(s)')
-          console.log('[Xverse Detection] Full btc_providers:', JSON.stringify(win.btc_providers, null, 2))
-          
-          // Find Xverse provider in the array - try multiple matching strategies
-          let xverseProvider = win.btc_providers.find((p: any) => 
-            p.name === 'Xverse Wallet' || 
-            p.name === 'Xverse' ||
-            p.id === 'BitcoinProvider' || 
-            p.id === 'xverseProviders.BitcoinProvider' ||
-            p.id === 'XverseProviders.BitcoinProvider' ||
-            (p.name && p.name.toLowerCase().includes('xverse'))
-          )
-          
-          // If not found by name, try to find any provider that has requestAccounts or getAccounts
-          if (!xverseProvider && win.btc_providers.length > 0) {
-            console.log('[Xverse Detection] ⚠️ Xverse not found by name, trying first available provider')
-            xverseProvider = win.btc_providers[0]
-          }
-          
-          if (xverseProvider) {
-            console.log('[Xverse Detection] ✅ Using provider:', xverseProvider)
-            console.log('[Xverse Detection] Provider methods:', Object.keys(xverseProvider))
-            
-            // Try multiple methods to get accounts
-            let accounts = null
-            
-            // Try requestAccounts first - this will show the popup and wait for user approval
-            if (typeof xverseProvider.requestAccounts === 'function') {
-              try {
-                console.log('[Xverse Detection] Trying requestAccounts() - popup should appear, please click Connect...')
-                accounts = await xverseProvider.requestAccounts()
-                console.log('[Xverse Detection] ✅ requestAccounts result:', accounts)
-                // Xverse might return an array of account objects or just addresses
-                if (accounts && !Array.isArray(accounts)) {
-                  accounts = [accounts]
-                }
-              } catch (err: any) {
-                console.log('[Xverse Detection] ❌ requestAccounts failed:', err.message, err)
-                // If user rejected, show error
-                if (err.message?.includes('reject') || err.message?.includes('cancel') || err.code === 4001) {
-                  setConnecting(false)
-                  alert('Connection cancelled. Please try again and click "Connect" in the Xverse popup.')
-                  return
-                }
-              }
-            }
-            
-            // Try request with 'requestAccounts' method (alternative API)
-            if (!accounts && typeof xverseProvider.request === 'function') {
-              try {
-                console.log('[Xverse Detection] Trying request("requestAccounts") - popup should appear...')
-                accounts = await xverseProvider.request('requestAccounts', {})
-                console.log('[Xverse Detection] ✅ request("requestAccounts") result:', accounts)
-                if (accounts && !Array.isArray(accounts)) {
-                  accounts = [accounts]
-                }
-              } catch (err: any) {
-                console.log('[Xverse Detection] ❌ request("requestAccounts") failed:', err.message, err)
-                if (err.message?.includes('reject') || err.message?.includes('cancel') || err.code === 4001) {
-                  setConnecting(false)
-                  alert('Connection cancelled. Please try again and click "Connect" in the Xverse popup.')
-                  return
-                }
-              }
-            }
-            
-            // Try getAccounts if requestAccounts didn't work (this won't show popup, only works if already connected)
-            if (!accounts && typeof xverseProvider.getAccounts === 'function') {
-              try {
-                console.log('[Xverse Detection] Trying getAccounts() (may not work if not already connected)...')
-                accounts = await xverseProvider.getAccounts()
-                console.log('[Xverse Detection] ✅ getAccounts result:', accounts)
-                if (accounts && !Array.isArray(accounts)) {
-                  accounts = [accounts]
-                }
-              } catch (err: any) {
-                console.log('[Xverse Detection] ❌ getAccounts failed:', err.message)
-              }
-            }
-            
-            // Try request with 'getAccounts' method
-            if (!accounts && typeof xverseProvider.request === 'function') {
-              try {
-                console.log('[Xverse Detection] Trying request("getAccounts")...')
-                accounts = await xverseProvider.request('getAccounts', {})
-                console.log('[Xverse Detection] ✅ request("getAccounts") result:', accounts)
-                if (accounts && !Array.isArray(accounts)) {
-                  accounts = [accounts]
-                }
-              } catch (err: any) {
-                console.log('[Xverse Detection] ❌ request("getAccounts") failed:', err.message)
-              }
-            }
-            
-            if (accounts && accounts.length > 0) {
-              // Xverse might return account objects with different structures
-              let address = null
-              const account = accounts[0]
-              
-              // Try different address formats
-              if (typeof account === 'string') {
-                address = account
-              } else if (account.address) {
-                address = account.address
-              } else if (account.paymentsAddress) {
-                address = account.paymentsAddress
-              } else if (account.payments_address) {
-                address = account.payments_address
-              } else if (account.paymentAddress) {
-                address = account.paymentAddress
-              } else if (account.payment_address) {
-                address = account.payment_address
-              } else if (account.legacyAddress) {
-                address = account.legacyAddress
-              } else if (account.legacy_address) {
-                address = account.legacy_address
-              }
-              
-              console.log('[Xverse Detection] Account object:', account)
-              console.log('[Xverse Detection] Extracted address:', address)
-              
-              if (address) {
-                console.log('[Xverse Detection] 🎉 SUCCESS! Connected address:', address)
-                setConnecting(false)
-                setBtcAddress(address) // Set local state for UI
-                onBitcoinConnect?.(address) // Notify parent - this should trigger asset loading
-                return
-              } else {
-                console.log('[Xverse Detection] ⚠️ Could not extract address from account:', account)
-              }
-            } else {
-              console.log('[Xverse Detection] ⚠️ Provider found but no accounts returned')
-            }
-          } else {
-            console.log('[Xverse Detection] ⚠️ btc_providers array found but no Xverse provider in it')
-          }
-        } catch (err: any) {
-          console.error('[Xverse Detection] ❌ btc_providers method failed:', err)
+      if (address) {
+        console.log(`[Bitcoin Wallet] 🎉 SUCCESS! Connected payment address: ${address} via ${providerName}`)
+        if (ordinalsAddress && ordinalsAddress !== address) {
+          console.log(`[Bitcoin Wallet] Also found ordinals address: ${ordinalsAddress}`)
+          // Store both addresses - we'll use payment for BTC balance, ordinals address for ordinals
+          // Pass ordinals address as metadata
+          setBtcAddress(address)
+          setConnecting(false)
+          // Pass ordinals address as a third parameter (we'll need to update the callback signature)
+          // For now, we'll store it and fetch from both addresses
+          onBitcoinConnect?.(address, providerName, ordinalsAddress)
+        } else {
+          setBtcAddress(address)
+          setConnecting(false)
+          onBitcoinConnect?.(address, providerName)
         }
+        return
       }
       
-      // Method 2: Check for window.btc (standard Bitcoin Provider API)
-      if (win.btc) {
-        try {
-          console.log('[Xverse Detection] ✅ Found window.btc, trying multiple methods...')
-          
-          // Try request('requestAccounts') first - this shows popup and waits for user approval
-          try {
-            console.log('[Xverse Detection] Trying btc.request("requestAccounts") - popup should appear, please click Connect...')
-            const accounts = await win.btc.request('requestAccounts', {})
-            console.log('[Xverse Detection] ✅ btc.request("requestAccounts") result:', accounts)
-            if (accounts && accounts.length > 0) {
-              const address = extractBitcoinAddress(accounts[0])
-              if (address) {
-                setBtcAddress(address)
-                setConnecting(false)
-                onBitcoinConnect?.(address)
-                return
-              }
-            }
-          } catch (err: any) {
-            console.log('[Xverse Detection] ❌ btc.request("requestAccounts") failed:', err.message, err)
-            if (err.message?.includes('reject') || err.message?.includes('cancel') || err.code === 4001) {
-              setConnecting(false)
-              alert('Connection cancelled. Please try again and click "Connect" in the Xverse popup.')
-              return
-            }
-          }
-          
-          // Try request('getAccounts') - may not show popup if already connected
-          try {
-            console.log('[Xverse Detection] Trying btc.request("getAccounts")...')
-            const accounts = await win.btc.request('getAccounts', {})
-            console.log('[Xverse Detection] ✅ btc.request("getAccounts") result:', accounts)
-            if (accounts && accounts.length > 0) {
-              const address = extractBitcoinAddress(accounts[0])
-              if (address) {
-                setBtcAddress(address)
-                setConnecting(false)
-                onBitcoinConnect?.(address)
-                return
-              }
-            }
-          } catch (err: any) {
-            console.log('[Xverse Detection] ❌ btc.request("getAccounts") failed:', err.message)
-          }
-          
-          // Try direct getAccounts method
-          if (typeof win.btc.getAccounts === 'function') {
-            try {
-              console.log('[Xverse Detection] Trying btc.getAccounts()...')
-              const accounts = await win.btc.getAccounts()
-              console.log('[Xverse Detection] ✅ btc.getAccounts() result:', accounts)
-              if (accounts && accounts.length > 0) {
-                const address = extractBitcoinAddress(accounts[0])
-                if (address) {
-                  setBtcAddress(address)
-                  setConnecting(false)
-                  onBitcoinConnect?.(address)
-                  return
-                }
-              }
-            } catch (err: any) {
-              console.log('[Xverse Detection] ❌ btc.getAccounts() failed:', err.message)
-            }
-          }
-          
-          // Try direct requestAccounts method - this shows popup and waits for user approval
-          if (typeof win.btc.requestAccounts === 'function') {
-            try {
-              console.log('[Xverse Detection] Trying btc.requestAccounts() - popup should appear, please click Connect...')
-              const accounts = await win.btc.requestAccounts()
-              console.log('[Xverse Detection] ✅ btc.requestAccounts() result:', accounts)
-              if (accounts && accounts.length > 0) {
-                const address = extractBitcoinAddress(accounts[0])
-                if (address) {
-                  setBtcAddress(address)
-                  setConnecting(false)
-                  onBitcoinConnect?.(address)
-                  return
-                }
-              }
-            } catch (err: any) {
-              console.log('[Xverse Detection] ❌ btc.requestAccounts() failed:', err.message, err)
-              if (err.message?.includes('reject') || err.message?.includes('cancel') || err.code === 4001) {
-                setConnecting(false)
-                alert('Connection cancelled. Please try again and click "Connect" in the Xverse popup.')
-                return
-              }
-            }
-          }
-        } catch (err: any) {
-          console.error('[Xverse Detection] ❌ window.btc methods all failed:', err)
-        }
-      }
-
-      // Method 3: Check for XverseProviders (Xverse-specific API)
-      // This is the actual provider object, not just metadata
-      if (win.XverseProviders && win.XverseProviders.BitcoinProvider) {
-        try {
-          console.log('[Xverse Detection] ✅ Found XverseProviders.BitcoinProvider')
-          const provider = win.XverseProviders.BitcoinProvider
-          console.log('[Xverse Detection] Provider methods available:', Object.keys(provider))
-          
-          let accounts = null
-          
-          // Try getAddresses() first - might be simpler and not need purposes
-          if (typeof provider.getAddresses === 'function') {
-            try {
-              console.log('[Xverse Detection] Trying XverseProviders.BitcoinProvider.getAddresses()...')
-              const addresses = await provider.getAddresses()
-              console.log('[Xverse Detection] ✅ getAddresses() result:', addresses)
-              if (addresses && addresses.length > 0) {
-                accounts = addresses // Use addresses as accounts
-              }
-            } catch (err: any) {
-              console.log('[Xverse Detection] ❌ getAddresses() failed:', err.message)
-            }
-          }
-          
-          // Note: getAccounts() requires purposes parameter, so we use request() instead below
-          
-          // Try request with 'getAccounts' - Xverse requires 'purposes' parameter
-          if (!accounts && typeof provider.request === 'function') {
-            try {
-              console.log('[Xverse Detection] Trying provider.request("getAccounts") with purposes...')
-              // Xverse getAccounts requires purposes parameter (payment, ordinals, staking, etc.)
-              accounts = await provider.request('getAccounts', { 
-                purposes: ['payment', 'ordinals'] // Common Bitcoin purposes
-              })
-              console.log('[Xverse Detection] ✅ request("getAccounts") result:', accounts)
-            } catch (err: any) {
-              console.log('[Xverse Detection] ❌ request("getAccounts") failed:', err.message)
-              // Try with just payment purpose
-              try {
-                console.log('[Xverse Detection] Trying with just "payment" purpose...')
-                accounts = await provider.request('getAccounts', { purposes: ['payment'] })
-                console.log('[Xverse Detection] ✅ request("getAccounts") with payment result:', accounts)
-              } catch (err2: any) {
-                console.log('[Xverse Detection] ❌ request("getAccounts") with payment failed:', err2.message)
-              }
-            }
-          }
-          
-          // Try getAddresses - might not need purposes
-          if (!accounts && typeof provider.getAddresses === 'function') {
-            try {
-              console.log('[Xverse Detection] Trying getAddresses()...')
-              const addresses = await provider.getAddresses()
-              console.log('[Xverse Detection] ✅ getAddresses() result:', addresses)
-              if (addresses && addresses.length > 0) {
-                accounts = addresses // Use addresses as accounts
-              }
-            } catch (err: any) {
-              console.log('[Xverse Detection] ❌ getAddresses() failed:', err.message)
-            }
-          }
-          
-          // Try request with 'getAddresses'
-          if (!accounts && typeof provider.request === 'function') {
-            try {
-              console.log('[Xverse Detection] Trying provider.request("getAddresses")...')
-              accounts = await provider.request('getAddresses', {})
-              console.log('[Xverse Detection] ✅ request("getAddresses") result:', accounts)
-            } catch (err: any) {
-              console.log('[Xverse Detection] ❌ request("getAddresses") failed:', err.message)
-            }
-          }
-          
-          // Handle different response formats
-          let address = null
-          
-          if (accounts) {
-            console.log('[Xverse Detection] Raw accounts response:', accounts, 'Type:', typeof accounts)
-            
-            // Handle JSON-RPC response format (has 'result' property)
-            if (typeof accounts === 'object' && accounts !== null && accounts.result && Array.isArray(accounts.result)) {
-              console.log('[Xverse Detection] JSON-RPC response format detected, result array has', accounts.result.length, 'items')
-              const resultArray = accounts.result
-              if (resultArray.length > 0) {
-                // Prefer payment address (purpose: "payment") over ordinals address
-                const paymentAccount = resultArray.find((acc: any) => acc.purpose === 'payment')
-                const firstAccount = paymentAccount || resultArray[0]
-                console.log('[Xverse Detection] Using account:', firstAccount)
-                address = firstAccount?.address || firstAccount?.value || firstAccount?.publicKey
-                if (address) {
-                  console.log('[Xverse Detection] 🎉 SUCCESS! Extracted address from JSON-RPC result:', address)
-                  setConnecting(false)
-                  setBtcAddress(address)
-                  onBitcoinConnect?.(address)
-                  return
-                }
-              }
-            }
-            
-            if (Array.isArray(accounts)) {
-              console.log('[Xverse Detection] Accounts is an array with', accounts.length, 'items')
-              if (accounts.length > 0) {
-                // Prefer payment address over ordinals
-                const paymentAccount = accounts.find((acc: any) => acc.purpose === 'payment')
-                const first = paymentAccount || accounts[0]
-                console.log('[Xverse Detection] First account item:', first, 'Type:', typeof first)
-                address = first?.address || first?.value || first?.publicKey || first
-                if (typeof first === 'object' && first !== null) {
-                  // Try common property names
-                  address = first.address || first.value || first.publicKey || first.account || first.btcAddress || first
-                }
-              }
-            } else if (typeof accounts === 'object' && accounts !== null) {
-              console.log('[Xverse Detection] Accounts is an object, keys:', Object.keys(accounts))
-              address = accounts.address || accounts.value || accounts.publicKey || accounts.account || accounts.btcAddress
-              // If it's an object with an array property
-              if (!address && accounts.accounts && Array.isArray(accounts.accounts) && accounts.accounts.length > 0) {
-                const paymentAccount = accounts.accounts.find((acc: any) => acc.purpose === 'payment')
-                const first = paymentAccount || accounts.accounts[0]
-                address = first?.address || first?.value || first
-              }
-              if (!address && accounts.addresses && Array.isArray(accounts.addresses) && accounts.addresses.length > 0) {
-                const paymentAccount = accounts.addresses.find((acc: any) => acc.purpose === 'payment')
-                const first = paymentAccount || accounts.addresses[0]
-                address = first?.address || first?.value || first
-              }
-            } else if (typeof accounts === 'string') {
-              address = accounts
-            }
-            
-            if (address) {
-              console.log('[Xverse Detection] 🎉 SUCCESS! Extracted address:', address)
-              setConnecting(false)
-              setBtcAddress(address)
-              onBitcoinConnect?.(address)
-              return
-            } else {
-              try {
-                const accountsStr = JSON.stringify(accounts, null, 2)
-                console.log('[Xverse Detection] ⚠️ Accounts returned but couldn\'t extract address. Full response:', accountsStr)
-              } catch (e) {
-                console.log('[Xverse Detection] ⚠️ Accounts returned but couldn\'t extract address. Response type:', typeof accounts, 'Value:', accounts)
-              }
-            }
-          }
-        } catch (err: any) {
-          console.error('[Xverse Detection] ❌ XverseProviders method failed:', err)
-        }
-      }
-
-      // Method 4: Check for window.bitcoin (some wallets use this)
-      if (win.bitcoin) {
-        try {
-          console.log('Trying window.bitcoin...')
-          const accounts = await win.bitcoin.requestAccounts()
-          if (accounts && accounts.length > 0) {
-            const address = extractBitcoinAddress(accounts[0])
-            if (address) {
-              setBtcAddress(address)
-              setConnecting(false)
-              onBitcoinConnect?.(address)
-              return
-            }
-          }
-        } catch (err: any) {
-          console.log('window.bitcoin failed:', err)
-        }
-      }
-
-      // Method 5: Check for Stacks provider (Xverse also supports Stacks)
-      if (win.StacksProvider) {
-        try {
-          console.log('Trying StacksProvider (Xverse)...')
-          const provider = win.StacksProvider
-          if (provider.getAccounts) {
-            const accounts = await provider.getAccounts()
-            console.log('Accounts from StacksProvider:', accounts)
-            if (accounts && accounts.length > 0) {
-              const address = accounts[0]
-              if (address) {
-                setBtcAddress(address)
-                setConnecting(false)
-                onBitcoinConnect?.(address)
-                return
-              }
-            }
-          }
-        } catch (err: any) {
-          console.log('StacksProvider method failed:', err)
-        }
-      }
-
-      // If we get here, Xverse is not detected
-      // Reuse the relevantKeys that were already defined earlier for debugging
-      const finalAttempts = attempts >= maxAttempts ? maxAttempts : attempts
-      console.error('Xverse wallet not found after', finalAttempts, 'polling attempts')
-      console.error('Relevant window properties:', relevantKeys)
-      console.error('Sample of all window properties (first 30):', allWindowKeys.slice(0, 30))
+      // If we get here, connection failed - provide detailed error info
+      console.error(`[Bitcoin Wallet] ❌ Failed to extract address from ${providerName}`)
+      console.error(`[Bitcoin Wallet] Accounts response:`, accounts)
+      console.error(`[Bitcoin Wallet] Provider object:`, selectedProvider)
+      console.error(`[Bitcoin Wallet] Available methods:`, Object.keys(selectedProvider || {}))
       
-      // Provide helpful troubleshooting
-      // Reuse isLocalhost that was already defined earlier in the function
-      const troubleshooting = `Xverse wallet not detected after ${finalAttempts} attempts.
-
-⚠️ IMPORTANT: If you see "service worker (Inactive)" in chrome://extensions/:
-
-1. ACTIVATE THE SERVICE WORKER:
-   - Click the Xverse extension icon in your browser toolbar
-   - This will wake up the inactive service worker
-   - Wait 2-3 seconds, then try connecting again
-
-2. IF SERVICE WORKER STAYS INACTIVE:
-   - Go to chrome://extensions/
-   - Find Xverse extension
-   - Click "service worker" link to open it
-   - Or click the "Reload" button (circular arrow icon) on the extension card
-   - Then try connecting again
-
-3. VERIFY INSTALLATION:
-   - Make sure Xverse is ENABLED (toggle should be ON)
-   - Check that it has permission to access this site
-
-4. OTHER FIXES:
-   - Hard refresh: Cmd+Shift+R (Mac) or Ctrl+Shift+R (Windows)
-   - Close and reopen your browser completely
-   ${isLocalhost ? '\n⚠️ NOTE: You are on localhost. Some extensions may not inject on localhost.\n   Try deploying to a public URL or use a tunneling service.' : ''}
-
-5. ALTERNATIVE:
-   - You can manually enter your Bitcoin address below
-   - Or try using Xverse on a deployed version of this app`
-
-      alert(troubleshooting)
+      // For Xverse specifically, provide more helpful error message
+      if (providerName === 'Xverse' || providerName.includes('Xverse')) {
+        alert(`Failed to connect to Xverse wallet. This might be because:\n\n1. The Xverse extension service worker is inactive - try clicking the Xverse icon in your browser toolbar first\n2. You need to approve the connection in the Xverse popup\n3. The extension needs to be reloaded\n\nCheck the browser console for detailed error messages.\n\nWould you like to manually enter your Bitcoin address instead?`)
+      } else {
+        alert(`Failed to connect to ${providerName}. Please try again or enter your address manually.`)
+      }
       
-      // Offer manual address entry as fallback
+      // Offer manual entry as fallback
       const useManual = confirm('Would you like to manually enter your Bitcoin address instead?')
       if (useManual) {
         const address = prompt('Please enter your Bitcoin address:')
         if (address && address.trim()) {
-          // Basic validation - Bitcoin addresses start with 1, 3, or bc1
           const btcAddressRegex = /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/
           const trimmedAddress = address.trim()
           if (btcAddressRegex.test(trimmedAddress)) {
             setBtcAddress(trimmedAddress)
-            onBitcoinConnect?.(trimmedAddress)
+            onBitcoinConnect?.(trimmedAddress, 'Manual')
+            setConnecting(false)
             return
           } else {
-            alert('Invalid Bitcoin address format. Please enter a valid address (starts with 1, 3, or bc1).')
+            alert('Invalid Bitcoin address format.')
           }
         }
       }
+      
     } catch (error: any) {
       console.error('Error connecting Bitcoin wallet:', error)
       if (error.message && error.message.includes('User rejected')) {
         // User rejected, don't show error
+        setConnecting(false)
         return
       }
-      alert(`Failed to connect Bitcoin wallet: ${error.message || 'Unknown error'}\n\nPlease make sure Xverse is installed and enabled.`)
+      alert(`Failed to connect Bitcoin wallet: ${error.message || 'Unknown error'}\n\nPlease try again or enter your address manually.`)
     } finally {
       setConnecting(false)
     }
   }
 
   // Only show WalletConnect - no injected wallets
-  const walletConnectConnector = connectors?.find(c => c.name === 'WalletConnect')
+  const walletConnectConnector = connectors?.find((c: any) => c.name === 'WalletConnect')
 
   return (
     <div className="space-y-6">
       {/* Always show connection options - don't show wagmi connected status here, parent manages that */}
       <div>
         <h3 className="text-xl font-bold text-gray-900 mb-2">
-          Connect Any Certified EVM Wallet (Ethereum, Base, Arbitrum, Polygon)
+          Connect Any Certified EVM Wallet (Ethereum, Base, Arbitrum, Polygon, ApeChain)
         </h3>
         <p className="text-sm text-gray-600 mb-6">
           Each wallet requires signature verification to prove ownership before assets can be loaded.
@@ -825,56 +720,203 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
       </div>
 
       <div className="border-t dark:border-gray-700 pt-6">
-        <h3 className="text-2xl font-bold text-black dark:text-white mb-4">
-          {btcAddress ? 'Connect Another Bitcoin/Sat\'s Wallet' : 'Bitcoin/Sat\'s Wallet'}
-        </h3>
-        <button
-          onClick={handleBitcoinConnect}
-          disabled={connecting}
-          className="w-full rounded-xl border-2 p-4 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between group"
-          style={{
-            borderColor: walletConfig.Xverse.color,
-            backgroundColor: 'white',
-            color: walletConfig.Xverse.color,
-          } as React.CSSProperties}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = `${walletConfig.Xverse.bgColor}20`
-            e.currentTarget.style.borderColor = walletConfig.Xverse.hoverColor
-            e.currentTarget.style.color = walletConfig.Xverse.hoverColor
-            // Update text and icon colors on hover
-            const textSpan = e.currentTarget.querySelector('span.font-semibold') as HTMLElement
-            const svg = e.currentTarget.querySelector('svg') as SVGSVGElement
-            if (textSpan) textSpan.style.color = walletConfig.Xverse.hoverColor
-            if (svg) svg.style.color = walletConfig.Xverse.hoverColor
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white'
-            e.currentTarget.style.borderColor = walletConfig.Xverse.color
-            e.currentTarget.style.color = walletConfig.Xverse.color
-            // Reset text and icon colors
-            const textSpan = e.currentTarget.querySelector('span.font-semibold') as HTMLElement
-            const svg = e.currentTarget.querySelector('svg') as SVGSVGElement
-            if (textSpan) textSpan.style.color = walletConfig.Xverse.color
-            if (svg) svg.style.color = walletConfig.Xverse.color
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{walletConfig.Xverse.icon}</span>
-            <div>
-              <span className="font-semibold block" style={{ color: walletConfig.Xverse.color } as React.CSSProperties}>
-                Xverse Wallet
-              </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">Connect your Bitcoin wallet</span>
-            </div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-2xl font-bold text-black dark:text-white">
+            {btcAddress ? 'Connect Another Bitcoin/Sat\'s Wallet' : 'Bitcoin/Sat\'s Wallet'}
+          </h3>
+          <button
+            onClick={scanForBitcoinWallets}
+            disabled={scanningWallets}
+            className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors disabled:opacity-50"
+            title="Scan for available Bitcoin wallets"
+          >
+            {scanningWallets ? 'Scanning...' : '🔍 Scan Wallets'}
+          </button>
+        </div>
+        
+        {/* Show detected wallets as individual buttons */}
+        {detectedBtcWallets.length > 0 && (
+          <div className="mb-4 space-y-2">
+            <p className="text-sm text-gray-600 mb-2">
+              Detected {detectedBtcWallets.length} Bitcoin wallet{detectedBtcWallets.length !== 1 ? 's' : ''}:
+            </p>
+            {detectedBtcWallets.map((wallet, index) => {
+              const walletColor = wallet.name.toLowerCase().includes('xverse') ? '#F7931A' :
+                                 wallet.name.toLowerCase().includes('okx') ? '#000000' :
+                                 wallet.name.toLowerCase().includes('blockchain') ? '#0C6CF2' :
+                                 '#F7931A'
+              return (
+                <button
+                  key={`${wallet.method}-${index}`}
+                  onClick={async () => {
+                    setConnecting(true)
+                    try {
+                      const selectedProvider = wallet.provider
+                      const providerName = wallet.name
+                      console.log(`[Bitcoin Wallet] Connecting to ${providerName}...`)
+                      let accounts = null
+                      let address = null
+                      
+                      // Try requestAccounts first
+                      if (typeof selectedProvider.requestAccounts === 'function') {
+                        try {
+                          accounts = await selectedProvider.requestAccounts()
+                          if (accounts && !Array.isArray(accounts) && typeof accounts === 'object') {
+                            if (accounts.accounts && Array.isArray(accounts.accounts)) accounts = accounts.accounts
+                            else if (accounts.result && Array.isArray(accounts.result)) accounts = accounts.result
+                            else if (accounts.addresses && Array.isArray(accounts.addresses)) accounts = accounts.addresses
+                          }
+                        } catch (err: any) {
+                          if (err.message?.includes('reject') || err.code === 4001) {
+                            setConnecting(false)
+                            return
+                          }
+                        }
+                      }
+                      
+                      // Try request('requestAccounts')
+                      if (!accounts && typeof selectedProvider.request === 'function') {
+                        try {
+                          accounts = await selectedProvider.request('requestAccounts', {})
+                          if (accounts && !Array.isArray(accounts) && typeof accounts === 'object') {
+                            if (accounts.accounts && Array.isArray(accounts.accounts)) accounts = accounts.accounts
+                            else if (accounts.result && Array.isArray(accounts.result)) accounts = accounts.result
+                            else if (accounts.addresses && Array.isArray(accounts.addresses)) accounts = accounts.addresses
+                          }
+                        } catch (err: any) {
+                          if (err.message?.includes('reject') || err.code === 4001) {
+                            setConnecting(false)
+                            return
+                          }
+                        }
+                      }
+                      
+                      // For Xverse, try getAccounts with purposes
+                      if (!accounts && wallet.name === 'Xverse' && typeof selectedProvider.request === 'function') {
+                        try {
+                          accounts = await selectedProvider.request('getAccounts', { purposes: ['payment', 'ordinals'] })
+                        } catch (err: any) {
+                          try {
+                            accounts = await selectedProvider.request('getAccounts', { purposes: ['payment'] })
+                          } catch (err2: any) {
+                            console.log(`[${providerName}] getAccounts failed:`, err2.message)
+                          }
+                        }
+                      }
+                      
+                      // Extract address
+                      if (accounts) {
+                        if (Array.isArray(accounts) && accounts.length > 0) {
+                          const paymentAccount = accounts.find((acc: any) => acc.purpose === 'payment')
+                          const account = paymentAccount || accounts[0]
+                          address = extractBitcoinAddress(account)
+                        } else if (typeof accounts === 'string') {
+                          address = accounts
+                        } else {
+                          address = extractBitcoinAddress(accounts)
+                        }
+                      }
+                      
+                      if (address) {
+                        setBtcAddress(address)
+                        onBitcoinConnect?.(address, providerName)
+                        setConnecting(false)
+                      } else {
+                        alert(`Failed to connect to ${providerName}. Please try manual entry.`)
+                        setConnecting(false)
+                      }
+                    } catch (error: any) {
+                      console.error(`Error connecting to ${wallet.name}:`, error)
+                      alert(`Failed to connect to ${wallet.name}: ${error.message || 'Unknown error'}`)
+                      setConnecting(false)
+                    }
+                  }}
+                  disabled={connecting}
+                  className="w-full rounded-xl border-2 p-4 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between group"
+                  style={{
+                    borderColor: walletColor,
+                    backgroundColor: 'white',
+                    color: walletColor,
+                  } as React.CSSProperties}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = `${walletColor}20`
+                    e.currentTarget.style.borderColor = walletColor
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white'
+                    e.currentTarget.style.borderColor = walletColor
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{wallet.icon}</span>
+                    <div>
+                      <span className="font-semibold block" style={{ color: walletColor } as React.CSSProperties}>
+                        {wallet.name}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">Click to connect</span>
+                    </div>
+                  </div>
+                  {connecting ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2" style={{ borderColor: walletColor } as React.CSSProperties}></div>
+                  ) : (
+                    <svg className="w-5 h-5 transition-colors" style={{ color: walletColor } as React.CSSProperties} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  )}
+                </button>
+              )
+            })}
           </div>
-          {connecting ? (
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2" style={{ borderColor: walletConfig.Xverse.color } as React.CSSProperties}></div>
-          ) : (
-            <svg className="w-5 h-5 transition-colors" style={{ color: walletConfig.Xverse.color } as React.CSSProperties} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          )}
-        </button>
+        )}
+        
+        {/* Fallback: Auto-detect button if no wallets detected */}
+        {detectedBtcWallets.length === 0 && (
+          <button
+            onClick={handleBitcoinConnect}
+            disabled={connecting || scanningWallets}
+            className="w-full rounded-xl border-2 p-4 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between group"
+            style={{
+              borderColor: walletConfig.Xverse.color,
+              backgroundColor: 'white',
+              color: walletConfig.Xverse.color,
+            } as React.CSSProperties}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = `${walletConfig.Xverse.bgColor}20`
+              e.currentTarget.style.borderColor = walletConfig.Xverse.hoverColor
+              e.currentTarget.style.color = walletConfig.Xverse.hoverColor
+              const textSpan = e.currentTarget.querySelector('span.font-semibold') as HTMLElement
+              const svg = e.currentTarget.querySelector('svg') as SVGSVGElement
+              if (textSpan) textSpan.style.color = walletConfig.Xverse.hoverColor
+              if (svg) svg.style.color = walletConfig.Xverse.hoverColor
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'white'
+              e.currentTarget.style.borderColor = walletConfig.Xverse.color
+              e.currentTarget.style.color = walletConfig.Xverse.color
+              const textSpan = e.currentTarget.querySelector('span.font-semibold') as HTMLElement
+              const svg = e.currentTarget.querySelector('svg') as SVGSVGElement
+              if (textSpan) textSpan.style.color = walletConfig.Xverse.color
+              if (svg) svg.style.color = walletConfig.Xverse.color
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{walletConfig.Xverse.icon}</span>
+              <div>
+                <span className="font-semibold block" style={{ color: walletConfig.Xverse.color } as React.CSSProperties}>
+                  Auto-Detect Bitcoin Wallet
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">Scans for Xverse, OKX, Blockchain.com, etc.</span>
+              </div>
+            </div>
+            {connecting || scanningWallets ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2" style={{ borderColor: walletConfig.Xverse.color } as React.CSSProperties}></div>
+            ) : (
+              <svg className="w-5 h-5 transition-colors" style={{ color: walletConfig.Xverse.color } as React.CSSProperties} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            )}
+          </button>
+        )}
         
         {/* Manual address entry - always visible as fallback */}
         <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
@@ -892,7 +934,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                     const btcAddressRegex = /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/
                     if (btcAddressRegex.test(address)) {
                       setBtcAddress(address)
-                      onBitcoinConnect?.(address)
+                      onBitcoinConnect?.(address, 'Manual')
                       input.value = ''
                     } else {
                       alert('Invalid Bitcoin address format. Please enter a valid address (starts with 1, 3, or bc1).')
@@ -910,7 +952,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                     const btcAddressRegex = /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/
                     if (btcAddressRegex.test(address)) {
                       setBtcAddress(address)
-                      onBitcoinConnect?.(address)
+                      onBitcoinConnect?.(address, 'Manual')
                       input.value = ''
                     } else {
                       alert('Invalid Bitcoin address format. Please enter a valid address (starts with 1, 3, or bc1).')

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch tokens for all addresses across supported chains
-    const chains = ['eth', 'base', 'arbitrum', 'polygon']
+    const chains = ['eth', 'base', 'arbitrum', 'polygon', 'apechain']
     const allAssets = []
 
     for (const address of addresses) {
