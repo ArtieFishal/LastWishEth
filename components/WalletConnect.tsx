@@ -1108,15 +1108,22 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                         if (typeof accounts === 'object' && accounts !== null && accounts.result && Array.isArray(accounts.result)) {
                           const resultArray = accounts.result
                           console.log(`[Bitcoin Wallet] JSON-RPC format detected, ${resultArray.length} accounts`)
+                          console.log(`[Bitcoin Wallet] All accounts in result:`, JSON.stringify(resultArray, null, 2))
                           if (resultArray.length > 0) {
                             const paymentAccount = resultArray.find((acc: any) => acc.purpose === 'payment')
                             const ordinalsAccount = resultArray.find((acc: any) => acc.purpose === 'ordinals')
+                            console.log(`[Bitcoin Wallet] Payment account found:`, !!paymentAccount, paymentAccount)
+                            console.log(`[Bitcoin Wallet] Ordinals account found:`, !!ordinalsAccount, ordinalsAccount)
                             const account = paymentAccount || resultArray[0]
                             console.log(`[Bitcoin Wallet] Selected account:`, account)
                             address = extractBitcoinAddress(account)
                             if (ordinalsAccount) {
                               ordinalsAddress = extractBitcoinAddress(ordinalsAccount)
-                              console.log(`[Bitcoin Wallet] Found ordinals address:`, ordinalsAddress)
+                              console.log(`[Bitcoin Wallet] ✅ Found ordinals address from JSON-RPC: ${ordinalsAddress}`)
+                              console.log(`[Bitcoin Wallet] Ordinals account details:`, ordinalsAccount)
+                            } else {
+                              console.log(`[Bitcoin Wallet] ⚠️ No ordinals account found in JSON-RPC result`)
+                              console.log(`[Bitcoin Wallet] Available purposes:`, resultArray.map((acc: any) => acc.purpose))
                             }
                             console.log(`[Bitcoin Wallet] Extracted payment address:`, address)
                           }
