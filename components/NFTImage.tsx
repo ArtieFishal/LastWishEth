@@ -70,9 +70,20 @@ export function NFTImage({
     }
   }, [initialImageUrl, tokenUri, contractAddress, tokenId, error])
 
-  // Handle image load errors with IPFS fallback
+  // Handle image load errors with IPFS fallback and ordinal URL fallbacks
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const currentSrc = e.currentTarget.src
+    console.log(`[NFTImage] Image load error for: ${currentSrc}`)
+    
+    // If it's an ordinal URL (ord.io), try alternative endpoints
+    if (currentSrc.includes('ord.io/content/') && tokenId) {
+      // Try preview endpoint
+      const inscriptionId = tokenId
+      const previewUrl = `https://ord.io/preview/${inscriptionId}`
+      console.log(`[NFTImage] Trying ord.io preview URL: ${previewUrl}`)
+      setImageUrl(previewUrl)
+      return
+    }
     
     // If it's an IPFS URL and we haven't tried all gateways yet, try next one
     if (currentSrc.includes('ipfs.io/ipfs/') || currentSrc.includes('gateway.pinata.cloud/ipfs/')) {
@@ -98,7 +109,15 @@ export function NFTImage({
       }
     }
     
-    // If all gateways failed or not IPFS, hide image
+    // If all gateways failed or not IPFS, try tokenUri as fallback for ordinals
+    if (tokenUri && tokenUri !== currentSrc && !tokenUri.startsWith('data:')) {
+      console.log(`[NFTImage] Trying tokenUri as fallback: ${tokenUri}`)
+      setImageUrl(tokenUri)
+      return
+    }
+    
+    // If all fallbacks failed, hide image
+    console.log(`[NFTImage] All image load attempts failed, hiding image`)
     setError(true)
     e.currentTarget.style.display = 'none'
   }
