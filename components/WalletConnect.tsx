@@ -839,26 +839,27 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                       
                       // Log available methods for debugging
                       console.log(`[Bitcoin Wallet] Available methods on ${providerName}:`, Object.keys(selectedProvider))
+                      console.log(`[Bitcoin Wallet] Provider object:`, selectedProvider)
                       
-                      // Check if extension is available (for Xverse)
+                      // For Xverse, ensure we have the actual provider, not just metadata
+                      // The btc_providers array often contains metadata objects without connection methods
                       if ((wallet.name === 'Xverse' || wallet.name.includes('Xverse'))) {
                         const win = window as any
-                        if (typeof win.chrome !== 'undefined' && win.chrome.runtime) {
-                          try {
-                            // Try to ping the extension to see if it's active
-                            await new Promise((resolve) => {
-                              win.chrome.runtime.sendMessage(wallet.provider.id || 'unknown', { method: 'ping' }, (response: any) => {
-                                if (win.chrome.runtime.lastError) {
-                                  console.warn(`[Bitcoin Wallet] Extension may be inactive:`, win.chrome.runtime.lastError.message)
-                                } else {
-                                  console.log(`[Bitcoin Wallet] Extension is active`)
-                                }
-                                resolve(response)
-                              })
-                            })
-                          } catch (pingError) {
-                            console.warn(`[Bitcoin Wallet] Could not ping extension, but continuing anyway:`, pingError)
-                          }
+                        // Check if we have connection methods
+                        const hasConnectionMethods = typeof selectedProvider.requestAccounts === 'function' || 
+                                                    typeof selectedProvider.request === 'function' ||
+                                                    typeof selectedProvider.getAccounts === 'function' ||
+                                                    typeof selectedProvider.getAddresses === 'function'
+                        
+                        // If we don't have connection methods, get the actual provider from window
+                        if (!hasConnectionMethods && win.XverseProviders?.BitcoinProvider) {
+                          console.log(`[Bitcoin Wallet] Provider is metadata only, getting actual provider from window.XverseProviders.BitcoinProvider`)
+                          // Use the actual provider instead
+                          const actualProvider = win.XverseProviders.BitcoinProvider
+                          // Replace selectedProvider with actual provider
+                          Object.keys(selectedProvider).forEach(key => delete (selectedProvider as any)[key])
+                          Object.assign(selectedProvider, actualProvider)
+                          console.log(`[Bitcoin Wallet] Updated provider methods:`, Object.keys(selectedProvider))
                         }
                       }
                       
