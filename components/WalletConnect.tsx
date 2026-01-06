@@ -154,14 +154,45 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             else if (normalizedName === 'OKX') icon = '🔷'
             else if (normalizedName === 'Blockchain.com') icon = '🔗'
             
-            // Only add if we don't already have this wallet
-            if (!providers.some(p => p.name === normalizedName)) {
-              providers.push({
-                name: normalizedName,
-                provider: provider,
-                method: 'btc_providers',
-                icon: icon
-              })
+            // Get the actual provider object - btc_providers entries are often just metadata
+            // We need to get the actual provider from window
+            let actualProvider = null
+            
+            if (normalizedName === 'Xverse' && win.XverseProviders?.BitcoinProvider) {
+              // For Xverse, use the actual provider from window
+              actualProvider = win.XverseProviders.BitcoinProvider
+            } else if (normalizedName === 'OKX' && win.okxwallet?.bitcoin) {
+              actualProvider = win.okxwallet.bitcoin
+            } else if (normalizedName === 'Blockchain.com' && win.blockchain?.bitcoin) {
+              actualProvider = win.blockchain.bitcoin
+            } else if (provider.methods && typeof provider.methods === 'object') {
+              // If provider has a methods object, that might be the actual provider
+              actualProvider = provider.methods
+            } else if (typeof provider.requestAccounts === 'function' || 
+                      typeof provider.request === 'function' ||
+                      typeof provider.getAccounts === 'function') {
+              // If the provider itself has methods, use it
+              actualProvider = provider
+            }
+            
+            // Only add if we have a valid provider with connection methods
+            if (!providers.some(p => p.name === normalizedName) && actualProvider && typeof actualProvider === 'object') {
+              // Check if the provider has connection methods
+              const hasMethods = typeof actualProvider.requestAccounts === 'function' ||
+                                typeof actualProvider.request === 'function' ||
+                                typeof actualProvider.getAccounts === 'function' ||
+                                typeof actualProvider.getAddresses === 'function'
+              
+              if (hasMethods) {
+                providers.push({
+                  name: normalizedName,
+                  provider: actualProvider,
+                  method: normalizedName === 'Xverse' ? 'XverseProviders' : 'btc_providers',
+                  icon: icon
+                })
+              } else {
+                console.warn(`[Bitcoin Wallet Scan] ${normalizedName} detected but provider has no connection methods`)
+              }
             }
           }
         }
