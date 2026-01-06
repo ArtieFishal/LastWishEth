@@ -626,15 +626,18 @@ export default function Home() {
  const filterSpamTokens = (assets: Asset[]): Asset[] => {
    if (!hideSpamTokens) return assets
    
-   return assets.filter(asset => {
-     // Always show native tokens (ETH, BTC, MATIC) regardless of balance
-     if (asset.type === 'native') return true
-     
-     // Always show NFTs
-     if (asset.type === 'erc721' || asset.type === 'erc1155') return true
+  return assets.filter(asset => {
+    // Always show native tokens (ETH, BTC, MATIC) regardless of balance
+    if (asset.type === 'native') return true
     
-    // Always show ethscriptions
+    // Always show NFTs
+    if (asset.type === 'erc721' || asset.type === 'erc1155') return true
+   
+   // Always show ethscriptions
     if (asset.type === 'ethscription') return true
+    
+    // Always show ordinals
+    if (asset.type === 'ordinal') return true
      
      // For ERC-20 tokens, check balance threshold
      if (asset.type === 'erc20' || asset.type === 'btc') {
