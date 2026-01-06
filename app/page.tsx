@@ -1213,11 +1213,22 @@ setTimeout(() => {
  }
 
  const handleSaveToQueue = () => {
+ console.log('[Save to Queue] Function called')
+ console.log('[Save to Queue] Initial state:', {
+   evmAddress,
+   btcAddress,
+   selectedAssetIds: selectedAssetIds.length,
+   allocations: allocations.length,
+   queuedSessions: queuedSessions.length
+ })
+ 
  // Check if we have a connected wallet
  const walletAddress = evmAddress || btcAddress
+ console.log('[Save to Queue] Wallet address:', walletAddress)
  if (!walletAddress) {
- setError('No wallet connected. Please connect a wallet first.')
- return
+   console.log('[Save to Queue] ❌ No wallet connected')
+   setError('No wallet connected. Please connect a wallet first.')
+   return
  }
 
  // Check if we have selected assets
@@ -1235,9 +1246,11 @@ setTimeout(() => {
    sessionAllocationsDetails: sessionAllocations
  })
  if (sessionAllocations.length === 0) {
+   console.log('[Save to Queue] ❌ No allocations found for selected assets')
    setError('Please allocate assets to beneficiaries before saving to queue.')
    return
  }
+ console.log('[Save to Queue] ✅ All checks passed, proceeding to save')
 
  // Check queue limit
  if (queuedSessions.length >= 20) {
@@ -1295,9 +1308,15 @@ setTimeout(() => {
  }
 
  // Add to queue
- setQueuedSessions(prev => [...prev, session])
+ console.log('[Save to Queue] Adding session to queue:', session)
+ setQueuedSessions(prev => {
+   const updated = [...prev, session]
+   console.log('[Save to Queue] Queue updated, new length:', updated.length)
+   return updated
+ })
 
  // Clear current session data (but keep beneficiaries)
+ console.log('[Save to Queue] Clearing session data')
  setAssets([])
  setAllocations([])
  setSelectedAssetIds([])
@@ -1305,23 +1324,26 @@ setTimeout(() => {
 
  // Disconnect wallet
  if (evmAddress) {
- setConnectedEVMAddresses(prev => {
- const next = new Set(prev)
- next.delete(evmAddress)
- return next
- })
- if (isConnected) {
- disconnect()
- }
+   console.log('[Save to Queue] Disconnecting EVM wallet')
+   setConnectedEVMAddresses(prev => {
+     const next = new Set(prev)
+     next.delete(evmAddress)
+     return next
+   })
+   if (isConnected) {
+     disconnect()
+   }
  }
  if (btcAddress) {
- setBtcAddress(null)
+   console.log('[Save to Queue] Disconnecting BTC wallet')
+   setBtcAddress(null)
  }
 
  // Show success message
  setError(null)
  
  // Return to connect step
+ console.log('[Save to Queue] ✅ Successfully saved, returning to connect step')
  setStep('connect')
  }
 
