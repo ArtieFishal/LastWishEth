@@ -1228,9 +1228,15 @@ setTimeout(() => {
 
  // Check if we have allocations
  const sessionAllocations = allocations.filter(a => selectedAssetIds.includes(a.assetId))
+ console.log('[Save to Queue] Checking allocations:', {
+   totalAllocations: allocations.length,
+   selectedAssetIds: selectedAssetIds,
+   sessionAllocations: sessionAllocations.length,
+   sessionAllocationsDetails: sessionAllocations
+ })
  if (sessionAllocations.length === 0) {
- setError('Please allocate assets to beneficiaries before saving to queue.')
- return
+   setError('Please allocate assets to beneficiaries before saving to queue.')
+   return
  }
 
  // Check queue limit
