@@ -271,32 +271,19 @@ export async function POST(request: NextRequest) {
           // Many ordinal APIs serve images via inscription ID
           if (!imageUrl && inscriptionId) {
             const inscriptionIdStr = inscriptionId.toString()
-            // Remove 'i0' suffix if present for URL construction
-            const cleanId = inscriptionIdStr.replace(/i\d+$/, '')
             
-            // Try multiple ordinal image URL patterns
-            // Ord.io - direct image URL
+            // Try multiple ordinal image URL patterns (in order of preference)
+            // Ord.io - content endpoint (most reliable for images)
             imageUrl = `https://ord.io/content/${inscriptionIdStr}`
             
-            // If that doesn't work, try preview URL
-            if (!imageUrl) {
-              imageUrl = `https://ord.io/preview/${inscriptionIdStr}`
-            }
+            // Alternative: Try preview endpoint
+            // imageUrl = `https://ord.io/preview/${inscriptionIdStr}`
             
-            // Hiro API - content endpoint
-            if (!imageUrl) {
-              imageUrl = `https://api.hiro.so/ordinals/v1/inscriptions/${inscriptionIdStr}/content`
-            }
+            // Hiro API - content endpoint (good fallback)
+            // imageUrl = `https://api.hiro.so/ordinals/v1/inscriptions/${inscriptionIdStr}/content`
             
-            // Ordinals.com
-            if (!imageUrl) {
-              imageUrl = `https://ordinals.com/content/${inscriptionIdStr}`
-            }
-            
-            // Gamma.io
-            if (!imageUrl) {
-              imageUrl = `https://gamma.io/api/ordinals/inscription/${inscriptionIdStr}/content`
-            }
+            // Note: We'll use ord.io as primary since it's most commonly used
+            console.log(`[BTC API] Constructed image URL for ordinal ${inscriptionIdStr}: ${imageUrl}`)
           }
           
           // Extract content type
@@ -307,10 +294,15 @@ export async function POST(request: NextRequest) {
                              'unknown'
           
           // Construct content URL for fetching full content if needed
+          // Prefer actual content URLs from API, fallback to constructed URLs
           const contentUrl = inscription.content_url || 
                             inscription.media_url || 
-                            imageUrl ||
                             (inscriptionId ? `https://ord.io/content/${inscriptionId.toString()}` : null)
+          
+          // If we still don't have an imageUrl, use contentUrl
+          if (!imageUrl && contentUrl) {
+            imageUrl = contentUrl
+          }
           
           // Log image URL for debugging
           console.log(`[BTC API] Ordinal ${inscriptionId}: imageUrl=${imageUrl}, contentUrl=${contentUrl}, contentType=${contentType}`)
