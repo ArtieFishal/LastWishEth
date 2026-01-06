@@ -2355,12 +2355,6 @@ onSelectionChange={setSelectedAssetIds}
  </div>
  <div className="mt-8 flex gap-4">
  <button
- onClick={() => setStep('connect')}
- className="flex-1 rounded-lg border-2 border-blue-300 bg-blue-50 text-blue-700 p-4 font-semibold hover:bg-blue-100 transition-colors"
- >
- ← Add More Wallets
- </button>
- <button
  onClick={() => setStep('allocate')}
  disabled={selectedAssetIds.length === 0}
  className="flex-1 rounded-lg bg-blue-600 text-white p-4 font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
