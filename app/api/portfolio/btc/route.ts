@@ -198,6 +198,7 @@ export async function POST(request: NextRequest) {
         }
 
         console.log(`[BTC API] Total unique inscriptions found: ${allInscriptions.length}`)
+        ordinalsFound = allInscriptions.length
 
         // Add each ordinal as a separate asset
         allInscriptions.forEach((inscription: any, index: number) => {
@@ -262,6 +263,34 @@ export async function POST(request: NextRequest) {
       } catch (ordinalError) {
         console.error('[BTC API] Error fetching ordinals:', ordinalError)
         // Don't fail the whole request if ordinals fail
+      }
+
+      // Add regular Bitcoin asset AFTER fetching ordinals (so we know if ordinals were found)
+      if (netBalance > 0) {
+        // Only show warning if no ordinals were detected
+        // If ordinals are found, they're shown as separate assets, so update the message
+        const note = ordinalsFound === 0 
+          ? 'This balance includes all satoshis. Ordinals and rare SATs are detected and shown separately above. When allocating, consider that rare SATs should be preserved separately from regular Bitcoin.'
+          : `This balance includes all satoshis. ${ordinalsFound} ordinal(s) detected and shown separately above. When allocating, consider that rare SATs should be preserved separately from regular Bitcoin.`
+        
+        assets.push({
+          id: `btc-${address}`,
+          chain: 'bitcoin',
+          type: 'btc',
+          symbol: 'BTC',
+          name: 'Bitcoin',
+          balance: netBalance.toString(), // Balance in satoshis
+          balanceFormatted: btcBalance, // Balance in BTC
+          decimals: 8, // Bitcoin uses 8 decimals (satoshis)
+          contractAddress: address,
+          walletAddress: address, // Track which wallet this asset belongs to
+          metadata: {
+            sats: netBalance.toString(),
+            satsFormatted: satsFormatted,
+            assetType: 'regular', // regular, ordinal, rare_sat
+            note: note,
+          },
+        })
       }
 
       return NextResponse.json({ assets })
