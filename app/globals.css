@@ -1,35 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #f8f9fa;
-  --foreground: #171717;
+  --background: #0f172a;
+  --foreground: #f1f5f9;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
 }
 
 * {
   box-sizing: border-box;
 }
 
-/* Fix input text visibility */
-input[type="text"],
-input[type="number"],
-input[type="email"],
-input[type="password"],
-textarea,
-select {
+/* Fix input text visibility - only apply to inputs that don't have bg-transparent */
+input[type="text"]:not([class*="bg-transparent"]),
+input[type="number"]:not([class*="bg-transparent"]),
+input[type="email"]:not([class*="bg-transparent"]),
+input[type="tel"]:not([class*="bg-transparent"]),
+input[type="password"]:not([class*="bg-transparent"]),
+textarea:not([class*="bg-transparent"]),
+select:not([class*="bg-transparent"]) {
   color: #171717 !important;
   background-color: #ffffff !important;
 }
 
-input[type="text"]::placeholder,
-input[type="number"]::placeholder,
-textarea::placeholder {
+input[type="text"]:not([class*="bg-transparent"])::placeholder,
+input[type="number"]:not([class*="bg-transparent"])::placeholder,
+input[type="email"]:not([class*="bg-transparent"])::placeholder,
+input[type="tel"]:not([class*="bg-transparent"])::placeholder,
+textarea:not([class*="bg-transparent"])::placeholder {
   color: #9ca3af !important;
+}
+
+/* Allow transparent inputs to use their Tailwind classes */
+input[type="text"][class*="bg-transparent"],
+input[type="number"][class*="bg-transparent"],
+input[type="email"][class*="bg-transparent"],
+input[type="tel"][class*="bg-transparent"],
+input[type="password"][class*="bg-transparent"],
+textarea[class*="bg-transparent"],
+select[class*="bg-transparent"] {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+input[type="text"][class*="bg-transparent"]::placeholder,
+input[type="number"][class*="bg-transparent"]::placeholder,
+input[type="email"][class*="bg-transparent"]::placeholder,
+input[type="tel"][class*="bg-transparent"]::placeholder,
+textarea[class*="bg-transparent"]::placeholder {
+  color: inherit !important;
 }
 
 /* Ensure wallet connector button colors override Tailwind */
@@ -75,4 +103,228 @@ button[style*="borderColor"] svg {
 /* Touch manipulation for better mobile performance */
 .touch-manipulation {
   touch-action: manipulation;
+}
+
+/* Custom Animations */
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  33% {
+    transform: translateY(-30px) translateX(20px);
+  }
+  66% {
+    transform: translateY(30px) translateX(-20px);
+  }
+}
+
+@keyframes float-delayed {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  33% {
+    transform: translateY(30px) translateX(-20px);
+  }
+  66% {
+    transform: translateY(-30px) translateX(20px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-delayed {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+.animate-float {
+  animation: float 20s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float-delayed 25s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 1s ease-out;
+}
+
+.animate-fade-in-delayed {
+  animation: fade-in-delayed 1.5s ease-out;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Glassmorphism utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #9333ea, #3b82f6);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #7e22ce, #2563eb);
+}
+
+/* Text Glow Effects */
+.text-glow {
+  text-shadow: 0 0 10px rgba(139, 92, 246, 0.5),
+               0 0 20px rgba(139, 92, 246, 0.3),
+               0 0 30px rgba(139, 92, 246, 0.2);
+}
+
+.text-glow-white {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5),
+               0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.text-glow-purple {
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.6),
+               0 0 20px rgba(168, 85, 247, 0.4),
+               0 0 30px rgba(168, 85, 247, 0.2);
+}
+
+.text-glow-blue {
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.6),
+               0 0 20px rgba(59, 130, 246, 0.4),
+               0 0 30px rgba(59, 130, 246, 0.2);
+}
+
+/* Hover glow effects */
+.hover-glow:hover {
+  text-shadow: 0 0 15px rgba(139, 92, 246, 0.7),
+               0 0 25px rgba(139, 92, 246, 0.5),
+               0 0 35px rgba(139, 92, 246, 0.3);
+  transition: text-shadow 0.3s ease;
+}
+
+/* Enhanced borders */
+.border-glow {
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.3),
+              0 0 20px rgba(139, 92, 246, 0.2),
+              inset 0 0 10px rgba(139, 92, 246, 0.1);
+}
+
+.border-glow-hover:hover {
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.5),
+              0 0 30px rgba(139, 92, 246, 0.3),
+              inset 0 0 15px rgba(139, 92, 246, 0.2);
+  transition: box-shadow 0.3s ease;
+}
+
+/* Better text contrast */
+.text-bright {
+  color: #f8fafc;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.text-bright-soft {
+  color: #e2e8f0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Section Separators */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(to right, 
+    transparent, 
+    rgba(139, 92, 246, 0.3), 
+    rgba(59, 130, 246, 0.3), 
+    transparent
+  );
+  margin: 2rem 0;
+  position: relative;
+}
+
+.section-divider::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+}
+
+/* Typography Scale - Unified */
+.text-hero {
+  font-size: clamp(2.5rem, 5vw, 5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.text-section-title {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.text-section-subtitle {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.text-card-title {
+  font-size: clamp(1.125rem, 2vw, 1.5rem);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.text-card-body {
+  font-size: clamp(0.875rem, 1.5vw, 1rem);
+  font-weight: 400;
+  line-height: 1.6;
 }

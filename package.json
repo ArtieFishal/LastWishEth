@@ -11,7 +11,10 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:watch": "vitest --watch",
-    "test:ethscriptions": "tsx scripts/test-ethscriptions-api.ts"
+    "test:ethscriptions": "tsx scripts/test-ethscriptions-api.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:integration": "vitest run __tests__/integration"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.16",
@@ -42,6 +45,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "jsdom": "^23.0.1",
+    "@playwright/test": "^1.40.0",
     "tailwindcss": "^4",
     "tsx": "^4.7.0",
     "typescript": "^5",

@@ -1,9 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimiter'
 
 const MORALIS_API_KEY = process.env.MORALIS_API_KEY
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting: 30 requests per minute per IP
+    const ip = request.headers.get('x-forwarded-for') || 
+               request.headers.get('x-real-ip') || 
+               'unknown'
+    const rateLimitKey = `evm-portfolio:${ip}`
+    const rateLimit = checkRateLimit(rateLimitKey, {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 30,
+    })
+    
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { 
+          error: 'Too many requests. Please wait a moment before trying again.',
+          retryAfter: rateLimit.retryAfter,
+        },
+        { 
+          status: 429,
+          headers: getRateLimitHeaders(rateLimit),
+        }
+      )
+    }
+    
     const { addresses } = await request.json()
 
     if (!addresses || !Array.isArray(addresses) || addresses.length === 0) {

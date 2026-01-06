@@ -1,7 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimiter'
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting: 30 requests per minute per IP
+    const ip = request.headers.get('x-forwarded-for') || 
+               request.headers.get('x-real-ip') || 
+               'unknown'
+    const rateLimitKey = `btc-portfolio:${ip}`
+    const rateLimit = checkRateLimit(rateLimitKey, {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 30,
+    })
+    
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { 
+          error: 'Too many requests. Please wait a moment before trying again.',
+          retryAfter: rateLimit.retryAfter,
+        },
+        { 
+          status: 429,
+          headers: getRateLimitHeaders(rateLimit),
+        }
+      )
+    }
+    
     const { address } = await request.json()
 
     if (!address) {
