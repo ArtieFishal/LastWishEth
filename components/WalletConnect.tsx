@@ -1256,6 +1256,21 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
           </div>
         )}
         
+          {/* Mobile-specific message */}
+          {isMobileDevice() && detectedBtcWallets.length === 0 && (
+            <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
+              <p className="text-sm font-semibold text-blue-900 mb-2">
+                📱 Mobile Device Detected
+              </p>
+              <p className="text-xs text-blue-700 mb-3">
+                Bitcoin wallet browser extensions are not available on mobile devices. Please use the manual entry option below to enter your Bitcoin address directly.
+              </p>
+              <p className="text-xs text-blue-600">
+                <strong>Tip:</strong> You can find your Bitcoin address in your mobile wallet app (Xverse, OKX, Blockchain.com, etc.) and copy it here.
+              </p>
+            </div>
+          )}
+        
           {/* Fallback: Auto-detect button if no wallets detected */}
           {detectedBtcWallets.length === 0 && (
           <button
