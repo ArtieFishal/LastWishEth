@@ -138,7 +138,9 @@ export function AssetList({ assets }: AssetListProps) {
                 <div className="mt-3">
                   <NFTImage
                     imageUrl={asset.imageUrl}
-                    tokenUri={asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri}
+                    tokenUri={asset.type === 'ordinal'
+                      ? (asset.metadata?.contentUrl || asset.contentUri || `https://ord.io/${asset.tokenId}`)
+                      : (asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri)}
                     contractAddress={asset.contractAddress}
                     tokenId={asset.tokenId}
                     alt={asset.name}

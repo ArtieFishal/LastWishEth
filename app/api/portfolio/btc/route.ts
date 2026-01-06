@@ -258,19 +258,45 @@ export async function POST(request: NextRequest) {
                       inscription.meta?.name ||
                       `Ordinal #${inscriptionId}`
           
-          // Extract image/content URL
-          const imageUrl = inscription.image || 
-                          inscription.content_url || 
-                          inscription.media_url || 
-                          inscription.preview_url ||
-                          inscription.content ||
-                          (inscription.meta?.image || inscription.meta?.preview)
+          // Extract image/content URL - try multiple sources
+          let imageUrl = inscription.image || 
+                        inscription.content_url || 
+                        inscription.media_url || 
+                        inscription.preview_url ||
+                        inscription.content ||
+                        inscription.thumbnail ||
+                        (inscription.meta?.image || inscription.meta?.preview)
+          
+          // If no direct image URL, try to construct from inscription ID
+          // Many ordinal APIs serve images via inscription ID
+          if (!imageUrl && inscriptionId) {
+            // Try common ordinal image URL patterns
+            const inscriptionIdStr = inscriptionId.toString()
+            // Remove 'i0' suffix if present for URL construction
+            const cleanId = inscriptionIdStr.replace(/i\d+$/, '')
+            
+            // Try Ord.io image URL pattern
+            if (!imageUrl) {
+              imageUrl = `https://ord.io/${inscriptionIdStr}.png`
+            }
+            // Try Hiro image URL pattern
+            if (!imageUrl) {
+              imageUrl = `https://api.hiro.so/ordinals/v1/inscriptions/${inscriptionIdStr}/content`
+            }
+          }
           
           // Extract content type
           const contentType = inscription.content_type || 
                              inscription.mime_type || 
+                             inscription.mime ||
                              inscription.meta?.mime ||
                              'unknown'
+          
+          // Construct content URL for fetching full content if needed
+          const contentUrl = inscription.content_url || 
+                            inscription.media_url || 
+                            imageUrl ||
+                            (inscriptionId ? `https://ord.io/${inscriptionId.toString()}` : null)
           
           assets.push({
             id: `ordinal-${inscriptionId}-${address}`,
@@ -285,10 +311,11 @@ export async function POST(request: NextRequest) {
             walletAddress: address,
             tokenId: inscriptionId.toString(),
             imageUrl: imageUrl,
+            contentUri: contentUrl, // Add contentUri for NFTImage component
             metadata: {
               inscriptionId: inscriptionId.toString(),
               contentType: contentType,
-              contentUrl: inscription.content_url || inscription.media_url || imageUrl,
+              contentUrl: contentUrl,
               assetType: 'ordinal',
               number: inscription.number || inscription.inscription_number,
               txid: inscription.txid || inscription.tx_id,

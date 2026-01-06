@@ -396,11 +396,13 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
                       </div>
                       <div className="text-right ml-4">
                         <p className="font-bold text-lg text-gray-900">{asset.balanceFormatted} {asset.symbol}</p>
-                        {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription') && (
+                        {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription' || asset.type === 'ordinal') && (
                           <div className="mt-2">
                             <NFTImage
                               imageUrl={asset.imageUrl}
-                              tokenUri={asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri}
+                              tokenUri={asset.type === 'ordinal' 
+                                ? (asset.metadata?.contentUrl || asset.contentUri || `https://ord.io/${asset.tokenId}`)
+                                : (asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri)}
                               contractAddress={asset.contractAddress}
                               tokenId={asset.tokenId}
                               alt={asset.name}
@@ -410,6 +412,14 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
                               <p className="text-xs text-gray-400 mt-1 text-center">
                                 {asset.metadata?.mimetype?.startsWith('text/') ? 'Text' : 
                                  asset.metadata?.mimetype?.includes('json') ? 'JSON' : 
+                                 'Content'}
+                              </p>
+                            )}
+                            {asset.type === 'ordinal' && !asset.imageUrl && asset.metadata?.contentType && (
+                              <p className="text-xs text-gray-400 mt-1 text-center">
+                                {asset.metadata.contentType.startsWith('image/') ? 'Image' :
+                                 asset.metadata.contentType.startsWith('text/') ? 'Text' :
+                                 asset.metadata.contentType.includes('json') ? 'JSON' :
                                  'Content'}
                               </p>
                             )}
