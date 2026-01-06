@@ -1,8 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPublicClient, http, isAddress } from 'viem'
 import { mainnet } from 'viem/chains'
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimiter'
 
 const ETHSCRIPTIONS_API_BASE = 'https://api.ethscriptions.com/v2'
+
+// Retry utility with exponential backoff
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit = {},
+  retries = 3,
+  baseDelay = 1000
+): Promise<Response> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          ...options.headers,
+        },
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (response.ok) {
+        return response
+      }
+      
+      // If it's a 4xx error (client error), don't retry
+      if (response.status >= 400 && response.status < 500) {
+        return response
+      }
+      
+      // For 5xx errors or network errors, retry
+      if (attempt < retries - 1) {
+        const delay = baseDelay * Math.pow(2, attempt) // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+      
+      return response
+    } catch (error: any) {
+      // Network error or timeout
+      if (attempt < retries - 1) {
+        const delay = baseDelay * Math.pow(2, attempt) // Exponential backoff
+        console.log(`[Ethscriptions API] Retry attempt ${attempt + 1}/${retries} after ${delay}ms`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+      throw error
+    }
+  }
+  
+  throw new Error('All retry attempts failed')
+}
 
 // Helper function to validate and sanitize image URLs
 function validateImageUrl(contentUri: string): string | undefined {
@@ -88,6 +144,29 @@ async function resolveENS(ensName: string): Promise<string | null> {
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting: 30 requests per minute per IP
+    const ip = request.headers.get('x-forwarded-for') || 
+               request.headers.get('x-real-ip') || 
+               'unknown'
+    const rateLimitKey = `ethscriptions-portfolio:${ip}`
+    const rateLimit = checkRateLimit(rateLimitKey, {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 30,
+    })
+    
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { 
+          error: 'Too many requests. Please wait a moment before trying again.',
+          retryAfter: rateLimit.retryAfter,
+        },
+        { 
+          status: 429,
+          headers: getRateLimitHeaders(rateLimit),
+        }
+      )
+    }
+    
     const { addresses } = await request.json()
 
     if (!addresses || !Array.isArray(addresses) || addresses.length === 0) {
@@ -124,18 +203,24 @@ export async function POST(request: NextRequest) {
           
           while (hasMore && page <= maxPages) {
             try {
-              const response = await fetch(
+              const response = await fetchWithRetry(
                 `${ETHSCRIPTIONS_API_BASE}/ethscriptions?${queryParam}=${address}&page=${page}`,
-                {
-                  headers: {
-                    'Accept': 'application/json',
-                  },
-                }
+                {},
+                3, // 3 retries
+                1000 // 1 second base delay
               )
 
               if (!response.ok) {
                 if (page === 1) {
                   console.error(`[Ethscriptions API] Error fetching ethscriptions (${queryType}) for ${address}: ${response.status} ${response.statusText}`)
+                }
+                // If it's a client error (4xx), don't retry pages
+                if (response.status >= 400 && response.status < 500) {
+                  break
+                }
+                // For server errors (5xx), break and let outer retry handle it
+                if (page === 1) {
+                  break
                 }
                 break
               }
