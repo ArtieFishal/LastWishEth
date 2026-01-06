@@ -84,23 +84,24 @@ export function NFTImage({
     const currentSrc = e.currentTarget.src
     console.log(`[NFTImage] Image load error for: ${currentSrc}`)
     
-    // If it's an ordinal URL (ord.io), try alternative endpoints
+    // If it's our proxy API that failed, the proxy should handle fallbacks internally
+    // Just mark as error - the proxy tries multiple sources
+    if (currentSrc.includes('/api/ordinal-image') && tokenId) {
+      const inscriptionId = tokenId
+      console.warn(`[NFTImage] Proxy API failed for ordinal ${inscriptionId}, image may not be available`)
+      setError(true)
+      return
+    }
+    
+    // If it's an ordinal URL (ord.io) - this shouldn't happen if we're using the proxy
+    // But handle it as a fallback by using our proxy instead
     if (currentSrc.includes('ord.io/') && tokenId) {
       const inscriptionId = tokenId
-      // If preview failed, try content endpoint
-      if (currentSrc.includes('ord.io/preview/')) {
-        const contentUrl = `https://ord.io/content/${inscriptionId}`
-        console.log(`[NFTImage] Preview failed, trying ord.io content URL: ${contentUrl}`)
-        setImageUrl(contentUrl)
-        return
-      }
-      // If content failed, try Hiro API
-      if (currentSrc.includes('ord.io/content/')) {
-        const hiroUrl = `https://api.hiro.so/ordinals/v1/inscriptions/${inscriptionId}/content`
-        console.log(`[NFTImage] ord.io failed, trying Hiro API: ${hiroUrl}`)
-        setImageUrl(hiroUrl)
-        return
-      }
+      // Use our proxy instead of direct ord.io URLs to avoid CORS
+      const proxyUrl = `/api/ordinal-image?id=${encodeURIComponent(inscriptionId)}`
+      console.log(`[NFTImage] Direct ord.io URL failed, using proxy: ${proxyUrl}`)
+      setImageUrl(proxyUrl)
+      return
     }
     
     // If it's an IPFS URL and we haven't tried all gateways yet, try next one
