@@ -58,6 +58,7 @@ export default function Home() {
  })
  const [step, setStep] = useState<Step>('connect')
  const [btcAddress, setBtcAddress] = useState<string | null>(null)
+ const [btcOrdinalsAddress, setBtcOrdinalsAddress] = useState<string | null>(null) // Store ordinals address separately
  const [assets, setAssets] = useState<Asset[]>([])
  const [loading, setLoading] = useState(false)
  const [error, setError] = useState<string | null>(null)
@@ -907,15 +908,9 @@ export default function Home() {
 if (btcAddress) {
 try {
 console.log('[Bitcoin] Loading assets for payment address:', btcAddress)
-// Check if we have an ordinals address stored
-const ordinalsAddress = walletProviders[`${btcAddress}-ordinals`]
-const addressesToCheck = ordinalsAddress && ordinalsAddress !== btcAddress 
-  ? [btcAddress, ordinalsAddress] 
-  : [btcAddress]
+console.log('[Bitcoin] Ordinals address:', btcOrdinalsAddress)
 
-console.log('[Bitcoin] Checking addresses:', addressesToCheck)
-
-// Fetch from payment address (for BTC balance)
+// Fetch from payment address (for BTC balance and any ordinals there)
 const btcResponse = await axios.post('/api/portfolio/btc', {
 address: btcAddress,
 })
@@ -932,20 +927,19 @@ newAssets.push(...uniqueAssets)
 console.warn('[Bitcoin] No assets in response or invalid format:', btcResponse.data)
 }
 
-// If we have an ordinals address, also fetch from it
-if (ordinalsAddress && ordinalsAddress !== btcAddress) {
+// If we have a separate ordinals address, also fetch from it
+if (btcOrdinalsAddress && btcOrdinalsAddress !== btcAddress) {
 try {
-console.log('[Bitcoin] Loading ordinals from ordinals address:', ordinalsAddress)
+console.log('[Bitcoin] Loading ordinals from dedicated ordinals address:', btcOrdinalsAddress)
 const ordinalsResponse = await axios.post('/api/portfolio/btc', {
-address: ordinalsAddress,
+address: btcOrdinalsAddress,
 })
 console.log('[Bitcoin] API response for ordinals address:', ordinalsResponse.data)
 if (ordinalsResponse.data?.assets && Array.isArray(ordinalsResponse.data.assets)) {
-// Only add ordinals (not regular BTC) from ordinals address
-const ordinalsAssets = ordinalsResponse.data.assets.filter((a: Asset) => a.type === 'ordinal')
-console.log('[Bitcoin] Found', ordinalsAssets.length, 'ordinals from ordinals address')
+// Add all assets from ordinals address (they should mostly be ordinals)
+console.log('[Bitcoin] Found', ordinalsResponse.data.assets.length, 'assets from ordinals address')
 const existingIds = new Set(assets.map(a => a.id))
-const uniqueOrdinals = ordinalsAssets.filter((a: Asset) => !existingIds.has(a.id))
+const uniqueOrdinals = ordinalsResponse.data.assets.filter((a: Asset) => !existingIds.has(a.id))
 console.log('[Bitcoin] After deduplication:', uniqueOrdinals.length, 'unique ordinals')
 newAssets.push(...uniqueOrdinals)
 }
@@ -2005,9 +1999,10 @@ setTimeout(() => {
  Connect more wallets to add their assets. You can connect multiple EVM wallets and Bitcoin wallets.
  </p>
  <WalletConnect
-              onBitcoinConnect={async (addr, provider) => {
+              onBitcoinConnect={async (addr, provider, ordinalsAddr) => {
                 if (!addr) return
                 setBtcAddress(addr)
+                setBtcOrdinalsAddress(ordinalsAddr || null) // Store ordinals address if provided
                 // Store Bitcoin wallet provider (Xverse, OKX, Blockchain.com, Manual, etc.)
                 if (provider) {
                   setWalletProviders((prev) => ({ ...prev, [addr]: provider }))
