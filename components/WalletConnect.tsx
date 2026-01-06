@@ -795,45 +795,103 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                 <button
                   key={`${wallet.method}-${index}`}
                   onClick={async () => {
+                    // Use the same connection logic as handleBitcoinConnect
+                    // This ensures consistency and uses the working connection flow
                     setConnecting(true)
                     try {
                       const selectedProvider = wallet.provider
                       const providerName = wallet.name
-                      console.log(`[Bitcoin Wallet] Connecting to ${providerName}...`)
+                      console.log(`[Bitcoin Wallet] Connecting to ${providerName} via ${wallet.method}...`)
                       let accounts = null
                       let address = null
+                      let ordinalsAddress: string | null = null
                       
-                      // Try requestAccounts first
+                      // Log available methods for debugging
+                      console.log(`[Bitcoin Wallet] Available methods on ${providerName}:`, Object.keys(selectedProvider))
+                      
+                      // Check if extension is available (for Xverse)
+                      if ((wallet.name === 'Xverse' || wallet.name.includes('Xverse')) && typeof chrome !== 'undefined' && chrome.runtime) {
+                        try {
+                          // Try to ping the extension to see if it's active
+                          await new Promise((resolve, reject) => {
+                            chrome.runtime.sendMessage(wallet.provider.id || 'unknown', { method: 'ping' }, (response: any) => {
+                              if (chrome.runtime.lastError) {
+                                console.warn(`[Bitcoin Wallet] Extension may be inactive:`, chrome.runtime.lastError.message)
+                              } else {
+                                console.log(`[Bitcoin Wallet] Extension is active`)
+                              }
+                              resolve(response)
+                            })
+                          })
+                        } catch (pingError) {
+                          console.warn(`[Bitcoin Wallet] Could not ping extension, but continuing anyway:`, pingError)
+                        }
+                      }
+                      
+                      // Try requestAccounts first (shows popup) - this is the standard method
                       if (typeof selectedProvider.requestAccounts === 'function') {
                         try {
+                          console.log(`[Bitcoin Wallet] Trying requestAccounts() - popup should appear...`)
                           accounts = await selectedProvider.requestAccounts()
+                          console.log(`[Bitcoin Wallet] ✅ requestAccounts result:`, accounts)
+                          // Normalize response - some wallets return arrays, some return objects
                           if (accounts && !Array.isArray(accounts) && typeof accounts === 'object') {
-                            if (accounts.accounts && Array.isArray(accounts.accounts)) accounts = accounts.accounts
-                            else if (accounts.result && Array.isArray(accounts.result)) accounts = accounts.result
-                            else if (accounts.addresses && Array.isArray(accounts.addresses)) accounts = accounts.addresses
+                            // If it's an object, try to extract array from common properties
+                            if (accounts.accounts && Array.isArray(accounts.accounts)) {
+                              accounts = accounts.accounts
+                            } else if (accounts.result && Array.isArray(accounts.result)) {
+                              accounts = accounts.result
+                            } else if (accounts.addresses && Array.isArray(accounts.addresses)) {
+                              accounts = accounts.addresses
+                            }
                           }
                         } catch (err: any) {
-                          if (err.message?.includes('reject') || err.code === 4001) {
+                          console.log(`[Bitcoin Wallet] ❌ requestAccounts failed:`, err.message, err)
+                          if (err.message?.includes('reject') || err.message?.includes('cancel') || err.code === 4001) {
                             setConnecting(false)
                             return
                           }
                         }
                       }
                       
-                      // Try request('requestAccounts')
+                      // Try request('requestAccounts') - alternative API format
                       if (!accounts && typeof selectedProvider.request === 'function') {
                         try {
+                          console.log(`[Bitcoin Wallet] Trying request("requestAccounts") - popup should appear...`)
                           accounts = await selectedProvider.request('requestAccounts', {})
+                          console.log(`[Bitcoin Wallet] ✅ request("requestAccounts") result:`, accounts)
+                          // Normalize response
+                          if (accounts && !Array.isArray(accounts) && typeof accounts === 'object') {
+                            if (accounts.accounts && Array.isArray(accounts.accounts)) {
+                              accounts = accounts.accounts
+                            } else if (accounts.result && Array.isArray(accounts.result)) {
+                              accounts = accounts.result
+                            } else if (accounts.addresses && Array.isArray(accounts.addresses)) {
+                              accounts = accounts.addresses
+                            }
+                          }
+                        } catch (err: any) {
+                          console.log(`[Bitcoin Wallet] ❌ request("requestAccounts") failed:`, err.message, err)
+                          if (err.message?.includes('reject') || err.message?.includes('cancel') || err.code === 4001) {
+                            setConnecting(false)
+                            return
+                          }
+                        }
+                      }
+                      
+                      // Try getAccounts (may not show popup, only works if already connected)
+                      if (!accounts && typeof selectedProvider.getAccounts === 'function') {
+                        try {
+                          console.log(`[Bitcoin Wallet] Trying getAccounts() (may not work if not already connected)...`)
+                          accounts = await selectedProvider.getAccounts()
+                          console.log(`[Bitcoin Wallet] ✅ getAccounts result:`, accounts)
                           if (accounts && !Array.isArray(accounts) && typeof accounts === 'object') {
                             if (accounts.accounts && Array.isArray(accounts.accounts)) accounts = accounts.accounts
                             else if (accounts.result && Array.isArray(accounts.result)) accounts = accounts.result
                             else if (accounts.addresses && Array.isArray(accounts.addresses)) accounts = accounts.addresses
                           }
                         } catch (err: any) {
-                          if (err.message?.includes('reject') || err.code === 4001) {
-                            setConnecting(false)
-                            return
-                          }
+                          console.log(`[Bitcoin Wallet] ❌ getAccounts failed:`, err.message)
                         }
                       }
                       
@@ -871,7 +929,6 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                       }
                       
                       // Extract addresses (both payment and ordinals)
-                      let ordinalsAddress: string | null = null
                       if (accounts) {
                         console.log(`[Bitcoin Wallet] Processing accounts response:`, accounts, 'Type:', typeof accounts, 'IsArray:', Array.isArray(accounts))
                         
