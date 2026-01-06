@@ -272,9 +272,8 @@ export async function POST(request: NextRequest) {
           if (!imageUrl && inscriptionId) {
             const inscriptionIdStr = inscriptionId.toString()
             
-            // Try multiple ordinal image URL patterns (in order of preference)
-            // Ord.io - preview endpoint (better for images than content)
-            imageUrl = `https://ord.io/preview/${inscriptionIdStr}`
+            // Use our proxy API to avoid CORS issues
+            imageUrl = `/api/ordinal-image?id=${encodeURIComponent(inscriptionIdStr)}`
             
             // Log the constructed URL
             console.log(`[BTC API] Constructed image URL for ordinal ${inscriptionIdStr}: ${imageUrl}`)
