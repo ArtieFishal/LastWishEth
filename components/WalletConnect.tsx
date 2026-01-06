@@ -966,18 +966,41 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                       }
                       
                       // For Xverse, try getAccounts with purposes (Xverse-specific API)
+                      // But check for JSON-RPC errors
                       if (!accounts && (wallet.name === 'Xverse' || wallet.name.includes('Xverse')) && typeof selectedProvider.request === 'function') {
                         try {
-                          console.log(`[Bitcoin Wallet] Trying Xverse getAccounts with purposes...`)
-                          accounts = await selectedProvider.request('getAccounts', { purposes: ['payment', 'ordinals'] })
-                          console.log(`[Bitcoin Wallet] ✅ Xverse getAccounts result:`, accounts)
+                          console.log(`[Bitcoin Wallet] Trying Xverse getAccounts with purposes ['payment', 'ordinals']...`)
+                          const getAccountsResult = await selectedProvider.request('getAccounts', { purposes: ['payment', 'ordinals'] })
+                          console.log(`[Bitcoin Wallet] ✅ Xverse getAccounts result:`, getAccountsResult)
+                          
+                          // Check for JSON-RPC error
+                          if (getAccountsResult && typeof getAccountsResult === 'object' && getAccountsResult.error) {
+                            console.log(`[Bitcoin Wallet] ❌ JSON-RPC error in getAccounts:`, getAccountsResult.error)
+                            accounts = null
+                          } else if (getAccountsResult) {
+                            accounts = getAccountsResult
+                            if (getAccountsResult.result && Array.isArray(getAccountsResult.result)) {
+                              accounts = getAccountsResult.result
+                            }
+                          }
                         } catch (err: any) {
                           console.log(`[Bitcoin Wallet] ❌ Xverse getAccounts failed:`, err.message)
                           // Try with just payment purpose
                           try {
                             console.log(`[Bitcoin Wallet] Trying Xverse with just payment purpose...`)
-                            accounts = await selectedProvider.request('getAccounts', { purposes: ['payment'] })
-                            console.log(`[Bitcoin Wallet] ✅ Xverse payment-only result:`, accounts)
+                            const paymentResult = await selectedProvider.request('getAccounts', { purposes: ['payment'] })
+                            console.log(`[Bitcoin Wallet] ✅ Xverse payment-only result:`, paymentResult)
+                            
+                            // Check for JSON-RPC error
+                            if (paymentResult && typeof paymentResult === 'object' && paymentResult.error) {
+                              console.log(`[Bitcoin Wallet] ❌ JSON-RPC error in payment-only:`, paymentResult.error)
+                              accounts = null
+                            } else if (paymentResult) {
+                              accounts = paymentResult
+                              if (paymentResult.result && Array.isArray(paymentResult.result)) {
+                                accounts = paymentResult.result
+                              }
+                            }
                           } catch (err2: any) {
                             console.log(`[Bitcoin Wallet] ❌ Xverse payment-only failed:`, err2.message)
                           }
