@@ -30,7 +30,12 @@ export function AllocationPanel({
   const isNFT = (asset: Asset) => asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription' || asset.type === 'ordinal'
   
   // Helper to check if asset is fungible (can be split)
-  const isFungible = (asset: Asset) => asset.type === 'native' || asset.type === 'erc20' || (asset.type === 'btc' && asset.metadata?.assetType === 'regular')
+  // BTC with ordinals cannot be split - only individual ordinals can be allocated
+  const isFungible = (asset: Asset) => {
+    if (asset.type === 'native' || asset.type === 'erc20') return true
+    if (asset.type === 'btc' && asset.metadata?.assetType === 'regular' && !asset.metadata?.hasOrdinals) return true
+    return false
+  }
   
   // Helper to check if asset is ethscription
   const isEthscription = (asset: Asset) => asset.type === 'ethscription'

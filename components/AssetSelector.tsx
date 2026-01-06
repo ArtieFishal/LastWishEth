@@ -142,7 +142,9 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
   }
 
   const selectAll = () => {
-    onSelectionChange(assets.map(a => a.id))
+    // Exclude BTC assets with ordinals - they cannot be selected
+    const selectableAssets = assets.filter(a => !(a.type === 'btc' && a.metadata?.hasOrdinals))
+    onSelectionChange(selectableAssets.map(a => a.id))
   }
 
   const deselectAll = () => {
@@ -150,7 +152,12 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
   }
 
   const selectCategory = (category: string) => {
-    const categoryAssets = assets.filter(a => getAssetCategory(a) === category)
+    const categoryAssets = assets.filter(a => {
+      const matchesCategory = getAssetCategory(a) === category
+      // Exclude BTC assets with ordinals from category selection
+      const isSelectable = !(a.type === 'btc' && a.metadata?.hasOrdinals)
+      return matchesCategory && isSelectable
+    })
     const categoryIds = categoryAssets.map(a => a.id)
     const newSelection = [...new Set([...selectedAssetIds, ...categoryIds])]
     onSelectionChange(newSelection)
@@ -303,14 +310,20 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
             <div className="space-y-2">
               {categoryAssets.map((asset) => {
                 const isSelected = selectedAssetIds.includes(asset.id)
+                // BTC with ordinals cannot be selected - only individual ordinals can be selected
+                const isBtcWithOrdinals = asset.type === 'btc' && asset.metadata?.hasOrdinals
+                const isDisabled = isBtcWithOrdinals
+                
                 return (
                   <div
                     key={asset.id}
-                    onClick={() => toggleAsset(asset.id)}
-                    className={`rounded-lg border-2 p-4 cursor-pointer transition-all ${
-                      isSelected
-                        ? 'border-blue-500 bg-blue-50 shadow-md'
-                        : 'border-gray-200 hover:border-blue-300 hover:shadow-sm bg-white'
+                    onClick={() => !isDisabled && toggleAsset(asset.id)}
+                    className={`rounded-lg border-2 p-4 transition-all ${
+                      isDisabled
+                        ? 'border-orange-300 bg-orange-50 cursor-not-allowed opacity-75'
+                        : isSelected
+                        ? 'border-blue-500 bg-blue-50 shadow-md cursor-pointer'
+                        : 'border-gray-200 hover:border-blue-300 hover:shadow-sm bg-white cursor-pointer'
                     }`}
                   >
                     <div className="flex items-start justify-between">
@@ -318,9 +331,12 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => toggleAsset(asset.id)}
+                          disabled={isDisabled}
+                          onChange={() => !isDisabled && toggleAsset(asset.id)}
                           onClick={(e) => e.stopPropagation()}
-                          className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          className={`mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 ${
+                            isDisabled ? 'cursor-not-allowed opacity-50' : ''
+                          }`}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -345,7 +361,7 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
                             ) : null}
                             {asset.type === 'btc' && asset.metadata?.hasOrdinals ? (
                               <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded font-semibold">
-                                HAS ORDINALS ({asset.metadata.ordinalsCount})
+                                ORDINALS ({asset.metadata.ordinalsCount})
                               </span>
                             ) : null}
                             {asset.walletProvider && asset.walletProvider !== 'Unknown' ? (
@@ -398,6 +414,11 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
                               {asset.metadata.note && (
                                 <span className="block text-xs text-amber-600 mt-1 italic">
                                   ⚠️ {asset.metadata.note}
+                                </span>
+                              )}
+                              {isBtcWithOrdinals && (
+                                <span className="block text-xs text-orange-700 mt-2 font-semibold bg-orange-100 px-2 py-1 rounded border border-orange-300">
+                                  🔒 This address contains ordinals and rare SATs. Only individual ordinals can be selected for allocation. The BTC balance cannot be split to preserve rare SATs.
                                 </span>
                               )}
                             </p>
