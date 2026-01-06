@@ -112,6 +112,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
   const [mounted, setMounted] = useState(false)
   const [detectedBtcWallets, setDetectedBtcWallets] = useState<Array<{ name: string; provider: any; method: string; icon: string }>>([])
   const [scanningWallets, setScanningWallets] = useState(false)
+  const [activeTab, setActiveTab] = useState<'evm' | 'bitcoin'>('evm')
   const manualBtcInputRef = useRef<HTMLInputElement>(null)
 
   // Prevent hydration mismatch by only rendering after mount
@@ -137,72 +138,82 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
     // Wait a bit for extensions to inject
     await new Promise(resolve => setTimeout(resolve, 500))
     
-    // Check for btc_providers array (standard for multiple wallets)
-    if (win.btc_providers && Array.isArray(win.btc_providers)) {
-      for (const provider of win.btc_providers) {
-        const providerName = provider.name || provider.id || 'Unknown Bitcoin Wallet'
-        // Determine icon based on name
-        let icon = '₿'
-        if (providerName.toLowerCase().includes('xverse')) icon = '₿'
-        else if (providerName.toLowerCase().includes('okx')) icon = '🔷'
-        else if (providerName.toLowerCase().includes('blockchain')) icon = '🔗'
+        // Check for btc_providers array (standard for multiple wallets) - PRIMARY METHOD
+        if (win.btc_providers && Array.isArray(win.btc_providers)) {
+          for (const provider of win.btc_providers) {
+            const providerName = provider.name || provider.id || 'Unknown Bitcoin Wallet'
+            // Normalize name to avoid duplicates
+            const normalizedName = providerName.toLowerCase().includes('xverse') ? 'Xverse' :
+                                  providerName.toLowerCase().includes('okx') ? 'OKX' :
+                                  providerName.toLowerCase().includes('blockchain') ? 'Blockchain.com' :
+                                  providerName
+            
+            // Determine icon based on name
+            let icon = '₿'
+            if (normalizedName === 'Xverse') icon = '₿'
+            else if (normalizedName === 'OKX') icon = '🔷'
+            else if (normalizedName === 'Blockchain.com') icon = '🔗'
+            
+            // Only add if we don't already have this wallet
+            if (!providers.some(p => p.name === normalizedName)) {
+              providers.push({
+                name: normalizedName,
+                provider: provider,
+                method: 'btc_providers',
+                icon: icon
+              })
+            }
+          }
+        }
         
-        if (!providers.some(p => p.name === providerName)) {
+        // Check for individual wallet providers (fallback - only if not already found)
+        if (win.btc && !providers.some(p => p.method === 'window.btc')) {
           providers.push({
-            name: providerName,
-            provider: provider,
-            method: 'btc_providers',
-            icon: icon
+            name: 'Bitcoin Provider',
+            provider: win.btc,
+            method: 'window.btc',
+            icon: '₿'
           })
         }
-      }
-    }
-    
-    // Check for individual wallet providers
-    if (win.btc && !providers.some(p => p.method === 'window.btc')) {
-      providers.push({
-        name: 'Bitcoin Provider',
-        provider: win.btc,
-        method: 'window.btc',
-        icon: '₿'
-      })
-    }
-    
-    if (win.XverseProviders?.BitcoinProvider && !providers.some(p => p.name === 'Xverse')) {
-      providers.push({
-        name: 'Xverse',
-        provider: win.XverseProviders.BitcoinProvider,
-        method: 'XverseProviders',
-        icon: '₿'
-      })
-    }
-    
-    if (win.okxwallet?.bitcoin && !providers.some(p => p.name === 'OKX')) {
-      providers.push({
-        name: 'OKX',
-        provider: win.okxwallet.bitcoin,
-        method: 'okxwallet',
-        icon: '🔷'
-      })
-    }
-    
-    if (win.blockchain?.bitcoin && !providers.some(p => p.name === 'Blockchain.com')) {
-      providers.push({
-        name: 'Blockchain.com',
-        provider: win.blockchain.bitcoin,
-        method: 'blockchain',
-        icon: '🔗'
-      })
-    }
-    
-    if (win.bitcoin && !providers.some(p => p.method === 'window.bitcoin')) {
-      providers.push({
-        name: 'Bitcoin Wallet',
-        provider: win.bitcoin,
-        method: 'window.bitcoin',
-        icon: '₿'
-      })
-    }
+        
+        // XverseProviders - only add if not already found in btc_providers
+        if (win.XverseProviders?.BitcoinProvider && !providers.some(p => p.name === 'Xverse')) {
+          providers.push({
+            name: 'Xverse',
+            provider: win.XverseProviders.BitcoinProvider,
+            method: 'XverseProviders',
+            icon: '₿'
+          })
+        }
+        
+        // OKX - only add if not already found
+        if (win.okxwallet?.bitcoin && !providers.some(p => p.name === 'OKX')) {
+          providers.push({
+            name: 'OKX',
+            provider: win.okxwallet.bitcoin,
+            method: 'okxwallet',
+            icon: '🔷'
+          })
+        }
+        
+        // Blockchain.com - only add if not already found
+        if (win.blockchain?.bitcoin && !providers.some(p => p.name === 'Blockchain.com')) {
+          providers.push({
+            name: 'Blockchain.com',
+            provider: win.blockchain.bitcoin,
+            method: 'blockchain',
+            icon: '🔗'
+          })
+        }
+        
+        if (win.bitcoin && !providers.some(p => p.method === 'window.bitcoin')) {
+          providers.push({
+            name: 'Bitcoin Wallet',
+            provider: win.bitcoin,
+            method: 'window.bitcoin',
+            icon: '₿'
+          })
+        }
     
     setDetectedBtcWallets(providers)
     setScanningWallets(false)
@@ -647,99 +658,134 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
 
   return (
     <div className="space-y-6">
-      {/* Always show connection options - don't show wagmi connected status here, parent manages that */}
-      <div>
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
-          Connect Any Certified EVM Wallet (Ethereum, Base, Arbitrum, Polygon, ApeChain)
-        </h3>
-        <p className="text-sm text-gray-600 mb-6">
-          Each wallet requires signature verification to prove ownership before assets can be loaded.
-        </p>
-        
-        {/* WalletConnect button at the top */}
-        {walletConnectConnector && (
-          <div className="mb-6">
-            <button
-              key={walletConnectConnector.uid}
-              onClick={async () => {
-                try {
-                  await connect({ connector: walletConnectConnector })
-                } catch (error: any) {
-                  if (error?.name !== 'UserRejectedRequestError' && error?.message !== 'User rejected the request.') {
-                    console.error('Error connecting:', error)
-                  }
-                }
-              }}
-              disabled={isPending}
-              className="w-full rounded-xl border-2 p-4 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between group"
-              style={{
-                borderColor: '#3B99FC',
-                backgroundColor: 'white',
-                color: '#3B99FC',
-              } as React.CSSProperties}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#3B99FC20'
-                e.currentTarget.style.borderColor = '#2E7CD6'
-                e.currentTarget.style.color = '#2E7CD6'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'white'
-                e.currentTarget.style.borderColor = '#3B99FC'
-                e.currentTarget.style.color = '#3B99FC'
-              }}
-            >
-              <div className="flex items-center gap-3 flex-1">
-                <span className="text-2xl">🔗</span>
-                <span className="font-semibold flex-1">WalletConnect</span>
-              </div>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-            <p className="text-xs text-gray-500 mt-2 text-center">
-              Connect any wallet via QR code
-            </p>
-          </div>
-        )}
-
-        {!walletConnectConnector && (
-          <div className="rounded-xl border-2 border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 p-4">
-            <p className="text-sm text-yellow-800 dark:text-yellow-300">
-              <strong>WalletConnect not configured.</strong> Please add <code className="bg-yellow-100 dark:bg-yellow-900/40 px-1 rounded">NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID</code> to your .env.local file.
-            </p>
-            <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-2">
-              Get your Project ID from <a href="https://cloud.reown.com" target="_blank" rel="noopener noreferrer" className="underline">Reown Cloud</a>
-            </p>
-          </div>
-        )}
-        {connectError && connectError.name !== 'UserRejectedRequestError' && (
-          <div className="mt-3 rounded-xl border-2 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3">
-            <p className="text-sm text-red-800 dark:text-red-400">Connection error: {connectError.message || 'Failed to connect'}</p>
-          </div>
-        )}
+      {/* Tab Navigation */}
+      <div className="flex gap-2 border-b-2 border-gray-200">
+        <button
+          onClick={() => setActiveTab('evm')}
+          className={`px-6 py-3 font-semibold transition-colors ${
+            activeTab === 'evm'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          EVM Wallets
+        </button>
+        <button
+          onClick={() => setActiveTab('bitcoin')}
+          className={`px-6 py-3 font-semibold transition-colors ${
+            activeTab === 'bitcoin'
+              ? 'text-orange-600 border-b-2 border-orange-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Bitcoin Wallets
+        </button>
       </div>
 
-      <div className="border-t dark:border-gray-700 pt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-2xl font-bold text-black dark:text-white">
-            {btcAddress ? 'Connect Another Bitcoin/Sat\'s Wallet' : 'Bitcoin/Sat\'s Wallet'}
+      {/* EVM Wallets Tab */}
+      {activeTab === 'evm' && (
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">
+            Connect Any Certified EVM Wallet
           </h3>
-          <button
-            onClick={scanForBitcoinWallets}
-            disabled={scanningWallets}
-            className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors disabled:opacity-50"
-            title="Scan for available Bitcoin wallets"
-          >
-            {scanningWallets ? 'Scanning...' : '🔍 Scan Wallets'}
-          </button>
+          <p className="text-sm text-gray-600 mb-4">
+            Ethereum, Base, Arbitrum, Polygon, ApeChain
+          </p>
+          <p className="text-xs text-gray-500 mb-6">
+            Each wallet requires signature verification to prove ownership before assets can be loaded.
+          </p>
+          
+          {/* WalletConnect button */}
+          {walletConnectConnector && (
+            <div className="mb-6">
+              <button
+                key={walletConnectConnector.uid}
+                onClick={async () => {
+                  try {
+                    await connect({ connector: walletConnectConnector })
+                  } catch (error: any) {
+                    if (error?.name !== 'UserRejectedRequestError' && error?.message !== 'User rejected the request.') {
+                      console.error('Error connecting:', error)
+                    }
+                  }
+                }}
+                disabled={isPending}
+                className="w-full rounded-xl border-2 p-4 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between group"
+                style={{
+                  borderColor: '#3B99FC',
+                  backgroundColor: 'white',
+                  color: '#3B99FC',
+                } as React.CSSProperties}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#3B99FC20'
+                  e.currentTarget.style.borderColor = '#2E7CD6'
+                  e.currentTarget.style.color = '#2E7CD6'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white'
+                  e.currentTarget.style.borderColor = '#3B99FC'
+                  e.currentTarget.style.color = '#3B99FC'
+                }}
+              >
+                <div className="flex items-center gap-3 flex-1">
+                  <span className="text-2xl">🔗</span>
+                  <span className="font-semibold flex-1">WalletConnect</span>
+                </div>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Connect any wallet via QR code
+              </p>
+            </div>
+          )}
+
+          {!walletConnectConnector && (
+            <div className="rounded-xl border-2 border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 p-4">
+              <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                <strong>WalletConnect not configured.</strong> Please add <code className="bg-yellow-100 dark:bg-yellow-900/40 px-1 rounded">NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID</code> to your .env.local file.
+              </p>
+              <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-2">
+                Get your Project ID from <a href="https://cloud.reown.com" target="_blank" rel="noopener noreferrer" className="underline">Reown Cloud</a>
+              </p>
+            </div>
+          )}
+          {connectError && connectError.name !== 'UserRejectedRequestError' && (
+            <div className="mt-3 rounded-xl border-2 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3">
+              <p className="text-sm text-red-800 dark:text-red-400">Connection error: {connectError.message || 'Failed to connect'}</p>
+            </div>
+          )}
         </div>
+      )}
+
+      {/* Bitcoin Wallets Tab */}
+      {activeTab === 'bitcoin' && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-gray-900">
+              {btcAddress ? 'Connect Another Bitcoin Wallet' : 'Connect Bitcoin Wallet'}
+            </h3>
+            <button
+              onClick={scanForBitcoinWallets}
+              disabled={scanningWallets}
+              className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors disabled:opacity-50"
+              title="Scan for available Bitcoin wallets"
+            >
+              {scanningWallets ? 'Scanning...' : '🔍 Scan'}
+            </button>
+          </div>
+          
+          <p className="text-sm text-gray-600 mb-4">
+            Connect your Bitcoin wallet to view BTC, Ordinals, and Rare SATs
+          </p>
         
-        {/* Show detected wallets as individual buttons */}
-        {detectedBtcWallets.length > 0 && (
-          <div className="mb-4 space-y-2">
-            <p className="text-sm text-gray-600 mb-2">
-              Detected {detectedBtcWallets.length} Bitcoin wallet{detectedBtcWallets.length !== 1 ? 's' : ''}:
-            </p>
+          {/* Show detected wallets as individual buttons */}
+          {detectedBtcWallets.length > 0 && (
+            <div className="mb-4 space-y-2">
+              <p className="text-sm text-gray-600 mb-2">
+                Detected {detectedBtcWallets.length} Bitcoin wallet{detectedBtcWallets.length !== 1 ? 's' : ''}:
+              </p>
             {detectedBtcWallets.map((wallet, index) => {
               const walletColor = wallet.name.toLowerCase().includes('xverse') ? '#F7931A' :
                                  wallet.name.toLowerCase().includes('okx') ? '#000000' :
@@ -869,8 +915,8 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
           </div>
         )}
         
-        {/* Fallback: Auto-detect button if no wallets detected */}
-        {detectedBtcWallets.length === 0 && (
+          {/* Fallback: Auto-detect button if no wallets detected */}
+          {detectedBtcWallets.length === 0 && (
           <button
             onClick={handleBitcoinConnect}
             disabled={connecting || scanningWallets}
@@ -918,9 +964,9 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
           </button>
         )}
         
-        {/* Manual address entry - always visible as fallback */}
-        <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-          <p className="text-xs font-semibold text-gray-600 mb-2">Or enter Bitcoin address manually:</p>
+          {/* Manual address entry - always visible as fallback */}
+          <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <p className="text-xs font-semibold text-gray-600 mb-2">Or enter Bitcoin address manually:</p>
           <div className="flex gap-2">
             <input
               type="text"
@@ -966,7 +1012,8 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      )}
     </div>
   )
 }
