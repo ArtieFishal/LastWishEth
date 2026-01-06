@@ -42,10 +42,19 @@ export function NFTImage({
     }
 
     // If we have a token URI but no image, fetch metadata
+    // Skip if tokenUri is an ord.io URL and we're using proxy (to avoid CORS)
     if (tokenUri && !imageUrl && !error) {
       // Check if tokenUri is a data URI (common for ethscriptions)
       if (tokenUri.startsWith('data:')) {
         setImageUrl(tokenUri)
+        setLoading(false)
+        return
+      }
+      
+      // For ordinals, if tokenUri points to ord.io, don't try to fetch metadata
+      // (it will cause CORS errors). The imageUrl should already be set to use our proxy.
+      if (tokenUri.includes('ord.io/') && initialImageUrl && initialImageUrl.includes('/api/ordinal-image')) {
+        // We already have a proxy URL, don't try to fetch metadata
         setLoading(false)
         return
       }
