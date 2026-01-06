@@ -665,7 +665,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
           className={`px-6 py-3 font-semibold transition-colors ${
             activeTab === 'evm'
               ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
+              : 'text-blue-400 hover:text-blue-500'
           }`}
         >
           EVM Wallets
@@ -675,7 +675,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
           className={`px-6 py-3 font-semibold transition-colors ${
             activeTab === 'bitcoin'
               ? 'text-orange-600 border-b-2 border-orange-600'
-              : 'text-gray-500 hover:text-gray-700'
+              : 'text-orange-400 hover:text-orange-500'
           }`}
         >
           Bitcoin Wallets
@@ -837,38 +837,128 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                         }
                       }
                       
-                      // For Xverse, try getAccounts with purposes
-                      if (!accounts && wallet.name === 'Xverse' && typeof selectedProvider.request === 'function') {
+                      // For Xverse, try getAccounts with purposes (Xverse-specific API)
+                      if (!accounts && (wallet.name === 'Xverse' || wallet.name.includes('Xverse')) && typeof selectedProvider.request === 'function') {
                         try {
+                          console.log(`[Bitcoin Wallet] Trying Xverse getAccounts with purposes...`)
                           accounts = await selectedProvider.request('getAccounts', { purposes: ['payment', 'ordinals'] })
+                          console.log(`[Bitcoin Wallet] ✅ Xverse getAccounts result:`, accounts)
                         } catch (err: any) {
+                          console.log(`[Bitcoin Wallet] ❌ Xverse getAccounts failed:`, err.message)
+                          // Try with just payment purpose
                           try {
+                            console.log(`[Bitcoin Wallet] Trying Xverse with just payment purpose...`)
                             accounts = await selectedProvider.request('getAccounts', { purposes: ['payment'] })
+                            console.log(`[Bitcoin Wallet] ✅ Xverse payment-only result:`, accounts)
                           } catch (err2: any) {
-                            console.log(`[${providerName}] getAccounts failed:`, err2.message)
+                            console.log(`[Bitcoin Wallet] ❌ Xverse payment-only failed:`, err2.message)
                           }
                         }
                       }
                       
-                      // Extract address
-                      if (accounts) {
-                        if (Array.isArray(accounts) && accounts.length > 0) {
-                          const paymentAccount = accounts.find((acc: any) => acc.purpose === 'payment')
-                          const account = paymentAccount || accounts[0]
-                          address = extractBitcoinAddress(account)
-                        } else if (typeof accounts === 'string') {
-                          address = accounts
-                        } else {
-                          address = extractBitcoinAddress(accounts)
+                      // For XverseProviders, also try getAddresses if available
+                      if (!accounts && (wallet.name === 'Xverse' || wallet.name.includes('Xverse')) && typeof selectedProvider.getAddresses === 'function') {
+                        try {
+                          console.log(`[Bitcoin Wallet] Trying Xverse getAddresses()...`)
+                          const addresses = await selectedProvider.getAddresses()
+                          console.log(`[Bitcoin Wallet] ✅ Xverse getAddresses result:`, addresses)
+                          if (addresses && Array.isArray(addresses) && addresses.length > 0) {
+                            accounts = addresses
+                          }
+                        } catch (err: any) {
+                          console.log(`[Bitcoin Wallet] ❌ Xverse getAddresses failed:`, err.message)
                         }
                       }
                       
-                      if (address) {
-                        setBtcAddress(address)
-                        onBitcoinConnect?.(address, providerName)
-                        setConnecting(false)
+                      // Extract addresses (both payment and ordinals)
+                      let ordinalsAddress: string | null = null
+                      if (accounts) {
+                        console.log(`[Bitcoin Wallet] Processing accounts response:`, accounts, 'Type:', typeof accounts, 'IsArray:', Array.isArray(accounts))
+                        
+                        // Handle JSON-RPC response format
+                        if (typeof accounts === 'object' && accounts !== null && accounts.result && Array.isArray(accounts.result)) {
+                          const resultArray = accounts.result
+                          console.log(`[Bitcoin Wallet] JSON-RPC format detected, ${resultArray.length} accounts`)
+                          if (resultArray.length > 0) {
+                            const paymentAccount = resultArray.find((acc: any) => acc.purpose === 'payment')
+                            const ordinalsAccount = resultArray.find((acc: any) => acc.purpose === 'ordinals')
+                            const account = paymentAccount || resultArray[0]
+                            console.log(`[Bitcoin Wallet] Selected account:`, account)
+                            address = extractBitcoinAddress(account)
+                            if (ordinalsAccount) {
+                              ordinalsAddress = extractBitcoinAddress(ordinalsAccount)
+                              console.log(`[Bitcoin Wallet] Found ordinals address:`, ordinalsAddress)
+                            }
+                            console.log(`[Bitcoin Wallet] Extracted payment address:`, address)
+                          }
+                        } else if (Array.isArray(accounts)) {
+                          // Prefer payment address over ordinals address, but also extract ordinals address
+                          console.log(`[Bitcoin Wallet] Array format detected, ${accounts.length} accounts`)
+                          const paymentAccount = accounts.find((acc: any) => acc.purpose === 'payment')
+                          const ordinalsAccount = accounts.find((acc: any) => acc.purpose === 'ordinals')
+                          const account = paymentAccount || accounts[0]
+                          console.log(`[Bitcoin Wallet] Selected account:`, account)
+                          address = extractBitcoinAddress(account)
+                          if (ordinalsAccount) {
+                            ordinalsAddress = extractBitcoinAddress(ordinalsAccount)
+                            console.log(`[Bitcoin Wallet] Found ordinals address:`, ordinalsAddress)
+                          }
+                          console.log(`[Bitcoin Wallet] Extracted payment address:`, address)
+                        } else if (typeof accounts === 'string') {
+                          console.log(`[Bitcoin Wallet] String format detected:`, accounts)
+                          address = accounts
+                        } else if (typeof accounts === 'object' && accounts !== null) {
+                          // Try to extract address from object directly
+                          console.log(`[Bitcoin Wallet] Object format detected, keys:`, Object.keys(accounts))
+                          address = extractBitcoinAddress(accounts)
+                          console.log(`[Bitcoin Wallet] Extracted address:`, address)
+                          
+                          // If that didn't work, try common nested structures
+                          if (!address) {
+                            if (accounts.accounts && Array.isArray(accounts.accounts) && accounts.accounts.length > 0) {
+                              const paymentAccount = accounts.accounts.find((acc: any) => acc.purpose === 'payment')
+                              const ordinalsAccount = accounts.accounts.find((acc: any) => acc.purpose === 'ordinals')
+                              const account = paymentAccount || accounts.accounts[0]
+                              address = extractBitcoinAddress(account)
+                              if (ordinalsAccount) {
+                                ordinalsAddress = extractBitcoinAddress(ordinalsAccount)
+                              }
+                            } else if (accounts.addresses && Array.isArray(accounts.addresses) && accounts.addresses.length > 0) {
+                              address = accounts.addresses[0]
+                            } else if (accounts.address) {
+                              address = accounts.address
+                            }
+                          }
+                        }
                       } else {
-                        alert(`Failed to connect to ${providerName}. Please try manual entry.`)
+                        console.log(`[Bitcoin Wallet] No accounts returned from any method`)
+                      }
+                      
+                      if (address) {
+                        console.log(`[Bitcoin Wallet] 🎉 SUCCESS! Connected payment address: ${address} via ${providerName}`)
+                        if (ordinalsAddress && ordinalsAddress !== address) {
+                          console.log(`[Bitcoin Wallet] Also found ordinals address: ${ordinalsAddress}`)
+                          setBtcAddress(address)
+                          setConnecting(false)
+                          onBitcoinConnect?.(address, providerName, ordinalsAddress)
+                        } else {
+                          setBtcAddress(address)
+                          setConnecting(false)
+                          onBitcoinConnect?.(address, providerName)
+                        }
+                      } else {
+                        // If we get here, connection failed - provide detailed error info
+                        console.error(`[Bitcoin Wallet] ❌ Failed to extract address from ${providerName}`)
+                        console.error(`[Bitcoin Wallet] Accounts response:`, accounts)
+                        console.error(`[Bitcoin Wallet] Provider object:`, selectedProvider)
+                        console.error(`[Bitcoin Wallet] Available methods:`, Object.keys(selectedProvider || {}))
+                        
+                        // For Xverse specifically, provide more helpful error message
+                        if (providerName === 'Xverse' || providerName.includes('Xverse')) {
+                          alert(`Failed to connect to Xverse wallet. This might be because:\n\n1. The Xverse extension service worker is inactive - try clicking the Xverse icon in your browser toolbar first\n2. You need to approve the connection in the Xverse popup\n3. The extension needs to be reloaded\n\nCheck the browser console (F12) for detailed error messages.`)
+                        } else {
+                          alert(`Failed to connect to ${providerName}. Please try again or enter your address manually.`)
+                        }
                         setConnecting(false)
                       }
                     } catch (error: any) {
