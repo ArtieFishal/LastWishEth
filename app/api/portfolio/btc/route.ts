@@ -273,16 +273,10 @@ export async function POST(request: NextRequest) {
             const inscriptionIdStr = inscriptionId.toString()
             
             // Try multiple ordinal image URL patterns (in order of preference)
-            // Ord.io - content endpoint (most reliable for images)
-            imageUrl = `https://ord.io/content/${inscriptionIdStr}`
+            // Ord.io - preview endpoint (better for images than content)
+            imageUrl = `https://ord.io/preview/${inscriptionIdStr}`
             
-            // Alternative: Try preview endpoint
-            // imageUrl = `https://ord.io/preview/${inscriptionIdStr}`
-            
-            // Hiro API - content endpoint (good fallback)
-            // imageUrl = `https://api.hiro.so/ordinals/v1/inscriptions/${inscriptionIdStr}/content`
-            
-            // Note: We'll use ord.io as primary since it's most commonly used
+            // Log the constructed URL
             console.log(`[BTC API] Constructed image URL for ordinal ${inscriptionIdStr}: ${imageUrl}`)
           }
           
@@ -297,7 +291,8 @@ export async function POST(request: NextRequest) {
           // Prefer actual content URLs from API, fallback to constructed URLs
           const contentUrl = inscription.content_url || 
                             inscription.media_url || 
-                            (inscriptionId ? `https://ord.io/content/${inscriptionId.toString()}` : null)
+                            (inscriptionId ? `https://ord.io/content/${inscriptionId.toString()}` : null) ||
+                            imageUrl // Use imageUrl as fallback for contentUrl
           
           // If we still don't have an imageUrl, use contentUrl
           if (!imageUrl && contentUrl) {

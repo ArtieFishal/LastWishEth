@@ -76,13 +76,22 @@ export function NFTImage({
     console.log(`[NFTImage] Image load error for: ${currentSrc}`)
     
     // If it's an ordinal URL (ord.io), try alternative endpoints
-    if (currentSrc.includes('ord.io/content/') && tokenId) {
-      // Try preview endpoint
+    if (currentSrc.includes('ord.io/') && tokenId) {
       const inscriptionId = tokenId
-      const previewUrl = `https://ord.io/preview/${inscriptionId}`
-      console.log(`[NFTImage] Trying ord.io preview URL: ${previewUrl}`)
-      setImageUrl(previewUrl)
-      return
+      // If preview failed, try content endpoint
+      if (currentSrc.includes('ord.io/preview/')) {
+        const contentUrl = `https://ord.io/content/${inscriptionId}`
+        console.log(`[NFTImage] Preview failed, trying ord.io content URL: ${contentUrl}`)
+        setImageUrl(contentUrl)
+        return
+      }
+      // If content failed, try Hiro API
+      if (currentSrc.includes('ord.io/content/')) {
+        const hiroUrl = `https://api.hiro.so/ordinals/v1/inscriptions/${inscriptionId}/content`
+        console.log(`[NFTImage] ord.io failed, trying Hiro API: ${hiroUrl}`)
+        setImageUrl(hiroUrl)
+        return
+      }
     }
     
     // If it's an IPFS URL and we haven't tried all gateways yet, try next one

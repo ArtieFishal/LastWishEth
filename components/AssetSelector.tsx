@@ -401,7 +401,7 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
                             <NFTImage
                               imageUrl={asset.imageUrl}
                               tokenUri={asset.type === 'ordinal' 
-                                ? (asset.metadata?.contentUrl || asset.contentUri || `https://ord.io/${asset.tokenId}`)
+                                ? (asset.metadata?.contentUrl || asset.contentUri || asset.imageUrl || `https://ord.io/preview/${asset.tokenId}`)
                                 : (asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri)}
                               contractAddress={asset.contractAddress}
                               tokenId={asset.tokenId}
