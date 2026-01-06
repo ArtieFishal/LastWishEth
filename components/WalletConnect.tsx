@@ -1009,6 +1009,18 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
                             accounts = getAccountsResult
                             if (getAccountsResult.result && Array.isArray(getAccountsResult.result)) {
                               accounts = getAccountsResult.result
+                            } else if (Array.isArray(getAccountsResult)) {
+                              accounts = getAccountsResult
+                            }
+                            console.log(`[Bitcoin Wallet] Processed getAccounts into accounts array:`, accounts)
+                            console.log(`[Bitcoin Wallet] Accounts length:`, Array.isArray(accounts) ? accounts.length : 'not an array')
+                            // Log each account to see if we have payment and ordinals
+                            if (Array.isArray(accounts)) {
+                              accounts.forEach((acc: any, idx: number) => {
+                                console.log(`[Bitcoin Wallet] Account ${idx}:`, acc)
+                                console.log(`[Bitcoin Wallet] Account ${idx} purpose:`, acc.purpose)
+                                console.log(`[Bitcoin Wallet] Account ${idx} address:`, acc.address || acc.paymentsAddress || acc.payments_address)
+                              })
                             }
                           }
                         } catch (err: any) {
