@@ -30,6 +30,9 @@ const getAssetCategory = (asset: Asset): string => {
   if (asset.type === 'ethscription') {
     return 'Ethscriptions'
   }
+  if (asset.type === 'ordinal') {
+    return 'Ordinals'
+  }
   if (asset.type === 'native' || asset.type === 'btc' || asset.type === 'erc20') {
     return 'Currencies'
   }
@@ -54,7 +57,7 @@ const getWalletProviderName = (provider?: string): string => {
 }
 
 export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, walletNames = {}, resolvedEnsNames = {} }: AssetSelectorProps) {
-  const [filter, setFilter] = useState<'all' | 'currencies' | 'nfts' | 'ethscriptions' | 'other'>('all')
+  const [filter, setFilter] = useState<'all' | 'currencies' | 'nfts' | 'ethscriptions' | 'ordinals'>('all')
   const [sortBy, setSortBy] = useState<'chain' | 'type' | 'value' | 'wallet'>('type')
 
   // Group and filter assets
@@ -223,14 +226,14 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
               Ethscriptions
             </button>
             <button
-              onClick={() => setFilter('other')}
+              onClick={() => setFilter('ordinals')}
               className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                filter === 'other'
-                  ? 'bg-gray-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                filter === 'ordinals'
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
               }`}
             >
-              Other
+              Ordinals
             </button>
           </div>
           <div className="flex gap-1 items-center">
@@ -333,6 +336,11 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
                             {asset.type === 'ethscription' ? (
                               <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded font-semibold">
                                 ETHSCRIPTION
+                              </span>
+                            ) : null}
+                            {asset.type === 'ordinal' ? (
+                              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded font-semibold">
+                                ORDINAL
                               </span>
                             ) : null}
                             {asset.walletProvider && asset.walletProvider !== 'Unknown' ? (

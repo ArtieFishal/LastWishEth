@@ -46,30 +46,9 @@ export async function POST(request: NextRequest) {
       const satsFormatted = netBalance.toLocaleString('en-US')
 
       const assets: any[] = []
+      let ordinalsFound = 0 // Track if we find ordinals
 
-      // Add regular Bitcoin asset
-      if (netBalance > 0) {
-        assets.push({
-          id: `btc-${address}`,
-          chain: 'bitcoin',
-          type: 'btc',
-          symbol: 'BTC',
-          name: 'Bitcoin',
-          balance: netBalance.toString(), // Balance in satoshis
-          balanceFormatted: btcBalance, // Balance in BTC
-          decimals: 8, // Bitcoin uses 8 decimals (satoshis)
-          contractAddress: address,
-          walletAddress: address, // Track which wallet this asset belongs to
-          metadata: {
-            sats: netBalance.toString(),
-            satsFormatted: satsFormatted,
-            assetType: 'regular', // regular, ordinal, rare_sat
-            note: 'This balance includes all satoshis. Rare SATs (ordinals, special block numbers, etc.) may be present but require specialized tools like Ordiscan to detect. When allocating, consider that rare SATs should be preserved separately from regular Bitcoin.',
-          },
-        })
-      }
-
-      // Fetch ordinals/inscriptions
+      // Fetch ordinals/inscriptions FIRST to know if we should show the warning
       // Note: Ordinals are typically stored in Taproot addresses (bc1p...), but can also be in other address types
       // Xverse uses separate addresses for ordinals vs payment
       try {

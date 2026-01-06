@@ -955,18 +955,14 @@ setError('Failed to load Bitcoin assets. Please try again.')
 }
 
  if (append) {
- // Append new assets to existing ones
- setAssets([...assets, ...newAssets])
- // Auto-select newly loaded assets
- if (newAssets.length > 0) {
- setSelectedAssetIds([...selectedAssetIds, ...newAssets.map(a => a.id)])
- }
+   // Append new assets to existing ones
+   setAssets([...assets, ...newAssets])
+   // Don't auto-select - let user choose
  } else {
- // Replace assets (first time loading)
- setAssets(newAssets)
- if (newAssets.length > 0) {
- setSelectedAssetIds(newAssets.map(a => a.id))
- }
+   // Replace assets (first time loading)
+   setAssets(newAssets)
+   // Start with all assets deselected - user must manually select
+   setSelectedAssetIds([])
  }
 
  // Track loaded wallets
@@ -2216,9 +2212,20 @@ setTimeout(() => {
        </div>
      )}
      {btcAddress && (
-       <p className="text-xs text-blue-700 font-mono break-all">
-         {btcAddress} (Bitcoin Wallet)
-       </p>
+       <div>
+         <p className="text-sm font-bold text-blue-900 mb-1">
+           {walletNames[btcAddress] || resolvedEnsNames[btcAddress.toLowerCase()] || btcAddress.slice(0, 10) + '...' + btcAddress.slice(-8)}
+         </p>
+         <p className="text-xs text-blue-700 font-mono break-all">
+           {btcAddress}
+           {walletProviders[btcAddress] && (
+             <span className="ml-2 text-blue-600">({walletProviders[btcAddress]})</span>
+           )}
+           {!walletProviders[btcAddress] && (
+             <span className="ml-2 text-blue-600">(Bitcoin Wallet)</span>
+           )}
+         </p>
+       </div>
      )}
    </div>
  )}
