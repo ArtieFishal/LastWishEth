@@ -268,16 +268,16 @@ export async function POST(request: NextRequest) {
                         inscription.thumbnail ||
                         (inscription.meta?.image || inscription.meta?.preview)
           
-          // If no direct image URL, try to construct from inscription ID
-          // Many ordinal APIs serve images via inscription ID
-          if (!imageUrl && inscriptionId) {
+          // Always use our proxy API for ordinals to avoid CORS issues
+          // Convert any ord.io or external URLs to use our proxy
+          if (inscriptionId) {
             const inscriptionIdStr = inscriptionId.toString()
             
             // Use our proxy API to avoid CORS issues
             imageUrl = `/api/ordinal-image?id=${encodeURIComponent(inscriptionIdStr)}`
             
             // Log the constructed URL
-            console.log(`[BTC API] Constructed image URL for ordinal ${inscriptionIdStr}: ${imageUrl}`)
+            console.log(`[BTC API] Using proxy for ordinal ${inscriptionIdStr}: ${imageUrl}`)
           }
           
           // Extract content type
