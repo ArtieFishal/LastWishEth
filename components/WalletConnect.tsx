@@ -1256,18 +1256,97 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
           </div>
         )}
         
-          {/* Mobile-specific message */}
+          {/* Mobile-specific wallet buttons */}
           {isMobileDevice() && detectedBtcWallets.length === 0 && (
-            <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
-              <p className="text-sm font-semibold text-blue-900 mb-2">
-                📱 Mobile Device Detected
-              </p>
-              <p className="text-xs text-blue-700 mb-3">
-                Bitcoin wallet browser extensions are not available on mobile devices. Please use the manual entry option below to enter your Bitcoin address directly.
-              </p>
-              <p className="text-xs text-blue-600">
-                <strong>Tip:</strong> You can find your Bitcoin address in your mobile wallet app (Xverse, OKX, Blockchain.com, etc.) and copy it here.
-              </p>
+            <div className="mb-4 space-y-3">
+              <div className="p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
+                <p className="text-sm font-semibold text-blue-900 mb-2">
+                  📱 Mobile Device Detected
+                </p>
+                <p className="text-xs text-blue-700 mb-3">
+                  Connect your Bitcoin wallet by opening your mobile wallet app:
+                </p>
+              </div>
+              
+              {/* Xverse Mobile App Button */}
+              <button
+                onClick={() => {
+                  // Xverse deep link - opens Xverse app if installed
+                  const xverseUrl = 'xverse://'
+                  const fallbackUrl = 'https://xverse.app'
+                  
+                  // Try to open Xverse app
+                  window.location.href = xverseUrl
+                  
+                  // Fallback: open Xverse website after a delay
+                  setTimeout(() => {
+                    if (confirm('Xverse app not found. Would you like to open the Xverse website to download it?')) {
+                      window.open(fallbackUrl, '_blank')
+                    }
+                  }, 1000)
+                }}
+                className="w-full rounded-xl border-2 p-4 text-left transition-all flex items-center justify-between group"
+                style={{
+                  borderColor: '#F7931A',
+                  backgroundColor: 'white',
+                  color: '#F7931A',
+                } as React.CSSProperties}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">₿</span>
+                  <div>
+                    <span className="font-semibold block" style={{ color: '#F7931A' } as React.CSSProperties}>
+                      Open Xverse App
+                    </span>
+                    <span className="text-xs text-gray-500 mt-1">Tap to open Xverse wallet app</span>
+                  </div>
+                </div>
+                <svg className="w-5 h-5 transition-colors" style={{ color: '#F7931A' } as React.CSSProperties} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              
+              {/* OKX Mobile App Button */}
+              <button
+                onClick={() => {
+                  // OKX deep link
+                  const okxUrl = 'okx://'
+                  const fallbackUrl = 'https://www.okx.com/web3'
+                  
+                  window.location.href = okxUrl
+                  
+                  setTimeout(() => {
+                    if (confirm('OKX app not found. Would you like to open the OKX website?')) {
+                      window.open(fallbackUrl, '_blank')
+                    }
+                  }, 1000)
+                }}
+                className="w-full rounded-xl border-2 p-4 text-left transition-all flex items-center justify-between group"
+                style={{
+                  borderColor: '#000000',
+                  backgroundColor: 'white',
+                  color: '#000000',
+                } as React.CSSProperties}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🔷</span>
+                  <div>
+                    <span className="font-semibold block" style={{ color: '#000000' } as React.CSSProperties}>
+                      Open OKX App
+                    </span>
+                    <span className="text-xs text-gray-500 mt-1">Tap to open OKX wallet app</span>
+                  </div>
+                </div>
+                <svg className="w-5 h-5 transition-colors" style={{ color: '#000000' } as React.CSSProperties} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-xs text-gray-600">
+                  <strong>After connecting in your wallet app:</strong> Copy your Bitcoin address from the app and paste it in the manual entry field below.
+                </p>
+              </div>
             </div>
           )}
         
