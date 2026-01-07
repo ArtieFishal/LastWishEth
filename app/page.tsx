@@ -2716,7 +2716,7 @@ onSelectionChange={setSelectedAssetIds}
              return (
                <div key={ben.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3 relative">
                  <div className="flex items-start justify-between mb-2">
-                   <span className="text-sm font-bold text-black">{ben.name}</span>
+                   <span className="text-base font-bold text-black" style={{ color: '#000000', fontWeight: '700' }}>{ben.name}</span>
                    <div className="flex gap-1">
                      <button
                        onClick={() => {
