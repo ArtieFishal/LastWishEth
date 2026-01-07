@@ -28,21 +28,31 @@ export function Providers({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       getConfig().then(setConfig)
       
-      // Fix WalletConnect modal z-index - monitor for modal creation
+      // Fix WalletConnect modal z-index - ABSOLUTE TOP PRIORITY for QR code
       const fixWalletConnectZIndex = () => {
+        // Use maximum z-index value to ensure QR code is always on top
+        const MAX_Z_INDEX = '2147483647'
+        
         // Find all WalletConnect modal elements and ensure they're on top
         const selectors = [
           'w3m-modal',
           'w3m-backdrop',
           'w3m-container',
           'w3m-router',
+          'w3m-qr-code',
           '[data-w3m-modal]',
           '[data-w3m-backdrop]',
+          '[data-w3m-container]',
+          '[data-w3m-qr]',
           '.w3m-modal',
           '.w3m-backdrop',
           '.w3m-container',
+          '.w3m-router',
+          '.w3m-qr-code',
           '.walletconnect-modal',
           '.walletconnect-modal__backdrop',
+          '.walletconnect-qrcode',
+          '.walletconnect-qrcode__base',
         ]
         
         selectors.forEach(selector => {
@@ -50,12 +60,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
             const elements = document.querySelectorAll(selector)
             elements.forEach((el: Element) => {
               const htmlEl = el as HTMLElement
-              htmlEl.style.zIndex = '999999'
+              htmlEl.style.zIndex = MAX_Z_INDEX
               htmlEl.style.position = 'fixed'
               // Also set on parent if it exists
               if (htmlEl.parentElement) {
-                htmlEl.parentElement.style.zIndex = '999999'
+                htmlEl.parentElement.style.zIndex = MAX_Z_INDEX
                 htmlEl.parentElement.style.position = 'fixed'
+              }
+              // Also set on all ancestors
+              let parent = htmlEl.parentElement
+              while (parent && parent !== document.body) {
+                parent.style.zIndex = MAX_Z_INDEX
+                parent = parent.parentElement
               }
             })
           } catch (e) {
@@ -63,17 +79,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
           }
         })
         
-        // Also check for any element with WalletConnect classes
+        // Also check for any element with WalletConnect classes - MAXIMUM PRIORITY
         const allElements = document.querySelectorAll('*')
         allElements.forEach((el: Element) => {
           const htmlEl = el as HTMLElement
           const className = htmlEl.className || ''
           const id = htmlEl.id || ''
+          const tagName = htmlEl.tagName?.toLowerCase() || ''
+          
           if (
+            tagName.includes('w3m') ||
             (typeof className === 'string' && (className.includes('w3m') || className.includes('walletconnect'))) ||
             (typeof id === 'string' && (id.includes('w3m') || id.includes('walletconnect')))
           ) {
-            htmlEl.style.zIndex = '999999'
+            htmlEl.style.zIndex = MAX_Z_INDEX
             if (htmlEl.style.position === '' || htmlEl.style.position === 'static') {
               htmlEl.style.position = 'fixed'
             }

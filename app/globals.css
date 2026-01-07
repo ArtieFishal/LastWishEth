@@ -330,23 +330,36 @@ html {
   line-height: 1.6;
 }
 
-/* WalletConnect Modal Z-Index Fix - Ensure QR code modal appears on top */
-/* This ensures the WalletConnect QR code modal always appears above other content */
+/* ============================================
+   WALLETCONNECT QR CODE MODAL - ABSOLUTE TOP PRIORITY
+   This MUST be at the very top of all CSS to ensure QR code is accessible
+   ============================================ */
 
-/* WalletConnect v3/v4 (w3m) modal styles - most common */
+/* Set ALL other elements to lower z-index first */
+* {
+  z-index: auto;
+}
+
+/* WalletConnect QR Modal - HIGHEST PRIORITY - Must be accessible */
 w3m-modal,
 w3m-backdrop,
 w3m-container,
+w3m-router,
+w3m-qr-code,
 [data-w3m-modal],
 [data-w3m-backdrop],
 [data-w3m-container],
+[data-w3m-qr],
 .w3m-modal,
 .w3m-backdrop,
 .w3m-container,
+.w3m-router,
+.w3m-qr-code,
 #w3m-modal,
 #w3m-backdrop,
-#w3m-container {
-  z-index: 99999 !important;
+#w3m-container,
+#w3m-qr-code {
+  z-index: 2147483647 !important; /* Maximum z-index value */
   position: fixed !important;
 }
 
@@ -354,27 +367,33 @@ w3m-container,
 .walletconnect-modal,
 .walletconnect-modal__backdrop,
 .walletconnect-qrcode__base,
-.walletconnect-modal__container {
-  z-index: 999999 !important;
+.walletconnect-qrcode,
+.walletconnect-modal__container,
+.walletconnect-modal__base {
+  z-index: 2147483647 !important; /* Maximum z-index value */
   position: fixed !important;
 }
 
-/* Ensure any WalletConnect container appears on top */
+/* Ensure ANY WalletConnect container appears on top */
 div[class*="w3m"],
 div[class*="walletconnect"],
 div[id*="w3m"],
 div[id*="walletconnect"],
 section[class*="w3m"],
-section[class*="walletconnect"] {
-  z-index: 999999 !important;
+section[class*="walletconnect"],
+article[class*="w3m"],
+article[class*="walletconnect"] {
+  z-index: 2147483647 !important;
 }
 
 /* Fix for any overlay/backdrop elements */
 .w3m-overlay,
 .walletconnect-overlay,
 [class*="w3m-overlay"],
-[class*="walletconnect-overlay"] {
-  z-index: 999998 !important;
+[class*="walletconnect-overlay"],
+[class*="w3m-backdrop"],
+[class*="walletconnect-backdrop"] {
+  z-index: 2147483646 !important; /* Just below modal */
   position: fixed !important;
 }
 
@@ -383,15 +402,30 @@ body > div[style*="z-index"],
 body > div[class*="portal"],
 body > div[id*="modal"],
 body > div[class*="w3m"],
-body > div[id*="w3m"] {
-  z-index: 999999 !important;
+body > div[id*="w3m"],
+body > div[class*="walletconnect"],
+body > div[id*="walletconnect"] {
+  z-index: 2147483647 !important;
 }
 
 /* Ensure main content cards don't block modals */
 .max-w-5xl,
 .max-w-4xl,
 .max-w-3xl,
-.max-w-2xl {
+.max-w-2xl,
+.max-w-xl,
+.max-w-lg {
   position: relative;
-  z-index: 1;
+  z-index: 1 !important;
+}
+
+/* Ensure no other elements can block the modal */
+header,
+nav,
+main,
+section,
+article,
+aside,
+footer {
+  z-index: auto !important;
 }
