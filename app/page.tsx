@@ -1156,6 +1156,5 @@ const fetchBitcoinAssetsWithRetry = async (address: string, retries = 3, delay =
     }
   }
   throw new Error('All retry attempts failed')
->>>>>>> d39da74 (Fix: Aggressive wallet cleanup and WalletConnect modal z-index)
 }
 
