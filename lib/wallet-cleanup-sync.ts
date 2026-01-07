@@ -4,6 +4,22 @@
  * This must execute immediately when the script loads
  */
 
+/**
+ * Helper to promisify indexedDB.deleteDatabase
+ */
+async function deleteIndexedDB(name: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.deleteDatabase(name)
+    req.onsuccess = () => resolve()
+    req.onerror = () => reject(req.error ?? new Error(`deleteDatabase failed for ${name}`))
+    req.onblocked = () => {
+      console.warn(`[Privacy Cleanup] deleteDatabase blocked for ${name}`)
+      // Resolve anyway to not block cleanup
+      resolve()
+    }
+  })
+}
+
 if (typeof window !== 'undefined') {
   // Run IMMEDIATELY - before React, before anything else
   (function() {
@@ -36,14 +52,16 @@ if (typeof window !== 'undefined') {
       // CLEAR ALL IndexedDB databases - complete privacy
       try {
         if ('indexedDB' in window && indexedDB.databases) {
-          indexedDB.databases().then(databases => {
-            databases.forEach(db => {
+          indexedDB.databases().then(async (databases) => {
+            for (const db of databases) {
               if (db.name) {
-                indexedDB.deleteDatabase(db.name).catch(err => {
+                try {
+                  await deleteIndexedDB(db.name)
+                } catch (err) {
                   console.warn(`[Privacy Cleanup] Could not delete DB ${db.name}:`, err)
-                })
+                }
               }
-            })
+            }
             console.log('[Privacy Cleanup] ✅ Cleared ALL IndexedDB databases')
           }).catch(err => {
             console.error('[Privacy Cleanup] Error getting IndexedDB databases:', err)
@@ -58,13 +76,13 @@ if (typeof window !== 'undefined') {
             'lastwish_state',
             'lastwish',
           ]
-          knownDBs.forEach(dbName => {
+          for (const dbName of knownDBs) {
             try {
-              indexedDB.deleteDatabase(dbName)
+              await deleteIndexedDB(dbName)
             } catch (e) {
               // Ignore errors
             }
-          })
+          }
         }
       } catch (e) {
         console.error('[Privacy Cleanup] Error clearing IndexedDB:', e)
