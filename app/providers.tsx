@@ -27,6 +27,77 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       getConfig().then(setConfig)
+      
+      // Fix WalletConnect modal z-index - monitor for modal creation
+      const fixWalletConnectZIndex = () => {
+        // Find all WalletConnect modal elements and ensure they're on top
+        const selectors = [
+          'w3m-modal',
+          'w3m-backdrop',
+          'w3m-container',
+          'w3m-router',
+          '[data-w3m-modal]',
+          '[data-w3m-backdrop]',
+          '.w3m-modal',
+          '.w3m-backdrop',
+          '.w3m-container',
+          '.walletconnect-modal',
+          '.walletconnect-modal__backdrop',
+        ]
+        
+        selectors.forEach(selector => {
+          try {
+            const elements = document.querySelectorAll(selector)
+            elements.forEach((el: Element) => {
+              const htmlEl = el as HTMLElement
+              htmlEl.style.zIndex = '999999'
+              htmlEl.style.position = 'fixed'
+              // Also set on parent if it exists
+              if (htmlEl.parentElement) {
+                htmlEl.parentElement.style.zIndex = '999999'
+                htmlEl.parentElement.style.position = 'fixed'
+              }
+            })
+          } catch (e) {
+            // Selector might not be valid, continue
+          }
+        })
+        
+        // Also check for any element with WalletConnect classes
+        const allElements = document.querySelectorAll('*')
+        allElements.forEach((el: Element) => {
+          const htmlEl = el as HTMLElement
+          const className = htmlEl.className || ''
+          const id = htmlEl.id || ''
+          if (
+            (typeof className === 'string' && (className.includes('w3m') || className.includes('walletconnect'))) ||
+            (typeof id === 'string' && (id.includes('w3m') || id.includes('walletconnect')))
+          ) {
+            htmlEl.style.zIndex = '999999'
+            if (htmlEl.style.position === '' || htmlEl.style.position === 'static') {
+              htmlEl.style.position = 'fixed'
+            }
+          }
+        })
+      }
+      
+      // Run immediately and then periodically check
+      fixWalletConnectZIndex()
+      const interval = setInterval(fixWalletConnectZIndex, 100)
+      
+      // Also watch for DOM changes (modal might be added dynamically)
+      const observer = new MutationObserver(() => {
+        fixWalletConnectZIndex()
+      })
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+      })
+      
+      return () => {
+        clearInterval(interval)
+        observer.disconnect()
+      }
     }
   }, [])
 

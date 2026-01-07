@@ -12,12 +12,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Try multiple ordinal image sources
+    // Try multiple ordinal image sources with better error handling
     const imageSources = [
       `https://ord.io/preview/${inscriptionId}`,
       `https://ord.io/content/${inscriptionId}`,
       `https://api.hiro.so/ordinals/v1/inscriptions/${inscriptionId}/content`,
       `https://ordinals.com/content/${inscriptionId}`,
+      `https://api.ordinalsbot.com/api/files/${inscriptionId}`,
     ]
 
     for (const imageUrl of imageSources) {
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
             'Accept': 'image/*',
             'User-Agent': 'Mozilla/5.0',
           },
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(8000), // Increased timeout
         })
 
         if (response.ok) {
@@ -37,20 +38,21 @@ export async function GET(request: NextRequest) {
           return new NextResponse(imageBuffer, {
             headers: {
               'Content-Type': contentType,
-              'Cache-Control': 'public, max-age=3600',
+              'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
               'Access-Control-Allow-Origin': '*',
             },
           })
         }
       } catch (error) {
-        // Try next source
+        // Log but continue to next source
+        console.log(`[Ordinal Image API] Failed to fetch from ${imageUrl}:`, error)
         continue
       }
     }
 
     // If all sources failed, return error
     return NextResponse.json(
-      { error: 'Failed to fetch ordinal image' },
+      { error: 'Failed to fetch ordinal image from all sources' },
       { status: 404 }
     )
   } catch (error) {

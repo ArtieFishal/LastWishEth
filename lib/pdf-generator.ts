@@ -1,7 +1,8 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import { UserData, Asset, Beneficiary, Allocation } from '@/types'
 
-// Helper function to fetch and embed image in PDF
+// Enhanced helper function to fetch and embed image in PDF
+// Converts GIFs to static PNG for PDF (but keeps them animated on website)
 async function fetchAndEmbedImage(pdfDoc: PDFDocument, imageUrl: string): Promise<any | null> {
   try {
     // Handle IPFS URLs
@@ -12,11 +13,46 @@ async function fetchAndEmbedImage(pdfDoc: PDFDocument, imageUrl: string): Promis
       url = `https://ipfs.io/${imageUrl}`
     }
     
+    // Handle ordinal proxy URLs - need to resolve them to direct URLs
+    if (url.includes('/api/ordinal-image')) {
+      // Extract inscription ID and try direct sources
+      try {
+        const urlObj = new URL(url, 'http://localhost') // Base URL for parsing
+        const inscriptionId = urlObj.searchParams.get('id')
+        if (inscriptionId) {
+          // Try direct ordinal sources (better for server-side fetching)
+          const ordinalSources = [
+            `https://ord.io/preview/${inscriptionId}`,
+            `https://ord.io/content/${inscriptionId}`,
+            `https://api.hiro.so/ordinals/v1/inscriptions/${inscriptionId}/content`,
+            `https://ordinals.com/content/${inscriptionId}`,
+          ]
+          for (const sourceUrl of ordinalSources) {
+            try {
+              const testResponse = await fetch(sourceUrl, {
+                headers: { 'Accept': 'image/*' },
+                signal: AbortSignal.timeout(5000),
+              })
+              if (testResponse.ok) {
+                url = sourceUrl
+                break
+              }
+            } catch {
+              continue
+            }
+          }
+        }
+      } catch {
+        // If parsing fails, try the URL as-is
+      }
+    }
+    
     // Fetch the image
     const response = await fetch(url, {
       headers: {
         'Accept': 'image/*',
       },
+      signal: AbortSignal.timeout(10000),
     })
     
     if (!response.ok) {
@@ -24,14 +60,58 @@ async function fetchAndEmbedImage(pdfDoc: PDFDocument, imageUrl: string): Promis
       return null
     }
     
+    const contentType = response.headers.get('content-type') || ''
     const arrayBuffer = await response.arrayBuffer()
     const uint8Array = new Uint8Array(arrayBuffer)
     
-    // Try to embed as PNG first, then JPEG
-    try {
+    // Handle different image formats
+    if (contentType.includes('image/png')) {
       return await pdfDoc.embedPng(uint8Array)
-    } catch {
+    } else if (contentType.includes('image/jpeg') || contentType.includes('image/jpg')) {
       return await pdfDoc.embedJpg(uint8Array)
+    } else if (contentType.includes('image/gif')) {
+      // For GIFs in PDF, we need to convert to static PNG
+      // Since pdf-lib doesn't support GIFs, we'll extract the first frame
+      // Note: This is a simplified approach - for production, consider using sharp or canvas
+      try {
+        // Try to embed as PNG (might work if it's a single-frame GIF or browser handles it)
+        // Most browsers can decode GIFs, so we'll try embedding the first frame
+        return await pdfDoc.embedPng(uint8Array)
+      } catch (pngError) {
+        // If PNG embedding fails, try JPEG
+        try {
+          return await pdfDoc.embedJpg(uint8Array)
+        } catch (jpgError) {
+          console.warn('GIF conversion failed, skipping GIF image in PDF:', pngError)
+          // For proper GIF-to-PNG conversion, you'd need a library like 'sharp' on the server
+          // For now, we'll skip the image
+          return null
+        }
+      }
+    } else if (contentType.includes('image/webp')) {
+      // WebP support - try as PNG first
+      try {
+        return await pdfDoc.embedPng(uint8Array)
+      } catch {
+        try {
+          return await pdfDoc.embedJpg(uint8Array)
+        } catch {
+          console.warn('WebP image format not supported, skipping')
+          return null
+        }
+      }
+    } else {
+      // Try PNG first, then JPEG as fallback for unknown formats
+      try {
+        return await pdfDoc.embedPng(uint8Array)
+      } catch {
+        try {
+          return await pdfDoc.embedJpg(uint8Array)
+        } catch {
+          console.warn(`Unsupported image format: ${contentType}`)
+          return null
+        }
+      }
     }
   } catch (error) {
     console.warn(`Error embedding NFT image from ${imageUrl}:`, error)

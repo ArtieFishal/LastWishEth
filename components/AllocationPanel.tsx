@@ -864,17 +864,15 @@ export function AllocationPanel({
                   >
                     {/* Enhanced header with more info */}
                     <div className="flex items-start gap-3 mb-3">
-                      {assetIsNFT && asset.imageUrl && (
-                        <img 
-                          src={asset.imageUrl.startsWith('ipfs://') 
-                            ? asset.imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/')
-                            : asset.imageUrl.startsWith('ipfs/')
-                            ? `https://ipfs.io/${asset.imageUrl}`
-                            : asset.imageUrl
-                          }
+                      {assetIsNFT && (
+                        <NFTImage
+                          imageUrl={asset.imageUrl}
+                          tokenUri={asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri}
+                          contractAddress={asset.contractAddress}
+                          tokenId={asset.tokenId}
                           alt={asset.name || asset.symbol}
                           className="w-16 h-16 rounded object-cover border-2 border-pink-300 flex-shrink-0"
-                          onError={(e) => e.currentTarget.style.display = 'none'}
+                          showFallback={true}
                         />
                       )}
                       <div className="flex-1 min-w-0">
