@@ -105,7 +105,6 @@ button[style*="borderColor"] svg {
   touch-action: manipulation;
 }
 
-<<<<<<< HEAD
 /* Custom Animations */
 @keyframes gradient-shift {
   0%, 100% {
@@ -335,9 +334,30 @@ html {
    This MUST be at the very top of all CSS to ensure QR code is accessible
    ============================================ */
 
-/* Set ALL other elements to lower z-index first */
-* {
-  z-index: auto;
+/* Ensure main content cards don't block modals */
+.max-w-5xl,
+.max-w-4xl,
+.max-w-3xl,
+.max-w-2xl,
+.max-w-xl,
+.max-w-lg {
+  position: relative;
+  z-index: 1 !important;
+}
+
+/* Ensure header and navigation are below WalletConnect modals */
+header,
+nav {
+  z-index: 50 !important; /* Keep header visible but below modals */
+}
+
+/* Ensure no other elements can block the modal */
+main,
+section,
+article,
+aside,
+footer {
+  z-index: auto !important;
 }
 
 /* WalletConnect QR Modal - HIGHEST PRIORITY - Must be accessible */
@@ -406,26 +426,4 @@ body > div[id*="w3m"],
 body > div[class*="walletconnect"],
 body > div[id*="walletconnect"] {
   z-index: 2147483647 !important;
-}
-
-/* Ensure main content cards don't block modals */
-.max-w-5xl,
-.max-w-4xl,
-.max-w-3xl,
-.max-w-2xl,
-.max-w-xl,
-.max-w-lg {
-  position: relative;
-  z-index: 1 !important;
-}
-
-/* Ensure no other elements can block the modal */
-header,
-nav,
-main,
-section,
-article,
-aside,
-footer {
-  z-index: auto !important;
 }
