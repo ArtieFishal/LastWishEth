@@ -21,6 +21,7 @@ import { generatePDF } from '@/lib/pdf-generator'
 import { getCurrentPricing, getPaymentAmountETH, getFormattedPrice, getTierPricing, getAllTiers, PricingTier } from '@/lib/pricing'
 import { getUserFriendlyError } from '@/lib/errorMessages'
 import { fetchWithCache, getCached, setCached } from '@/lib/requestCache'
+import { clearWalletConnectionsOnLoad } from '@/lib/wallet-cleanup'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 
@@ -113,6 +114,15 @@ export default function Home() {
  // Prevent hydration mismatch
  useEffect(() => {
  setMounted(true)
+ 
+ // Clear wallet connections on app load (prevents auto-reconnect, but preserves form data)
+ // This must run BEFORE loading state from localStorage
+ // Note: This is async but we don't await - it runs in background and clears indexedDB
+ // before wagmi can auto-restore connections
+ clearWalletConnectionsOnLoad().catch(err => {
+   console.error('[App] Error clearing wallet connections:', err)
+ })
+ 
  // Load persisted state from localStorage
  if (typeof window !== 'undefined') {
  try {

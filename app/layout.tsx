@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import "@/lib/wallet-cleanup-sync"; // Run sync cleanup BEFORE React
+// Removed aggressive wallet cleanup - now handled properly in /app route only
 import ClientProviders from "@/components/ClientProviders";
 
 // Using system fonts directly - more reliable for CI builds
