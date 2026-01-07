@@ -67,7 +67,7 @@ if (typeof window !== 'undefined') {
             console.error('[Privacy Cleanup] Error getting IndexedDB databases:', err)
           })
         } else {
-          // Fallback: delete known databases
+          // Fallback: delete known databases (fire-and-forget, no await needed)
           const knownDBs = [
             'W3M_INDEXED_DB',
             'walletconnect',
@@ -76,13 +76,11 @@ if (typeof window !== 'undefined') {
             'lastwish_state',
             'lastwish',
           ]
-          for (const dbName of knownDBs) {
-            try {
-              await deleteIndexedDB(dbName)
-            } catch (e) {
-              // Ignore errors
-            }
-          }
+          knownDBs.forEach(dbName => {
+            deleteIndexedDB(dbName).catch(() => {
+              // Ignore errors silently
+            })
+          })
         }
       } catch (e) {
         console.error('[Privacy Cleanup] Error clearing IndexedDB:', e)
