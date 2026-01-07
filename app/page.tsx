@@ -21,6 +21,7 @@ import { generatePDF } from '@/lib/pdf-generator'
 import { getCurrentPricing, getPaymentAmountETH, getFormattedPrice, getTierPricing, getAllTiers, PricingTier } from '@/lib/pricing'
 import { getUserFriendlyError } from '@/lib/errorMessages'
 import { fetchWithCache, getCached, setCached } from '@/lib/requestCache'
+import { clearWalletConnectionsOnLoad } from '@/lib/wallet-cleanup'
 
 type Step = 'connect' | 'assets' | 'allocate' | 'details' | 'payment' | 'download'
 
