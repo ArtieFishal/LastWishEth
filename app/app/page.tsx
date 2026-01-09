@@ -300,97 +300,103 @@ export default function Home() {
 
  // Old resolveENS function removed - now using unified reverseResolveAddress from name-resolvers
 
- // Resolve wallet names across all blockchain naming systems when wallets are connected
- useEffect(() => {
- // Only run once per address change - use ref to track what we've processed
- 
- let cancelled = false
- let isResolving = false
- 
- // Convert Set to array for use in this effect
- const connectedAddressesArray = Array.from(connectedEVMAddresses)
- 
- const resolveWalletNames = async () => {
- if (cancelled || isResolving) return
- isResolving = true
- const newWalletNames: Record<string, string> = { ...walletNames }
- let updated = false
- 
- // Resolve name for current EVM address
- const evmAddressLower = evmAddress?.toLowerCase()
- if (evmAddress && evmAddressLower && !resolvedAddressesRef.current.has(evmAddressLower)) {
- try {
- const resolved = await reverseResolveAddress(evmAddress)
- if (resolved && !cancelled) {
- resolvedAddressesRef.current.add(evmAddressLower)
- newWalletNames[evmAddress] = resolved.name
- setResolvedEnsNames(prev => {
- const key = evmAddressLower
- if (prev[key] === resolved.name) return prev // Prevent unnecessary updates
- return { ...prev, [key]: resolved.name }
- })
- updated = true
- console.log(`Resolved ${resolved.resolver} name for current wallet: ${resolved.name}`)
- }
- } catch (error) {
- console.error('Error resolving wallet name:', error)
- }
- }
- 
- // Resolve names for all connected EVM addresses
- const addressesToResolve = connectedAddressesArray.filter(addr => {
- if (!addr) return false
- const addrLower = addr.toLowerCase()
- return !resolvedAddressesRef.current.has(addrLower)
- })
- 
- for (const addr of addressesToResolve) {
- if (cancelled) break
- const addrLower = addr.toLowerCase()
- try {
- const resolved = await reverseResolveAddress(addr)
- if (resolved && !cancelled) {
- resolvedAddressesRef.current.add(addrLower)
- setResolvedEnsNames(prev => {
- if (prev[addrLower] === resolved.name) return prev // Prevent unnecessary updates
- return { ...prev, [addrLower]: resolved.name }
- })
- newWalletNames[addr] = resolved.name
- updated = true
- console.log(`Resolved ${resolved.resolver} name for wallet ${addr}: ${resolved.name}`)
- }
- } catch (error) {
- console.error('Error resolving wallet name:', error)
- }
- }
- 
- if (updated && !cancelled) {
- setWalletNames(newWalletNames)
- }
- isResolving = false
- }
- 
- // Only resolve if we have unresolved addresses
- const hasUnresolvedAddresses = (evmAddress && !resolvedAddressesRef.current.has(evmAddress.toLowerCase())) ||
- connectedAddressesArray.some(addr => addr && !resolvedAddressesRef.current.has(addr.toLowerCase()))
- 
- if (hasUnresolvedAddresses) {
- resolveWalletNames()
- }
- 
- // Auto-select first verified wallet if none selected (only check once, not on every render)
- if (selectedWalletForLoading === null && connectedEVMAddresses.size > 0) {
- const firstVerified = connectedAddressesArray.find(addr => verifiedAddresses.has(addr))
- if (firstVerified) {
- setSelectedWalletForLoading(firstVerified)
- }
- }
- 
- return () => {
- cancelled = true
- }
- // Only depend on evmAddress and Set size - not the Set object itself
- }, [evmAddress, connectedEVMAddresses.size, verifiedAddresses.size, selectedWalletForLoading])
+// Resolve wallet names across all blockchain naming systems when wallets are connected
+useEffect(() => {
+// Only run once per address change - use ref to track what we've processed
+
+let cancelled = false
+let isResolving = false
+
+// Convert Set to array for use in this effect
+const connectedAddressesArray = Array.from(connectedEVMAddresses)
+
+const resolveWalletNames = async () => {
+if (cancelled || isResolving) return
+isResolving = true
+const newWalletNames: Record<string, string> = { ...walletNames }
+let updated = false
+
+// Resolve name for current EVM address
+const evmAddressLower = evmAddress?.toLowerCase()
+if (evmAddress && evmAddressLower && !resolvedAddressesRef.current.has(evmAddressLower)) {
+try {
+const resolved = await reverseResolveAddress(evmAddress)
+if (resolved && !cancelled) {
+resolvedAddressesRef.current.add(evmAddressLower)
+newWalletNames[evmAddress] = resolved.name
+setResolvedEnsNames(prev => {
+const key = evmAddressLower
+if (prev[key] === resolved.name) return prev // Prevent unnecessary updates
+return { ...prev, [key]: resolved.name }
+})
+updated = true
+console.log(`Resolved ${resolved.resolver} name for current wallet: ${resolved.name}`)
+}
+} catch (error) {
+console.error('Error resolving wallet name:', error)
+}
+}
+
+// Resolve names for all connected EVM addresses
+const addressesToResolve = connectedAddressesArray.filter(addr => {
+if (!addr) return false
+const addrLower = addr.toLowerCase()
+return !resolvedAddressesRef.current.has(addrLower)
+})
+
+for (const addr of addressesToResolve) {
+if (cancelled) break
+const addrLower = addr.toLowerCase()
+try {
+const resolved = await reverseResolveAddress(addr)
+if (resolved && !cancelled) {
+resolvedAddressesRef.current.add(addrLower)
+setResolvedEnsNames(prev => {
+if (prev[addrLower] === resolved.name) return prev // Prevent unnecessary updates
+return { ...prev, [addrLower]: resolved.name }
+})
+newWalletNames[addr] = resolved.name
+updated = true
+console.log(`Resolved ${resolved.resolver} name for wallet ${addr}: ${resolved.name}`)
+}
+} catch (error) {
+console.error('Error resolving wallet name:', error)
+}
+}
+
+if (updated && !cancelled) {
+setWalletNames(newWalletNames)
+}
+isResolving = false
+}
+
+// Only resolve if we have unresolved addresses
+const hasUnresolvedAddresses = (evmAddress && !resolvedAddressesRef.current.has(evmAddress.toLowerCase())) ||
+connectedAddressesArray.some(addr => addr && !resolvedAddressesRef.current.has(addr.toLowerCase()))
+
+if (hasUnresolvedAddresses) {
+resolveWalletNames()
+}
+
+return () => {
+cancelled = true
+}
+// Only depend on evmAddress and Set size - NOT selectedWalletForLoading (prevents infinite loop)
+}, [evmAddress, connectedEVMAddresses.size, verifiedAddresses.size])
+
+// Auto-select first verified wallet if none selected (separate effect to prevent loops)
+useEffect(() => {
+// Only auto-select if no wallet is currently selected and we have verified wallets
+if (selectedWalletForLoading === null && connectedEVMAddresses.size > 0 && verifiedAddresses.size > 0) {
+const connectedAddressesArray = Array.from(connectedEVMAddresses)
+const firstVerified = connectedAddressesArray.find(addr => verifiedAddresses.has(addr))
+if (firstVerified) {
+setSelectedWalletForLoading(firstVerified)
+}
+}
+// Only depend on sizes, not selectedWalletForLoading itself (prevents loop)
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [connectedEVMAddresses.size, verifiedAddresses.size])
 
  // Resolve ENS name for executor wallet address (supports .eth, .base.eth, etc.)
  useEffect(() => {
