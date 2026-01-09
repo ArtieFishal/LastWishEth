@@ -302,10 +302,14 @@ export default function Home() {
 
  // Resolve wallet names across all blockchain naming systems when wallets are connected
  useEffect(() => {
+ // Only run once per address change - use ref to track what we've processed
+ 
  let cancelled = false
+ let isResolving = false
  
  const resolveWalletNames = async () => {
- if (cancelled) return
+ if (cancelled || isResolving) return
+ isResolving = true
  const newWalletNames: Record<string, string> = { ...walletNames }
  let updated = false
  
@@ -331,7 +335,8 @@ export default function Home() {
  }
  
  // Resolve names for all connected EVM addresses
- const addressesToResolve = Array.from(connectedEVMAddresses).filter(addr => {
+ const connectedAddressesArray = Array.from(connectedEVMAddresses)
+ const addressesToResolve = connectedAddressesArray.filter(addr => {
  if (!addr) return false
  const addrLower = addr.toLowerCase()
  return !resolvedAddressesRef.current.has(addrLower)
@@ -360,19 +365,20 @@ export default function Home() {
  if (updated && !cancelled) {
  setWalletNames(newWalletNames)
  }
+ isResolving = false
  }
  
- // Only resolve if we have addresses and haven't resolved them yet (check ref, not state)
+ // Only resolve if we have unresolved addresses
  const hasUnresolvedAddresses = (evmAddress && !resolvedAddressesRef.current.has(evmAddress.toLowerCase())) ||
- Array.from(connectedEVMAddresses).some(addr => addr && !resolvedAddressesRef.current.has(addr.toLowerCase()))
+ connectedAddressesArray.some(addr => addr && !resolvedAddressesRef.current.has(addr.toLowerCase()))
  
  if (hasUnresolvedAddresses) {
  resolveWalletNames()
  }
  
- // Auto-select first verified wallet if none selected
+ // Auto-select first verified wallet if none selected (only check once, not on every render)
  if (selectedWalletForLoading === null && connectedEVMAddresses.size > 0) {
- const firstVerified = Array.from(connectedEVMAddresses).find(addr => verifiedAddresses.has(addr))
+ const firstVerified = connectedAddressesArray.find(addr => verifiedAddresses.has(addr))
  if (firstVerified) {
  setSelectedWalletForLoading(firstVerified)
  }
@@ -381,7 +387,8 @@ export default function Home() {
  return () => {
  cancelled = true
  }
- }, [evmAddress, connectedEVMAddresses, verifiedAddresses, selectedWalletForLoading])
+ // Only depend on evmAddress and Set size - not the Set object itself
+ }, [evmAddress, connectedEVMAddresses.size, verifiedAddresses.size, selectedWalletForLoading])
 
  // Resolve ENS name for executor wallet address (supports .eth, .base.eth, etc.)
  useEffect(() => {
