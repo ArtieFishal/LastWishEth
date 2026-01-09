@@ -14,7 +14,7 @@ import { AssetSelector } from '@/components/AssetSelector'
 import { BeneficiaryForm } from '@/components/BeneficiaryForm'
 import { AllocationPanel } from '@/components/AllocationPanel'
 import { WalletNameEditor } from '@/components/WalletNameEditor'
-import { resolveBlockchainName, reverseResolveAddress } from '@/lib/name-resolvers'
+import { resolveBlockchainName, reverseResolveAddress, type ResolvedName } from '@/lib/name-resolvers'
 import { Asset, Beneficiary, Allocation, UserData, QueuedWalletSession } from '@/types'
 import axios from 'axios'
 import { generatePDF } from '@/lib/pdf-generator'
@@ -316,11 +316,25 @@ isResolving = true
 const newWalletNames: Record<string, string> = { ...walletNames }
 let updated = false
 
+// Helper to resolve with timeout to prevent blocking
+const resolveWithTimeout = async (address: string, timeoutMs = 5000): Promise<ResolvedName | null> => {
+try {
+const timeoutPromise = new Promise<null>((resolve) => 
+setTimeout(() => resolve(null), timeoutMs)
+)
+const resolvePromise = reverseResolveAddress(address)
+const result = await Promise.race([resolvePromise, timeoutPromise])
+return result
+} catch (error) {
+// Silently fail - don't block UI on resolution errors
+return null
+}
+}
+
 // Resolve name for current EVM address
 const evmAddressLower = evmAddress?.toLowerCase()
 if (evmAddress && evmAddressLower && !resolvedAddressesRef.current.has(evmAddressLower)) {
-try {
-const resolved = await reverseResolveAddress(evmAddress)
+const resolved = await resolveWithTimeout(evmAddress)
 if (resolved && !cancelled) {
 resolvedAddressesRef.current.add(evmAddressLower)
 newWalletNames[evmAddress] = resolved.name
@@ -332,23 +346,20 @@ return { ...prev, [key]: resolved.name }
 updated = true
 console.log(`Resolved ${resolved.resolver} name for current wallet: ${resolved.name}`)
 }
-} catch (error) {
-console.error('Error resolving wallet name:', error)
-}
 }
 
-// Resolve names for all connected EVM addresses
+// Resolve names for all connected EVM addresses (in parallel to avoid blocking)
 const addressesToResolve = connectedAddressesArray.filter(addr => {
 if (!addr) return false
 const addrLower = addr.toLowerCase()
 return !resolvedAddressesRef.current.has(addrLower)
 })
 
-for (const addr of addressesToResolve) {
-if (cancelled) break
+// Resolve all addresses in parallel with timeout protection
+const resolutionPromises = addressesToResolve.map(async (addr) => {
+if (cancelled) return null
 const addrLower = addr.toLowerCase()
-try {
-const resolved = await reverseResolveAddress(addr)
+const resolved = await resolveWithTimeout(addr)
 if (resolved && !cancelled) {
 resolvedAddressesRef.current.add(addrLower)
 setResolvedEnsNames(prev => {
@@ -359,10 +370,11 @@ newWalletNames[addr] = resolved.name
 updated = true
 console.log(`Resolved ${resolved.resolver} name for wallet ${addr}: ${resolved.name}`)
 }
-} catch (error) {
-console.error('Error resolving wallet name:', error)
-}
-}
+return resolved
+})
+
+// Wait for all resolutions to complete (or timeout)
+await Promise.allSettled(resolutionPromises)
 
 if (updated && !cancelled) {
 setWalletNames(newWalletNames)

@@ -198,6 +198,12 @@ async function reverseResolveSNS(address: string): Promise<ResolvedName | null> 
 // ========== Unstoppable Domains Resolver ==========
 async function resolveUnstoppable(name: string): Promise<ResolvedName | null> {
   try {
+    // Skip Unstoppable Domains resolution from client-side due to CORS issues
+    if (typeof window !== 'undefined') {
+      // Client-side: Skip to avoid CORS errors that block the UI
+      return null
+    }
+    
     // Unstoppable Domains Resolution API
     // Free tier: https://docs.unstoppabledomains.com/resolution/quickstart
     const apiKey = process.env.UNSTOPPABLE_API_KEY || ''
@@ -213,29 +219,57 @@ async function resolveUnstoppable(name: string): Promise<ResolvedName | null> {
       headers['Authorization'] = `Bearer ${apiKey}`
     }
     
-    const response = await fetch(url, { headers })
+    // Add timeout to prevent hanging
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
     
-    if (response.ok) {
-      const data = await response.json()
-      // Unstoppable returns addresses for multiple chains
-      // Priority: ETH > MATIC > others
-      const ethAddress = data.meta?.owner || data.addresses?.ETH || data.addresses?.['60'] // 60 is ETH chain ID
-      if (ethAddress) {
-        return {
-          address: ethAddress.toLowerCase(),
-          name,
-          resolver: 'unstoppable'
+    try {
+      const response = await fetch(url, { 
+        headers,
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
+      
+      if (response.ok) {
+        const data = await response.json()
+        // Unstoppable returns addresses for multiple chains
+        // Priority: ETH > MATIC > others
+        const ethAddress = data.meta?.owner || data.addresses?.ETH || data.addresses?.['60'] // 60 is ETH chain ID
+        if (ethAddress) {
+          return {
+            address: ethAddress.toLowerCase(),
+            name,
+            resolver: 'unstoppable'
+          }
         }
       }
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId)
+      // Silently fail on CORS, timeout, or network errors
+      if (fetchError.name === 'AbortError' || fetchError.message?.includes('CORS') || fetchError.message?.includes('Failed to fetch')) {
+        return null
+      }
+      throw fetchError
     }
-  } catch (error) {
-    console.error(`Error resolving Unstoppable "${name}":`, error)
+  } catch (error: any) {
+    // Don't log CORS errors as they're expected from browser
+    if (!error?.message?.includes('CORS') && !error?.message?.includes('Failed to fetch')) {
+      console.error(`Error resolving Unstoppable "${name}":`, error)
+    }
   }
   return null
 }
 
 async function reverseResolveUnstoppable(address: string): Promise<ResolvedName | null> {
   try {
+    // Skip Unstoppable Domains resolution from client-side due to CORS issues
+    // This API doesn't support CORS from browser, so it will always fail
+    // If needed, this should be moved to a server-side API route
+    if (typeof window !== 'undefined') {
+      // Client-side: Skip to avoid CORS errors that block the UI
+      return null
+    }
+    
     const apiKey = process.env.UNSTOPPABLE_API_KEY || ''
     const url = apiKey
       ? `https://api.unstoppabledomains.com/resolve/reverse/${address}`
@@ -249,20 +283,41 @@ async function reverseResolveUnstoppable(address: string): Promise<ResolvedName 
       headers['Authorization'] = `Bearer ${apiKey}`
     }
     
-    const response = await fetch(url, { headers })
+    // Add timeout to prevent hanging
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
     
-    if (response.ok) {
-      const data = await response.json()
-      if (data.meta?.domain) {
-        return {
-          address: address.toLowerCase(),
-          name: data.meta.domain,
-          resolver: 'unstoppable'
+    try {
+      const response = await fetch(url, { 
+        headers,
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.meta?.domain) {
+          return {
+            address: address.toLowerCase(),
+            name: data.meta.domain,
+            resolver: 'unstoppable'
+          }
         }
       }
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId)
+      // Silently fail on CORS, timeout, or network errors
+      if (fetchError.name === 'AbortError' || fetchError.message?.includes('CORS') || fetchError.message?.includes('Failed to fetch')) {
+        return null
+      }
+      throw fetchError
     }
-  } catch (error) {
+  } catch (error: any) {
     // Silently fail - not all addresses have Unstoppable domains
+    // Don't log CORS errors as they're expected from browser
+    if (error?.message?.includes('CORS') || error?.message?.includes('Failed to fetch')) {
+      return null
+    }
   }
   return null
 }
