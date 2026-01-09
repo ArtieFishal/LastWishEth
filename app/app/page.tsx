@@ -307,6 +307,9 @@ export default function Home() {
  let cancelled = false
  let isResolving = false
  
+ // Convert Set to array for use in this effect
+ const connectedAddressesArray = Array.from(connectedEVMAddresses)
+ 
  const resolveWalletNames = async () => {
  if (cancelled || isResolving) return
  isResolving = true
@@ -335,7 +338,6 @@ export default function Home() {
  }
  
  // Resolve names for all connected EVM addresses
- const connectedAddressesArray = Array.from(connectedEVMAddresses)
  const addressesToResolve = connectedAddressesArray.filter(addr => {
  if (!addr) return false
  const addrLower = addr.toLowerCase()
