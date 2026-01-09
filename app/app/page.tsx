@@ -4,7 +4,7 @@
 export const dynamic = 'force-dynamic'
 export const dynamicParams = true
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAccount, useDisconnect, useSignMessage, useSendTransaction, useWaitForTransactionReceipt, useConnect } from 'wagmi'
 import { createPublicClient, http, parseEther, formatEther, isAddress } from 'viem'
 import { mainnet } from 'viem/chains'
@@ -240,6 +240,7 @@ export default function Home() {
  const [loadedWallets, setLoadedWallets] = useState<Set<string>>(new Set())
  const [verifiedAddresses, setVerifiedAddresses] = useState<Set<string>>(new Set()) // Addresses that have signed
  const [pendingVerification, setPendingVerification] = useState<string | null>(null) // Address waiting for signature
+ const resolvedAddressesRef = useRef<Set<string>>(new Set()) // Track which addresses we've resolved to prevent infinite loops
 
   // Verify wallet ownership with signature
   const verifyWalletOwnership = async (address: string) => {
@@ -301,40 +302,71 @@ export default function Home() {
 
  // Resolve wallet names across all blockchain naming systems when wallets are connected
  useEffect(() => {
+ let cancelled = false
+ 
  const resolveWalletNames = async () => {
+ if (cancelled) return
  const newWalletNames: Record<string, string> = { ...walletNames }
  let updated = false
  
  // Resolve name for current EVM address
- if (evmAddress && !newWalletNames[evmAddress]) {
+ const evmAddressLower = evmAddress?.toLowerCase()
+ if (evmAddress && evmAddressLower && !resolvedAddressesRef.current.has(evmAddressLower)) {
+ try {
  const resolved = await reverseResolveAddress(evmAddress)
- if (resolved) {
+ if (resolved && !cancelled) {
+ resolvedAddressesRef.current.add(evmAddressLower)
  newWalletNames[evmAddress] = resolved.name
- setResolvedEnsNames(prev => ({ ...prev, [evmAddress.toLowerCase()]: resolved.name }))
+ setResolvedEnsNames(prev => {
+ const key = evmAddressLower
+ if (prev[key] === resolved.name) return prev // Prevent unnecessary updates
+ return { ...prev, [key]: resolved.name }
+ })
  updated = true
  console.log(`Resolved ${resolved.resolver} name for current wallet: ${resolved.name}`)
+ }
+ } catch (error) {
+ console.error('Error resolving wallet name:', error)
  }
  }
  
  // Resolve names for all connected EVM addresses
- for (const addr of connectedEVMAddresses) {
- if (addr && !resolvedEnsNames[addr.toLowerCase()] && !newWalletNames[addr]) {
+ const addressesToResolve = Array.from(connectedEVMAddresses).filter(addr => {
+ if (!addr) return false
+ const addrLower = addr.toLowerCase()
+ return !resolvedAddressesRef.current.has(addrLower)
+ })
+ 
+ for (const addr of addressesToResolve) {
+ if (cancelled) break
+ const addrLower = addr.toLowerCase()
+ try {
  const resolved = await reverseResolveAddress(addr)
- if (resolved) {
- setResolvedEnsNames(prev => ({ ...prev, [addr.toLowerCase()]: resolved.name }))
+ if (resolved && !cancelled) {
+ resolvedAddressesRef.current.add(addrLower)
+ setResolvedEnsNames(prev => {
+ if (prev[addrLower] === resolved.name) return prev // Prevent unnecessary updates
+ return { ...prev, [addrLower]: resolved.name }
+ })
  newWalletNames[addr] = resolved.name
  updated = true
  console.log(`Resolved ${resolved.resolver} name for wallet ${addr}: ${resolved.name}`)
  }
+ } catch (error) {
+ console.error('Error resolving wallet name:', error)
  }
  }
  
- if (updated) {
+ if (updated && !cancelled) {
  setWalletNames(newWalletNames)
  }
  }
  
- if (evmAddress || connectedEVMAddresses.size > 0) {
+ // Only resolve if we have addresses and haven't resolved them yet (check ref, not state)
+ const hasUnresolvedAddresses = (evmAddress && !resolvedAddressesRef.current.has(evmAddress.toLowerCase())) ||
+ Array.from(connectedEVMAddresses).some(addr => addr && !resolvedAddressesRef.current.has(addr.toLowerCase()))
+ 
+ if (hasUnresolvedAddresses) {
  resolveWalletNames()
  }
  
@@ -344,6 +376,10 @@ export default function Home() {
  if (firstVerified) {
  setSelectedWalletForLoading(firstVerified)
  }
+ }
+ 
+ return () => {
+ cancelled = true
  }
  }, [evmAddress, connectedEVMAddresses, verifiedAddresses, selectedWalletForLoading])
 

@@ -27,17 +27,18 @@ export function clearWalletDataFromStorage() {
     }
     
     // Also clear any wagmi-specific storage keys
-    // Wagmi stores connection state in indexedDB, but we can clear localStorage keys
+    // BUT preserve WalletConnect keys - they're needed for QR code functionality
+    // WalletConnect uses keys like 'wc@', 'walletconnect', etc.
     const keysToRemove: string[] = []
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
-      if (key && (
-        key.startsWith('wagmi.') ||
-        key.startsWith('wc@') ||
-        key.startsWith('walletconnect') ||
-        key.includes('wallet') && key.includes('connect')
-      )) {
-        keysToRemove.push(key)
+      if (key) {
+        // Only remove wagmi connection state keys, NOT WalletConnect keys
+        // WalletConnect keys are needed for QR code modal to work
+        if (key.startsWith('wagmi.') && !key.includes('walletconnect')) {
+          keysToRemove.push(key)
+        }
+        // Don't remove 'wc@' or 'walletconnect' keys - WalletConnect needs them
       }
     }
     
@@ -50,27 +51,22 @@ export function clearWalletDataFromStorage() {
 }
 
 /**
- * Clear wagmi indexedDB storage (WalletConnect sessions)
+ * Clear wagmi indexedDB storage (but preserve WalletConnect databases)
  * This is CRITICAL - wagmi auto-restores connections from indexedDB
+ * BUT we must NOT delete WalletConnect databases as they're needed for QR code modal
  */
 export async function clearWagmiIndexedDB() {
   if (typeof window === 'undefined' || typeof indexedDB === 'undefined') return
 
   try {
-    // Wagmi/WalletConnect stores data in indexedDB with specific database names
-    // We need to clear ALL possible variations
+    // Only clear wagmi's cache database, NOT WalletConnect databases
+    // WalletConnect needs its databases (W3M_INDEXED_DB, walletconnect, etc.) to function
+    // We only want to clear wagmi's connection state cache
     const dbNames = [
-      'W3M_INDEXED_DB',
-      'walletconnect',
-      'wagmi',
-      'wagmi.cache',
-      'W3M',
-      '@walletconnect',
-      'walletconnect-v2',
-      'WCM',
+      'wagmi.cache', // Only clear wagmi's cache, not WalletConnect storage
     ]
 
-    // Also try to find all databases that might be related
+    // Also try to find wagmi-specific databases (but exclude WalletConnect)
     const allDatabases: string[] = []
     try {
       // Get list of all indexedDB databases
@@ -86,13 +82,42 @@ export async function clearWagmiIndexedDB() {
       // databases() might not be available in all browsers
     }
 
-    // Combine known names with discovered databases
-    const databasesToDelete = new Set([...dbNames, ...allDatabases.filter(name => 
-      name.toLowerCase().includes('wallet') || 
-      name.toLowerCase().includes('wagmi') || 
-      name.toLowerCase().includes('w3m') ||
-      name.toLowerCase().includes('wc')
-    )])
+    // Only delete wagmi cache databases, NOT WalletConnect databases
+    // WalletConnect databases: W3M_INDEXED_DB, walletconnect, W3M, @walletconnect, walletconnect-v2, WCM, WALLET_CONNECT_V2_INDEXED_DB
+    // These MUST be preserved for WalletConnect QR code modal to work
+    const walletConnectDbNames = [
+      'W3M_INDEXED_DB',
+      'walletconnect',
+      'W3M',
+      '@walletconnect',
+      'walletconnect-v2',
+      'WCM',
+      'WALLET_CONNECT_V2_INDEXED_DB',
+    ]
+    
+    // Helper to check if a database name is a WalletConnect database
+    const isWalletConnectDb = (name: string): boolean => {
+      const nameLower = name.toLowerCase()
+      return walletConnectDbNames.some(wcName => {
+        const wcNameLower = wcName.toLowerCase()
+        return name === wcName || nameLower === wcNameLower || 
+               nameLower.includes('walletconnect') || 
+               nameLower.includes('w3m') ||
+               nameLower === 'wcm'
+      })
+    }
+    
+    const databasesToDelete = new Set([
+      ...dbNames.filter(name => !isWalletConnectDb(name)),
+      ...allDatabases.filter(name => {
+        // Skip ALL WalletConnect databases - they're needed for QR code functionality
+        if (isWalletConnectDb(name)) {
+          return false
+        }
+        // Only delete wagmi cache databases (not the main wagmi database)
+        return name.toLowerCase() === 'wagmi.cache'
+      })
+    ])
 
     for (const dbName of databasesToDelete) {
       try {
@@ -118,6 +143,8 @@ export async function clearWagmiIndexedDB() {
         console.log(`[Wallet Cleanup] Could not delete ${dbName}:`, error)
       }
     }
+    
+    console.log('[Wallet Cleanup] ✅ Preserved WalletConnect databases for QR code functionality')
   } catch (error) {
     console.error('[Wallet Cleanup] Error clearing indexedDB:', error)
   }
