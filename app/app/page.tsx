@@ -2330,27 +2330,9 @@ Connect more wallets to add their assets. You can connect multiple EVM wallets a
  setWalletProviders(prev => ({ ...prev, [addr]: provider }))
  }
  
- // Force remove any lingering WalletConnect backdrops/modals that might block scrolling
- // This ensures the UI is interactive immediately after connection
- setTimeout(() => {
-   if (typeof window !== 'undefined') {
-     // Find and hide WalletConnect backdrops that might be blocking
-     const backdrops = document.querySelectorAll('w3m-backdrop, .w3m-backdrop, [data-w3m-backdrop], .walletconnect-modal__backdrop')
-     backdrops.forEach((backdrop: Element) => {
-       const htmlEl = backdrop as HTMLElement
-       // Only hide if modal is not actually open (check for visible modal)
-       const modal = document.querySelector('w3m-modal, .w3m-modal, [data-w3m-modal]')
-       if (!modal || (modal as HTMLElement).style.display === 'none') {
-         htmlEl.style.display = 'none'
-         htmlEl.style.pointerEvents = 'none'
-       }
-     })
-     
-     // Also ensure body can scroll
-     document.body.style.overflow = ''
-     document.body.style.position = ''
-   }
- }, 500) // Small delay to let WalletConnect finish its connection flow
+ // DON'T remove backdrops during connection - WalletConnect needs them
+ // Only clean up AFTER connection is complete and modal should be closed
+ // This cleanup will happen naturally when the modal closes
  
  // Resolve wallet name across all blockchain naming systems
  const resolveWalletName = async (address: string) => {
