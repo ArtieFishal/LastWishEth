@@ -697,7 +697,10 @@ export async function generatePDF(
       walletAddr = 'Unknown'
     }
     
-    const provider = walletProviders?.[walletAddr] || asset.walletProvider || (asset.chain === 'bitcoin' ? 'Xverse' : 'Unknown Wallet')
+    const provider = walletProviders?.[walletAddr] || asset.walletProvider || 
+      (asset.chain === 'bitcoin' ? 'Xverse' : 
+       asset.chain === 'solana' ? 'Solana Wallet' : 
+       'Unknown Wallet')
     if (!walletGroups[walletAddr]) {
       walletGroups[walletAddr] = []
     }

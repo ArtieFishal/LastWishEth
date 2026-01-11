@@ -92,7 +92,8 @@ export default function Home() {
  const [resolvedEnsNames, setResolvedEnsNames] = useState<Record<string, string>>({})
  const [walletProviders, setWalletProviders] = useState<Record<string, string>>({}) // Track wallet provider (MetaMask, Rainbow, etc.)
  const [connectedEVMAddresses, setConnectedEVMAddresses] = useState<Set<string>>(new Set())
- const [verifiedAddresses, setVerifiedAddresses] = useState<Set<string>>(new Set()) // Addresses that have signed
+  const [connectedSolanaAddresses, setConnectedSolanaAddresses] = useState<Set<string>>(new Set())
+  const [verifiedAddresses, setVerifiedAddresses] = useState<Set<string>>(new Set()) // Addresses that have signed
  const [mounted, setMounted] = useState(false)
  const [invoiceId, setInvoiceId] = useState<string | null>(null)
  const [paymentVerified, setPaymentVerified] = useState(false)
@@ -152,14 +153,14 @@ export default function Home() {
                 setResolvedEnsNames(parsed.resolvedEnsNames)
                 resolvedEnsNamesRef.current = parsed.resolvedEnsNames // Sync ref
               }
-              if (parsed.paymentWalletAddress) setPaymentWalletAddress(parsed.paymentWalletAddress)
-              if (parsed.step) setStep(parsed.step)
-              if (parsed.invoiceId) setInvoiceId(parsed.invoiceId)
-              if (parsed.paymentVerified) setPaymentVerified(parsed.paymentVerified)
-              if (parsed.discountCode) setDiscountCode(parsed.discountCode)
-              if (parsed.discountApplied) setDiscountApplied(parsed.discountApplied)
-              if (parsed.queuedSessions) setQueuedSessions(parsed.queuedSessions)
-              if (parsed.selectedTier) setSelectedTier(parsed.selectedTier)
+ if (parsed.paymentWalletAddress) setPaymentWalletAddress(parsed.paymentWalletAddress)
+ if (parsed.step) setStep(parsed.step)
+ if (parsed.invoiceId) setInvoiceId(parsed.invoiceId)
+ if (parsed.paymentVerified) setPaymentVerified(parsed.paymentVerified)
+ if (parsed.discountCode) setDiscountCode(parsed.discountCode)
+ if (parsed.discountApplied) setDiscountApplied(parsed.discountApplied)
+ if (parsed.queuedSessions) setQueuedSessions(parsed.queuedSessions)
+ if (parsed.selectedTier) setSelectedTier(parsed.selectedTier)
 
               // RESTORE wallet connection state
               if (parsed.connectedEVMAddresses && Array.isArray(parsed.connectedEVMAddresses)) {
@@ -169,6 +170,9 @@ export default function Home() {
                 setVerifiedAddresses(new Set(parsed.verifiedAddresses))
               }
               if (parsed.btcAddress) setBtcAddress(parsed.btcAddress)
+              if (parsed.connectedSolanaAddresses && Array.isArray(parsed.connectedSolanaAddresses)) {
+                setConnectedSolanaAddresses(new Set(parsed.connectedSolanaAddresses))
+              }
               if (parsed.walletNames) {
                 setWalletNames(parsed.walletNames)
                 walletNamesRef.current = parsed.walletNames // Sync ref
@@ -216,8 +220,9 @@ export default function Home() {
  selectedTier,
  // Persist wallet connection state
  connectedEVMAddresses: Array.from(connectedEVMAddresses),
- verifiedAddresses: Array.from(verifiedAddresses),
- btcAddress,
+              connectedSolanaAddresses: Array.from(connectedSolanaAddresses),
+              verifiedAddresses: Array.from(verifiedAddresses),
+              btcAddress,
  walletNames,
  walletProviders,
  }
@@ -266,7 +271,7 @@ export default function Home() {
 
  // Track loaded wallet addresses to avoid duplicates
  const [loadedWallets, setLoadedWallets] = useState<Set<string>>(new Set())
-const [pendingVerification, setPendingVerification] = useState<string | null>(null) // Address waiting for signature
+ const [pendingVerification, setPendingVerification] = useState<string | null>(null) // Address waiting for signature
 const resolvedAddressesRef = useRef<Set<string>>(new Set()) // Track which addresses we've resolved to prevent infinite loops
 const resolvingInOnEvmConnectRef = useRef<Set<string>>(new Set()) // Track addresses being resolved in onEvmConnect to prevent duplicate calls
 const resolvedEnsNamesRef = useRef<Record<string, string>>({}) // Ref to access latest resolvedEnsNames without causing callback recreation
@@ -330,10 +335,10 @@ const walletNamesRef = useRef<Record<string, string>>({}) // Ref to access lates
 
  // Old resolveENS function removed - now using unified reverseResolveAddress from name-resolvers
 
-// Resolve wallet names across all blockchain naming systems when wallets are connected
+ // Resolve wallet names across all blockchain naming systems when wallets are connected
 // Use debounce to prevent excessive calls when verifiedAddresses changes
 const resolveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-useEffect(() => {
+ useEffect(() => {
 // #region agent log
 fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:325',message:'Wallet name resolution useEffect running',data:{evmAddress,connectedEVMAddressesSize:connectedEVMAddresses.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
 // #endregion
@@ -351,11 +356,11 @@ resolveTimeoutRef.current = null
 // Convert Set to array for use in this effect
 const connectedAddressesArray = Array.from(connectedEVMAddresses)
 
-const resolveWalletNames = async () => {
+ const resolveWalletNames = async () => {
 if (cancelled || isResolving) return
 isResolving = true
-const newWalletNames: Record<string, string> = { ...walletNames }
-let updated = false
+ const newWalletNames: Record<string, string> = { ...walletNames }
+ let updated = false
 
 // Helper to resolve with timeout to prevent blocking
 const resolveWithTimeout = async (address: string, timeoutMs = 5000): Promise<ResolvedName | null> => {
@@ -371,24 +376,24 @@ return result
 return null
 }
 }
-
-// Resolve name for current EVM address
+ 
+ // Resolve name for current EVM address
 const evmAddressLower = evmAddress?.toLowerCase()
 if (evmAddress && evmAddressLower && !resolvedAddressesRef.current.has(evmAddressLower)) {
 const resolved = await resolveWithTimeout(evmAddress)
 if (resolved && !cancelled) {
 resolvedAddressesRef.current.add(evmAddressLower)
-newWalletNames[evmAddress] = resolved.name
+ newWalletNames[evmAddress] = resolved.name
 setResolvedEnsNames(prev => {
 const key = evmAddressLower
 if (prev[key] === resolved.name) return prev // Prevent unnecessary updates
 return { ...prev, [key]: resolved.name }
 })
-updated = true
-console.log(`Resolved ${resolved.resolver} name for current wallet: ${resolved.name}`)
-}
-}
-
+ updated = true
+ console.log(`Resolved ${resolved.resolver} name for current wallet: ${resolved.name}`)
+ }
+ }
+ 
 // Resolve names for all connected EVM addresses (in parallel to avoid blocking)
 const addressesToResolve = connectedAddressesArray.filter(addr => {
 if (!addr) return false
@@ -409,10 +414,10 @@ const updated = { ...prev, [addrLower]: resolved.name }
 resolvedEnsNamesRef.current = updated // Keep ref in sync
 return updated
 })
-newWalletNames[addr] = resolved.name
-updated = true
-console.log(`Resolved ${resolved.resolver} name for wallet ${addr}: ${resolved.name}`)
-}
+ newWalletNames[addr] = resolved.name
+ updated = true
+ console.log(`Resolved ${resolved.resolver} name for wallet ${addr}: ${resolved.name}`)
+ }
 return resolved
 })
 
@@ -461,11 +466,11 @@ useEffect(() => {
 if (!hasAutoSelectedRef.current && selectedWalletForLoading === null && connectedEVMAddresses.size > 0 && verifiedAddresses.size > 0) {
 const connectedAddressesArray = Array.from(connectedEVMAddresses)
 const firstVerified = connectedAddressesArray.find(addr => verifiedAddresses.has(addr))
-if (firstVerified) {
+ if (firstVerified) {
 hasAutoSelectedRef.current = true
-setSelectedWalletForLoading(firstVerified)
-}
-}
+ setSelectedWalletForLoading(firstVerified)
+ }
+ }
 // Reset flag if all wallets are disconnected
 if (connectedEVMAddresses.size === 0) {
 hasAutoSelectedRef.current = false
@@ -1059,13 +1064,18 @@ hasAutoSelectedRef.current = false
  let walletsToLoad: string[] = []
  
  if (loadFromAllWallets) {
- // Load from ALL connected and verified wallets
+ // Load from ALL connected and verified wallets (EVM + Solana)
  walletsToLoad = Array.from(connectedEVMAddresses).filter(addr => verifiedAddresses.has(addr))
- console.log(`Loading from all verified wallets: ${walletsToLoad.length} wallet(s)`)
+ const solanaWallets = Array.from(connectedSolanaAddresses)
+ console.log(`Loading from all verified wallets: ${walletsToLoad.length} EVM + ${solanaWallets.length} Solana wallet(s)`)
  } else {
  // Load from currently connected wallet only (if verified)
  if (isConnected && evmAddress && verifiedAddresses.has(evmAddress)) {
  walletsToLoad = [evmAddress]
+ }
+ // Check if selected wallet is Solana
+ if (selectedWalletForLoading && connectedSolanaAddresses.has(selectedWalletForLoading)) {
+ walletsToLoad = [selectedWalletForLoading]
  }
  }
 
@@ -1139,6 +1149,45 @@ hasAutoSelectedRef.current = false
       })
     }
     // Don't set error for ethscriptions - it's optional
+  }
+ }
+
+// Load Solana assets
+const solanaWalletsToLoad = loadFromAllWallets 
+  ? Array.from(connectedSolanaAddresses)
+  : (selectedWalletForLoading && connectedSolanaAddresses.has(selectedWalletForLoading))
+    ? [selectedWalletForLoading]
+    : []
+
+if (solanaWalletsToLoad.length > 0) {
+  for (const solanaAddress of solanaWalletsToLoad) {
+    try {
+      console.log('[Solana] Loading assets for address:', solanaAddress)
+      const solanaResponse = await axios.post('/api/portfolio/solana', {
+        address: solanaAddress,
+      })
+      
+      if (solanaResponse.data?.assets && Array.isArray(solanaResponse.data.assets)) {
+        const existingIds = new Set(assets.map(a => a.id))
+        const walletProvider = walletProviders[solanaAddress] || 'Solana Wallet'
+        const uniqueAssets = solanaResponse.data.assets
+          .filter((a: Asset) => !existingIds.has(a.id))
+          .map((a: Asset) => ({
+            ...a,
+            walletAddress: solanaAddress,
+            walletProvider: walletProvider,
+            imageUrl: a.image || a.imageUrl, // Use image or imageUrl
+          }))
+        
+        // Apply spam filtering (Solana tokens can also be spam)
+        const filteredAssets = filterSpamTokens(uniqueAssets)
+        newAssets.push(...filteredAssets)
+        console.log(`[Solana] Loaded ${filteredAssets.length} assets from ${solanaAddress}`)
+      }
+    } catch (err) {
+      console.error('[Solana] Error loading assets:', err)
+      // Don't fail the whole request if one Solana wallet fails
+    }
   }
  }
 
@@ -1316,6 +1365,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
    setAllocations([])
    setQueuedSessions([])
    setConnectedEVMAddresses(new Set())
+   setConnectedSolanaAddresses(new Set())
    setVerifiedAddresses(new Set())
    setBtcAddress(null)
    setBtcOrdinalsAddress(null)
@@ -1511,7 +1561,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  // Complete privacy cleanup after successful PDF generation
  // This ensures NO sensitive data persists after PDF is generated
  // Critical for public computers - all data is cleared
- setTimeout(() => {
+setTimeout(() => {
    clearAllSensitiveData()
  }, 3000) // Wait 3 seconds to ensure PDF download completes
  
@@ -1767,7 +1817,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
 
    if (!connectedEVMAddresses.has(addr)) {
      // Check wallet limit (20 wallets max including queued)
-     if (connectedEVMAddresses.size + queuedSessions.length >= 20) {
+     if (connectedEVMAddresses.size + connectedSolanaAddresses.size + queuedSessions.length >= 20) {
        setError('Maximum 20 wallets allowed (including queued). Please disconnect a wallet or remove from queue first.')
        return
      }
@@ -1874,6 +1924,62 @@ setError('Failed to load Bitcoin assets. Please try again.')
      resolvingInOnEvmConnectRef.current.delete(addr.toLowerCase())
    }
  }, [connectedEVMAddresses, queuedSessions.length, isConnected, evmAddress, disconnect, setConnectedEVMAddresses, setWalletProviders, selectedWalletForLoading, verifiedAddresses, verifyWalletOwnership, setError, setSelectedWalletForLoading])
+
+ // Solana wallet connection callback
+ const onSolanaConnectCallback = useCallback(async (addr: string, provider?: string) => {
+   if (!addr) return
+
+   if (!connectedSolanaAddresses.has(addr)) {
+     // Check wallet limit (20 wallets max including queued)
+     if (connectedEVMAddresses.size + connectedSolanaAddresses.size + queuedSessions.length >= 20) {
+       setError('Maximum 20 wallets allowed (including queued). Please disconnect a wallet or remove from queue first.')
+       return
+     }
+
+     setConnectedSolanaAddresses(prev => new Set([...prev, addr]))
+     
+     // Track wallet provider
+     if (provider) {
+       setWalletProviders(prev => ({ ...prev, [addr]: provider }))
+     }
+
+     // Resolve Solana name if .sol (SNS)
+     const addrLower = addr.toLowerCase()
+     if (!resolvedAddressesRef.current.has(addrLower) && !resolvedEnsNamesRef.current[addrLower]) {
+       const resolveWalletName = async (address: string) => {
+         try {
+           // Try reverse lookup (SNS for Solana addresses)
+           const resolved = await reverseResolveAddress(address)
+           if (resolved) {
+             resolvedAddressesRef.current.add(address.toLowerCase())
+             setResolvedEnsNames(prev => {
+               const key = address.toLowerCase()
+               if (prev[key] === resolved.name) return prev
+               return { ...prev, [key]: resolved.name }
+             })
+             setWalletNames(prev => {
+               if (prev[address]) return prev
+               return { ...prev, [address]: resolved.name }
+             })
+             console.log(`Resolved ${resolved.resolver} name for Solana wallet ${address}: ${resolved.name}`)
+           }
+         } catch (error) {
+           console.error(`Error resolving name for Solana wallet ${address}:`, error)
+         }
+       }
+       resolveWalletName(addr)
+     }
+
+     // Set as selected if it's the first wallet or no wallet is selected
+     if (selectedWalletForLoading === null) {
+       setSelectedWalletForLoading(addr)
+     }
+
+     // For Solana, we don't require signature verification (different security model)
+     // But we can mark as verified immediately since wallet connection itself proves ownership
+     setVerifiedAddresses(prev => new Set([...prev, addr]))
+   }
+ }, [connectedSolanaAddresses, connectedEVMAddresses.size, queuedSessions.length, selectedWalletForLoading, setConnectedSolanaAddresses, setWalletProviders, setVerifiedAddresses, setError, setSelectedWalletForLoading])
 
  // #region agent log
  // Track when onEvmConnect callback dependencies change
@@ -2233,24 +2339,25 @@ Clear Assets
 </div>
 )}
  {/* Show connected wallets with disconnect options - show ABOVE connect options */}
- {(connectedEVMAddresses.size > 0 || btcAddress) && (
+ {(connectedEVMAddresses.size > 0 || btcAddress || connectedSolanaAddresses.size > 0) && (
  <div className="mb-6 space-y-4">
 <div className="flex items-center justify-between border-b-2 border-white/20 pb-2 mb-4">
 <h3 className="text-lg font-bold text-bright text-glow">
-Connected Wallets ({connectedEVMAddresses.size + (btcAddress ? 1 : 0)})
+Connected Wallets ({connectedEVMAddresses.size + (btcAddress ? 1 : 0) + connectedSolanaAddresses.size})
 </h3>
 <div className="flex gap-2">
 <button
 onClick={async () => {
-// Load assets from ALL verified wallets at once
-const verifiedWallets = Array.from(connectedEVMAddresses).filter(addr => verifiedAddresses.has(addr))
-if (verifiedWallets.length > 0) {
+// Load assets from ALL verified wallets at once (EVM + Solana)
+const verifiedEVMWallets = Array.from(connectedEVMAddresses).filter(addr => verifiedAddresses.has(addr))
+const verifiedSolanaWallets = Array.from(connectedSolanaAddresses).filter(addr => verifiedAddresses.has(addr))
+if (verifiedEVMWallets.length > 0 || verifiedSolanaWallets.length > 0 || btcAddress) {
 await loadAssets(true, true) // append=true, loadFromAllWallets=true
 } else {
 setError('Please verify at least one wallet (sign message) before loading assets.')
 }
 }}
-disabled={loading || Array.from(connectedEVMAddresses).filter(addr => verifiedAddresses.has(addr)).length === 0}
+disabled={loading || (Array.from(connectedEVMAddresses).filter(addr => verifiedAddresses.has(addr)).length === 0 && connectedSolanaAddresses.size === 0 && !btcAddress)}
 className="px-4 py-2 text-sm font-semibold text-blue-300 bg-blue-500/20 backdrop-blur-xl border-2 border-blue-500/30 rounded-lg hover:bg-blue-500/30 hover:border-blue-500/50 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
 >
 {loading ? 'Loading...' : 'Load All Wallets'}
@@ -2261,6 +2368,7 @@ onClick={() => {
 if (confirm('Disconnect all wallets and clear all data? This will remove all loaded assets and allocations.')) {
 // Clear all wallet connections
 setConnectedEVMAddresses(new Set())
+setConnectedSolanaAddresses(new Set())
 setBtcAddress(null)
 setVerifiedAddresses(new Set())
 setLoadedWallets(new Set())
@@ -2488,18 +2596,131 @@ Bitcoin Address
 </div>
  )
  })()}
+ {Array.from(connectedSolanaAddresses).map((addr) => {
+   const solanaAssets = assets.filter(a => a.walletAddress === addr)
+   const solanaAssetCount = solanaAssets.length
+   const solanaWalletName = walletNames[addr] || resolvedEnsNames[addr.toLowerCase()] || ''
+   const isSelected = selectedWalletForLoading === addr
+   const isVerified = verifiedAddresses.has(addr)
+   const walletProvider = walletProviders[addr] || 'Solana Wallet'
+   
+   return (
+     <div 
+       key={addr} 
+       className={`bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-xl border-2 rounded-lg shadow-sm transition-all mb-3 transform hover:scale-[1.02] group ${
+         isSelected 
+         ? 'border-purple-500/60 shadow-2xl shadow-purple-500/30 border-glow scale-105' 
+         : isVerified
+         ? 'border-white/20 hover:border-purple-500/50 hover:shadow-2xl hover:shadow-purple-500/20 border-glow-hover'
+         : 'border-white/10 opacity-60'
+       }`}
+     >
+       <div className="p-4">
+         <div className="flex items-start justify-between">
+           <div className="flex-1 min-w-0">
+             <WalletNameEditor
+               address={addr}
+               currentName={solanaWalletName}
+               isENS={!!resolvedEnsNames[addr.toLowerCase()]}
+               onNameChange={(newName) => {
+                 setWalletNames(prev => ({ ...prev, [addr]: newName }))
+               }}
+             />
+             
+             <div className="flex items-center gap-2 mb-2 flex-wrap mt-2">
+               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border-2 border-purple-500/30">
+                 {walletProvider}
+               </span>
+               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-pink-500/20 text-pink-300 border-2 border-pink-500/30">
+                 SOLANA
+               </span>
+               {isSelected && (
+                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-white border-2 border-purple-400/50 shadow-lg">
+                   ✓ Selected
+                 </span>
+               )}
+               {solanaAssetCount > 0 && (
+                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 border-2 border-green-500/30">
+                   {solanaAssetCount} Asset{solanaAssetCount !== 1 ? 's' : ''}
+                 </span>
+               )}
+             </div>
+             
+             <div className="mt-1">
+               <p className="text-xs font-mono text-bright-soft break-all group-hover:text-white transition-colors">
+                 {addr}
+               </p>
+             </div>
+           </div>
+           
+           <div className="ml-4 flex gap-2 flex-shrink-0">
+             <button
+               onClick={(e) => {
+                 e.stopPropagation()
+                 setConnectedSolanaAddresses(prev => {
+                   const newSet = new Set(prev)
+                   newSet.delete(addr)
+                   if (selectedWalletForLoading === addr) {
+                     const remaining = Array.from(new Set([...connectedEVMAddresses, ...newSet])).filter(a => verifiedAddresses.has(a))
+                     setSelectedWalletForLoading(remaining.length > 0 ? remaining[0] : null)
+                   }
+                   return newSet
+                 })
+               }}
+               className="px-3 py-1.5 text-xs font-semibold text-red-300 bg-red-500/20 backdrop-blur-xl border-2 border-red-500/30 rounded-lg hover:bg-red-500/30 hover:border-red-500/50 transition-all transform hover:scale-105"
+             >
+               Disconnect
+             </button>
+             {isVerified && (
+               <button
+                 onClick={(e) => {
+                   e.stopPropagation()
+                   setSelectedWalletForLoading(addr)
+                 }}
+                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-all transform hover:scale-105 ${
+                   isSelected
+                   ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-purple-400/50 shadow-lg'
+                   : 'bg-purple-500/20 backdrop-blur-xl text-purple-300 border-purple-500/30 hover:bg-purple-500/30 hover:border-purple-500/50'
+                 }`}
+               >
+                 {isSelected ? '✓' : 'Select'}
+               </button>
+             )}
+           </div>
+         </div>
+       </div>
+       
+       {isVerified && (
+         <div className="px-4 pb-4 border-t-2 border-white/20 pt-3">
+           <button
+             onClick={async (e) => {
+               e.stopPropagation()
+               setSelectedWalletForLoading(addr)
+               await loadAssetsFromWallet(addr, assets.length > 0)
+               setStep('assets')
+             }}
+             disabled={loading}
+             className="w-full rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white p-3 sm:p-4 font-semibold hover:from-purple-700 hover:to-pink-700 transition-all shadow-2xl hover:shadow-purple-500/50 transform hover:scale-105 border-2 border-purple-400/50 border-glow-hover disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none touch-manipulation min-h-[44px]"
+           >
+             {loading ? 'Loading Assets...' : (solanaAssetCount > 0 ? `Reload Assets from ${walletProvider}` : `Load Assets from ${walletProvider}`)}
+           </button>
+         </div>
+       )}
+     </div>
+   )
+ })}
  </div>
  )}
- 
+
  {/* Always show wallet connect options, even when wallets are already connected */}
 <div className="mt-6 p-4 bg-gradient-to-br from-purple-500/10 to-blue-500/10 backdrop-blur-xl rounded-lg border-2 border-white/20 border-glow">
 <h3 className="text-lg font-bold text-bright mb-4 border-b-2 border-white/20 pb-2 text-glow">
 Connect Additional Wallets
 </h3>
 <p className="text-sm text-bright-soft mb-4">
-Connect more wallets to add their assets. You can connect multiple EVM wallets and Bitcoin wallets.
+Connect more wallets to add their assets. You can connect multiple EVM wallets, Bitcoin wallets, and Solana wallets.
 </p>
-<WalletConnect
+ <WalletConnect
               onBitcoinConnect={async (addr, provider, ordinalsAddr) => {
                 if (!addr) return
                 setBtcAddress(addr)
@@ -2514,7 +2735,8 @@ Connect more wallets to add their assets. You can connect multiple EVM wallets a
                 // Don't automatically navigate to assets step
               }}
               onEvmConnect={onEvmConnectCallback}
-/>
+              onSolanaConnect={onSolanaConnectCallback}
+ />
  </div>
  
  {/* Show verification status */}
@@ -2965,8 +3187,8 @@ onSelectionChange={setSelectedAssetIds}
                            // Scroll to form and focus - use requestAnimationFrame to prevent blocking
                            requestAnimationFrame(() => {
                              setTimeout(() => {
-                               nameInput?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                               setTimeout(() => nameInput?.focus(), 300)
+                           nameInput?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                           setTimeout(() => nameInput?.focus(), 300)
                              }, 100)
                            })
                          }
