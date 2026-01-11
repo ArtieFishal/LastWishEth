@@ -2107,15 +2107,6 @@ Clear All
                     session.ensName || 
                     session.walletAddress
  const displayName = walletName !== session.walletAddress ? walletName : session.walletAddress
- console.log('[Queued Wallet Display]', {
-   sessionId: session.id,
-   walletAddress: session.walletAddress,
-   sessionWalletName: session.walletName,
-   foundWalletName: walletName,
-   displayName,
-   walletNames: Object.keys(walletNames),
-   resolvedEnsNames: Object.keys(resolvedEnsNames)
- })
  return (
 <div key={session.id} className="bg-gradient-to-br from-purple-500/20 to-blue-500/20 backdrop-blur-xl rounded-lg border-2 border-white/20 p-4 border-glow-hover hover:shadow-2xl hover:shadow-purple-500/20 transition-all transform hover:scale-[1.02] group">
 <div className="flex items-start justify-between">

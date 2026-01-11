@@ -60,18 +60,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
             const elements = document.querySelectorAll(selector)
             elements.forEach((el: Element) => {
               const htmlEl = el as HTMLElement
+              // Only set on the modal element itself, NOT on parents/ancestors
+              // Setting position:fixed on parents can block page scrolling
               htmlEl.style.zIndex = MAX_Z_INDEX
-              htmlEl.style.position = 'fixed'
-              // Also set on parent if it exists
-              if (htmlEl.parentElement) {
-                htmlEl.parentElement.style.zIndex = MAX_Z_INDEX
-                htmlEl.parentElement.style.position = 'fixed'
-              }
-              // Also set on all ancestors
-              let parent = htmlEl.parentElement
-              while (parent && parent !== document.body) {
-                parent.style.zIndex = MAX_Z_INDEX
-                parent = parent.parentElement
+              // Only set position:fixed if it's actually a modal/backdrop element
+              // Don't set it on parents as that can block scrolling
+              if (selector.includes('modal') || selector.includes('backdrop') || selector.includes('overlay')) {
+                htmlEl.style.position = 'fixed'
               }
             })
           } catch (e) {
@@ -93,16 +88,68 @@ export function Providers({ children }: { children: React.ReactNode }) {
             (typeof id === 'string' && (id.includes('w3m') || id.includes('walletconnect')))
           ) {
             htmlEl.style.zIndex = MAX_Z_INDEX
-            if (htmlEl.style.position === '' || htmlEl.style.position === 'static') {
+            // Only set position:fixed on actual modal/backdrop elements, not all WalletConnect elements
+            // This prevents blocking page scroll
+            const isModalOrBackdrop = 
+              tagName.includes('modal') || tagName.includes('backdrop') || tagName.includes('overlay') ||
+              (typeof className === 'string' && (className.includes('modal') || className.includes('backdrop') || className.includes('overlay'))) ||
+              (typeof id === 'string' && (id.includes('modal') || id.includes('backdrop') || id.includes('overlay')))
+            if (isModalOrBackdrop && (htmlEl.style.position === '' || htmlEl.style.position === 'static')) {
               htmlEl.style.position = 'fixed'
             }
           }
         })
       }
       
+      // CRITICAL: Ensure body and html are never set to position:fixed (blocks scrolling)
+      const ensureBodyScrollable = () => {
+        if (document.body) {
+          // Remove position:fixed from body if it was accidentally set
+          if (document.body.style.position === 'fixed') {
+            document.body.style.position = ''
+          }
+          // Ensure body can scroll
+          if (document.body.style.overflow === 'hidden') {
+            document.body.style.overflow = ''
+          }
+        }
+        if (document.documentElement) {
+          // Remove position:fixed from html if it was accidentally set
+          if (document.documentElement.style.position === 'fixed') {
+            document.documentElement.style.position = ''
+          }
+          // Ensure html can scroll
+          if (document.documentElement.style.overflow === 'hidden') {
+            document.documentElement.style.overflow = ''
+          }
+        }
+        // Remove any leftover WalletConnect backdrops that might be blocking scroll
+        // Only remove if modal is not actually open (no visible modal content)
+        const modalElements = document.querySelectorAll('w3m-modal, [data-w3m-modal], .w3m-modal, .walletconnect-modal')
+        const hasVisibleModal = Array.from(modalElements).some(el => {
+          const htmlEl = el as HTMLElement
+          return htmlEl.offsetParent !== null && window.getComputedStyle(htmlEl).display !== 'none'
+        })
+        if (!hasVisibleModal) {
+          // No visible modal, remove any backdrops that might be blocking
+          const backdrops = document.querySelectorAll('w3m-backdrop, [data-w3m-backdrop], .w3m-backdrop, .walletconnect-modal__backdrop')
+          backdrops.forEach(backdrop => {
+            const htmlEl = backdrop as HTMLElement
+            // Only remove if it's actually blocking (has position:fixed and covers the page)
+            if (htmlEl.style.position === 'fixed' && htmlEl.style.display !== 'none') {
+              htmlEl.style.display = 'none'
+            }
+          })
+        }
+      }
+
       // Run immediately and then periodically check
       fixWalletConnectZIndex()
-      const interval = setInterval(fixWalletConnectZIndex, 100)
+      ensureBodyScrollable()
+      const interval = setInterval(() => {
+        fixWalletConnectZIndex()
+        ensureBodyScrollable()
+      }, 100)
       
       // Also watch for DOM changes (modal might be added dynamically)
       const observer = new MutationObserver(() => {
