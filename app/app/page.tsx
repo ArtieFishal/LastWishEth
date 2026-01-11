@@ -4,7 +4,7 @@
 export const dynamic = 'force-dynamic'
 export const dynamicParams = true
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useAccount, useDisconnect, useSignMessage, useSendTransaction, useWaitForTransactionReceipt, useConnect } from 'wagmi'
 import { createPublicClient, http, parseEther, formatEther, isAddress } from 'viem'
 import { mainnet } from 'viem/chains'
@@ -260,8 +260,9 @@ export default function Home() {
 
  // Track loaded wallet addresses to avoid duplicates
  const [loadedWallets, setLoadedWallets] = useState<Set<string>>(new Set())
- const [pendingVerification, setPendingVerification] = useState<string | null>(null) // Address waiting for signature
- const resolvedAddressesRef = useRef<Set<string>>(new Set()) // Track which addresses we've resolved to prevent infinite loops
+const [pendingVerification, setPendingVerification] = useState<string | null>(null) // Address waiting for signature
+const resolvedAddressesRef = useRef<Set<string>>(new Set()) // Track which addresses we've resolved to prevent infinite loops
+const resolvingInOnEvmConnectRef = useRef<Set<string>>(new Set()) // Track addresses being resolved in onEvmConnect to prevent duplicate calls
 
   // Verify wallet ownership with signature
   const verifyWalletOwnership = async (address: string) => {
@@ -2331,73 +2332,102 @@ Connect more wallets to add their assets. You can connect multiple EVM wallets a
                 // Stay on connect step - user can manually load assets when ready
                 // Don't automatically navigate to assets step
               }}
- onEvmConnect={async (addr: string, provider?: string) => {
- if (addr && !connectedEVMAddresses.has(addr)) {
- // Check wallet limit (20 wallets max including queued)
- if (connectedEVMAddresses.size + queuedSessions.length >= 20) {
- setError('Maximum 20 wallets allowed (including queued). Please disconnect a wallet or remove from queue first.')
- return
- }
- 
- // IMPORTANT: Disconnect previous wagmi connection before adding new wallet
- // This prevents WalletConnect session limits and wagmi state conflicts
- if (isConnected && evmAddress && evmAddress !== addr) {
- try {
- await disconnect()
- // Small delay to ensure disconnect completes
- await new Promise(resolve => setTimeout(resolve, 100))
- } catch (err) {
- console.warn('Error disconnecting previous wallet:', err)
- // Continue anyway - the address is already captured
- }
- }
- 
- setConnectedEVMAddresses(prev => new Set([...prev, addr]))
- // Track wallet provider
- if (provider) {
- setWalletProviders(prev => ({ ...prev, [addr]: provider }))
- }
- 
- // DON'T remove backdrops during connection - WalletConnect needs them
- // Only clean up AFTER connection is complete and modal should be closed
- // This cleanup will happen naturally when the modal closes
- 
- // Resolve wallet name across all blockchain naming systems
- const resolveWalletName = async (address: string) => {
- try {
- // Try reverse lookup across all naming systems
- const resolved = await reverseResolveAddress(address)
- if (resolved) {
- setResolvedEnsNames(prev => ({ ...prev, [address.toLowerCase()]: resolved.name }))
- // If no manual name is set, use resolved name as the wallet name
- if (!walletNames[address]) {
- setWalletNames(prev => ({ ...prev, [address]: resolved.name }))
- }
- console.log(`Resolved ${resolved.resolver} name for wallet ${address}: ${resolved.name}`)
- }
- } catch (error) {
- console.error(`Error resolving name for wallet ${address}:`, error)
- }
- }
- 
- // Resolve name in background (don't block)
- resolveWalletName(addr)
- 
- // Set as selected if it's the first wallet or no wallet is selected
- if (selectedWalletForLoading === null) {
-   setSelectedWalletForLoading(addr)
- }
- // Request signature to verify ownership - NON-BLOCKING (don't await)
- // Verification happens in background, user can continue using the app
- if (!verifiedAddresses.has(addr)) {
-   // Don't await - let it run in background to prevent UI blocking
-   verifyWalletOwnership(addr).catch(error => {
-     // Silently handle errors - verification is optional for basic functionality
-     console.log('Wallet verification skipped or failed:', error)
-   })
- }
- }
- }}
+ onEvmConnect={useCallback(async (addr: string, provider?: string) => {
+if (!addr) return
+
+// CRITICAL: Check if we're already processing this address to prevent infinite loops
+if (resolvingInOnEvmConnectRef.current.has(addr.toLowerCase())) {
+console.log(`[onEvmConnect] Already processing ${addr}, skipping duplicate call`)
+return
+}
+
+if (!connectedEVMAddresses.has(addr)) {
+// Check wallet limit (20 wallets max including queued)
+if (connectedEVMAddresses.size + queuedSessions.length >= 20) {
+setError('Maximum 20 wallets allowed (including queued). Please disconnect a wallet or remove from queue first.')
+return
+}
+
+// Mark as being processed
+resolvingInOnEvmConnectRef.current.add(addr.toLowerCase())
+
+// IMPORTANT: Disconnect previous wagmi connection before adding new wallet
+// This prevents WalletConnect session limits and wagmi state conflicts
+if (isConnected && evmAddress && evmAddress !== addr) {
+try {
+await disconnect()
+// Small delay to ensure disconnect completes
+await new Promise(resolve => setTimeout(resolve, 100))
+} catch (err) {
+console.warn('Error disconnecting previous wallet:', err)
+// Continue anyway - the address is already captured
+}
+}
+
+setConnectedEVMAddresses(prev => new Set([...prev, addr]))
+// Track wallet provider
+if (provider) {
+setWalletProviders(prev => ({ ...prev, [addr]: provider }))
+}
+
+// DON'T remove backdrops during connection - WalletConnect needs them
+// Only clean up AFTER connection is complete and modal should be closed
+// This cleanup will happen naturally when the modal closes
+
+// Resolve wallet name across all blockchain naming systems - ONLY if not already resolved
+const addrLower = addr.toLowerCase()
+if (!resolvedAddressesRef.current.has(addrLower) && !resolvedEnsNames[addrLower]) {
+const resolveWalletName = async (address: string) => {
+try {
+// Try reverse lookup across all naming systems
+const resolved = await reverseResolveAddress(address)
+if (resolved) {
+resolvedAddressesRef.current.add(address.toLowerCase())
+setResolvedEnsNames(prev => {
+const key = address.toLowerCase()
+if (prev[key] === resolved.name) return prev // Prevent unnecessary updates
+return { ...prev, [key]: resolved.name }
+})
+// If no manual name is set, use resolved name as the wallet name
+setWalletNames(prev => {
+if (prev[address]) return prev // Don't overwrite manual names
+return { ...prev, [address]: resolved.name }
+})
+console.log(`Resolved ${resolved.resolver} name for wallet ${address}: ${resolved.name}`)
+}
+} catch (error) {
+console.error(`Error resolving name for wallet ${address}:`, error)
+} finally {
+// Remove from processing set
+resolvingInOnEvmConnectRef.current.delete(address.toLowerCase())
+}
+}
+
+// Resolve name in background (don't block)
+resolveWalletName(addr)
+} else {
+// Already resolved, just remove from processing set
+resolvingInOnEvmConnectRef.current.delete(addrLower)
+}
+
+// Set as selected if it's the first wallet or no wallet is selected
+if (selectedWalletForLoading === null) {
+  setSelectedWalletForLoading(addr)
+}
+// Request signature to verify ownership - NON-BLOCKING (don't await)
+// Verification happens in background, user can continue using the app
+if (!verifiedAddresses.has(addr)) {
+  // Don't await - let it run in background to prevent UI blocking
+  verifyWalletOwnership(addr).catch(error => {
+    // Silently handle errors - verification is optional for basic functionality
+    console.log('Wallet verification skipped or failed:', error)
+  })
+}
+} else {
+// Address already connected, just remove from processing set
+resolvingInOnEvmConnectRef.current.delete(addr.toLowerCase())
+}
+}, [connectedEVMAddresses, queuedSessions.length, isConnected, evmAddress, disconnect, setConnectedEVMAddresses, setWalletProviders, resolvedEnsNames, walletNames, selectedWalletForLoading, verifiedAddresses, verifyWalletOwnership, setError, setSelectedWalletForLoading])}
  />
  </div>
  
