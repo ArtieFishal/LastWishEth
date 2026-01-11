@@ -1303,6 +1303,12 @@ setError('Failed to load Bitcoin assets. Please try again.')
  const clearAllSensitiveData = async () => {
    console.log('[Privacy Cleanup] 🧹 Starting complete data cleanup...')
    
+   // CRITICAL: Clear localStorage FIRST to prevent any state restoration
+   if (typeof window !== 'undefined') {
+     localStorage.removeItem('lastwish_state')
+     await clearWagmiIndexedDB()
+   }
+   
    // Clear all state
    setAssets([])
    setSelectedAssetIds([])
@@ -1349,16 +1355,11 @@ setError('Failed to load Bitcoin assets. Please try again.')
      }
    }
    
-   // Clear storage
-   if (typeof window !== 'undefined') {
-     localStorage.removeItem('lastwish_state')
-     await clearWagmiIndexedDB()
-   }
-   
+   // Ensure step is set to connect (should already be set, but ensure it)
    setStep('connect')
    setError(null)
    
-   console.log('[Privacy Cleanup] ✅ Complete privacy cleanup finished')
+   console.log('[Privacy Cleanup] ✅ Complete privacy cleanup finished - user can start fresh')
  }
 
  const handleDownloadPDF = async () => {
@@ -1501,6 +1502,11 @@ setError('Failed to load Bitcoin assets. Please try again.')
  }
  URL.revokeObjectURL(url)
  }, 5000)
+ 
+ // Immediately reset step to connect (user should see fresh start)
+ // Then complete privacy cleanup after PDF download completes
+ setStep('connect')
+ setError(null)
  
  // Complete privacy cleanup after successful PDF generation
  // This ensures NO sensitive data persists after PDF is generated
