@@ -434,8 +434,9 @@ clearTimeout(resolveTimeoutRef.current)
 resolveTimeoutRef.current = null
 }
 }
-// Only depend on evmAddress and Set size - NOT selectedWalletForLoading (prevents infinite loop)
-}, [evmAddress, connectedEVMAddresses.size, verifiedAddresses.size])
+// Only depend on evmAddress and connected addresses - NOT verifiedAddresses.size
+// Verification doesn't change addresses, so we don't need to re-resolve names
+}, [evmAddress, connectedEVMAddresses.size])
 
 // Auto-select first verified wallet if none selected (separate effect to prevent loops)
 // Use ref to track if we've already auto-selected to prevent loops
