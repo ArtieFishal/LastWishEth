@@ -322,11 +322,19 @@ export default function Home() {
  // Old resolveENS function removed - now using unified reverseResolveAddress from name-resolvers
 
 // Resolve wallet names across all blockchain naming systems when wallets are connected
+// Use debounce to prevent excessive calls when verifiedAddresses changes
+const resolveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 useEffect(() => {
 // Only run once per address change - use ref to track what we've processed
 
 let cancelled = false
 let isResolving = false
+
+// Clear any pending resolution
+if (resolveTimeoutRef.current) {
+clearTimeout(resolveTimeoutRef.current)
+resolveTimeoutRef.current = null
+}
 
 // Convert Set to array for use in this effect
 const connectedAddressesArray = Array.from(connectedEVMAddresses)
@@ -408,24 +416,43 @@ const hasUnresolvedAddresses = (evmAddress && !resolvedAddressesRef.current.has(
 connectedAddressesArray.some(addr => addr && !resolvedAddressesRef.current.has(addr.toLowerCase()))
 
 if (hasUnresolvedAddresses) {
-resolveWalletNames()
+// Debounce to prevent excessive calls - wait 500ms after last change
+resolveTimeoutRef.current = setTimeout(() => {
+if (!cancelled) {
+resolveWalletNames().catch(err => {
+console.error('Error in wallet name resolution:', err)
+isResolving = false
+})
+}
+}, 500)
 }
 
 return () => {
 cancelled = true
+if (resolveTimeoutRef.current) {
+clearTimeout(resolveTimeoutRef.current)
+resolveTimeoutRef.current = null
+}
 }
 // Only depend on evmAddress and Set size - NOT selectedWalletForLoading (prevents infinite loop)
 }, [evmAddress, connectedEVMAddresses.size, verifiedAddresses.size])
 
 // Auto-select first verified wallet if none selected (separate effect to prevent loops)
+// Use ref to track if we've already auto-selected to prevent loops
+const hasAutoSelectedRef = useRef(false)
 useEffect(() => {
-// Only auto-select if no wallet is currently selected and we have verified wallets
-if (selectedWalletForLoading === null && connectedEVMAddresses.size > 0 && verifiedAddresses.size > 0) {
+// Only auto-select ONCE when we first get a verified wallet
+if (!hasAutoSelectedRef.current && selectedWalletForLoading === null && connectedEVMAddresses.size > 0 && verifiedAddresses.size > 0) {
 const connectedAddressesArray = Array.from(connectedEVMAddresses)
 const firstVerified = connectedAddressesArray.find(addr => verifiedAddresses.has(addr))
 if (firstVerified) {
+hasAutoSelectedRef.current = true
 setSelectedWalletForLoading(firstVerified)
 }
+}
+// Reset flag if all wallets are disconnected
+if (connectedEVMAddresses.size === 0) {
+hasAutoSelectedRef.current = false
 }
 // Only depend on sizes, not selectedWalletForLoading itself (prevents loop)
 // eslint-disable-next-line react-hooks/exhaustive-deps
