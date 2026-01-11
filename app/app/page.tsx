@@ -148,26 +148,32 @@ export default function Home() {
  if (parsed.executorTwitter) setExecutorTwitter(parsed.executorTwitter)
  if (parsed.executorLinkedIn) setExecutorLinkedIn(parsed.executorLinkedIn)
  if (parsed.keyInstructions) setKeyInstructions(parsed.keyInstructions)
- if (parsed.resolvedEnsNames) setResolvedEnsNames(parsed.resolvedEnsNames)
- if (parsed.paymentWalletAddress) setPaymentWalletAddress(parsed.paymentWalletAddress)
- if (parsed.step) setStep(parsed.step)
- if (parsed.invoiceId) setInvoiceId(parsed.invoiceId)
- if (parsed.paymentVerified) setPaymentVerified(parsed.paymentVerified)
- if (parsed.discountCode) setDiscountCode(parsed.discountCode)
- if (parsed.discountApplied) setDiscountApplied(parsed.discountApplied)
- if (parsed.queuedSessions) setQueuedSessions(parsed.queuedSessions)
- if (parsed.selectedTier) setSelectedTier(parsed.selectedTier)
- 
- // RESTORE wallet connection state
- if (parsed.connectedEVMAddresses && Array.isArray(parsed.connectedEVMAddresses)) {
-   setConnectedEVMAddresses(new Set(parsed.connectedEVMAddresses))
- }
- if (parsed.verifiedAddresses && Array.isArray(parsed.verifiedAddresses)) {
-   setVerifiedAddresses(new Set(parsed.verifiedAddresses))
- }
- if (parsed.btcAddress) setBtcAddress(parsed.btcAddress)
- if (parsed.walletNames) setWalletNames(parsed.walletNames)
- if (parsed.walletProviders) setWalletProviders(parsed.walletProviders)
+              if (parsed.resolvedEnsNames) {
+                setResolvedEnsNames(parsed.resolvedEnsNames)
+                resolvedEnsNamesRef.current = parsed.resolvedEnsNames // Sync ref
+              }
+              if (parsed.paymentWalletAddress) setPaymentWalletAddress(parsed.paymentWalletAddress)
+              if (parsed.step) setStep(parsed.step)
+              if (parsed.invoiceId) setInvoiceId(parsed.invoiceId)
+              if (parsed.paymentVerified) setPaymentVerified(parsed.paymentVerified)
+              if (parsed.discountCode) setDiscountCode(parsed.discountCode)
+              if (parsed.discountApplied) setDiscountApplied(parsed.discountApplied)
+              if (parsed.queuedSessions) setQueuedSessions(parsed.queuedSessions)
+              if (parsed.selectedTier) setSelectedTier(parsed.selectedTier)
+
+              // RESTORE wallet connection state
+              if (parsed.connectedEVMAddresses && Array.isArray(parsed.connectedEVMAddresses)) {
+                setConnectedEVMAddresses(new Set(parsed.connectedEVMAddresses))
+              }
+              if (parsed.verifiedAddresses && Array.isArray(parsed.verifiedAddresses)) {
+                setVerifiedAddresses(new Set(parsed.verifiedAddresses))
+              }
+              if (parsed.btcAddress) setBtcAddress(parsed.btcAddress)
+              if (parsed.walletNames) {
+                setWalletNames(parsed.walletNames)
+                walletNamesRef.current = parsed.walletNames // Sync ref
+              }
+              if (parsed.walletProviders) setWalletProviders(parsed.walletProviders)
  }
  } catch (err) {
  console.error('Error loading saved state:', err)
@@ -263,6 +269,8 @@ export default function Home() {
 const [pendingVerification, setPendingVerification] = useState<string | null>(null) // Address waiting for signature
 const resolvedAddressesRef = useRef<Set<string>>(new Set()) // Track which addresses we've resolved to prevent infinite loops
 const resolvingInOnEvmConnectRef = useRef<Set<string>>(new Set()) // Track addresses being resolved in onEvmConnect to prevent duplicate calls
+const resolvedEnsNamesRef = useRef<Record<string, string>>({}) // Ref to access latest resolvedEnsNames without causing callback recreation
+const walletNamesRef = useRef<Record<string, string>>({}) // Ref to access latest walletNames without causing callback recreation
 
   // Verify wallet ownership with signature
   const verifyWalletOwnership = async (address: string) => {
@@ -326,6 +334,9 @@ const resolvingInOnEvmConnectRef = useRef<Set<string>>(new Set()) // Track addre
 // Use debounce to prevent excessive calls when verifiedAddresses changes
 const resolveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 useEffect(() => {
+// #region agent log
+fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:325',message:'Wallet name resolution useEffect running',data:{evmAddress,connectedEVMAddressesSize:connectedEVMAddresses.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+// #endregion
 // Only run once per address change - use ref to track what we've processed
 
 let cancelled = false
@@ -394,7 +405,9 @@ if (resolved && !cancelled) {
 resolvedAddressesRef.current.add(addrLower)
 setResolvedEnsNames(prev => {
 if (prev[addrLower] === resolved.name) return prev // Prevent unnecessary updates
-return { ...prev, [addrLower]: resolved.name }
+const updated = { ...prev, [addrLower]: resolved.name }
+resolvedEnsNamesRef.current = updated // Keep ref in sync
+return updated
 })
 newWalletNames[addr] = resolved.name
 updated = true
@@ -408,6 +421,7 @@ await Promise.allSettled(resolutionPromises)
 
 if (updated && !cancelled) {
 setWalletNames(newWalletNames)
+walletNamesRef.current = newWalletNames // Keep ref in sync
 }
 isResolving = false
 }
@@ -1692,6 +1706,139 @@ setTimeout(() => {
  return steps.findIndex(s => s.id === step)
  }
 
+ // Memoize onEvmConnect callback to prevent infinite loops
+ const onEvmConnectCallback = useCallback(async (addr: string, provider?: string) => {
+   // #region agent log
+   fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1703',message:'onEvmConnect called',data:{addr,provider,connectedEVMAddressesSize:connectedEVMAddresses.size,isProcessing:resolvingInOnEvmConnectRef.current.has(addr?.toLowerCase()||'')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+   // #endregion
+   if (!addr) return
+
+   // CRITICAL: Check if we're already processing this address to prevent infinite loops
+   if (resolvingInOnEvmConnectRef.current.has(addr.toLowerCase())) {
+     // #region agent log
+     fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1708',message:'onEvmConnect duplicate call blocked',data:{addr},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+     // #endregion
+     console.log(`[onEvmConnect] Already processing ${addr}, skipping duplicate call`)
+     return
+   }
+
+   if (!connectedEVMAddresses.has(addr)) {
+     // Check wallet limit (20 wallets max including queued)
+     if (connectedEVMAddresses.size + queuedSessions.length >= 20) {
+       setError('Maximum 20 wallets allowed (including queued). Please disconnect a wallet or remove from queue first.')
+       return
+     }
+
+     // Mark as being processed
+     resolvingInOnEvmConnectRef.current.add(addr.toLowerCase())
+
+     // IMPORTANT: Disconnect previous wagmi connection before adding new wallet
+     // This prevents WalletConnect session limits and wagmi state conflicts
+     if (isConnected && evmAddress && evmAddress !== addr) {
+       try {
+         await disconnect()
+         // Small delay to ensure disconnect completes
+         await new Promise(resolve => setTimeout(resolve, 100))
+       } catch (err) {
+         console.warn('Error disconnecting previous wallet:', err)
+         // Continue anyway - the address is already captured
+       }
+     }
+
+     // #region agent log
+     fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1733',message:'About to setConnectedEVMAddresses',data:{addr,currentSize:connectedEVMAddresses.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+     // #endregion
+     setConnectedEVMAddresses(prev => {
+       // #region agent log
+       fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1735',message:'setConnectedEVMAddresses callback executing',data:{addr,prevSize:prev.size,newSize:new Set([...prev, addr]).size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+       // #endregion
+       return new Set([...prev, addr])
+     })
+     // Track wallet provider
+     if (provider) {
+       setWalletProviders(prev => ({ ...prev, [addr]: provider }))
+     }
+
+     // DON'T remove backdrops during connection - WalletConnect needs them
+     // Only clean up AFTER connection is complete and modal should be closed
+     // This cleanup will happen naturally when the modal closes
+
+     // Resolve wallet name across all blockchain naming systems - ONLY if not already resolved
+     const addrLower = addr.toLowerCase()
+     // Use refs to check latest values without causing callback recreation
+     if (!resolvedAddressesRef.current.has(addrLower) && !resolvedEnsNamesRef.current[addrLower]) {
+       const resolveWalletName = async (address: string) => {
+         try {
+           // Try reverse lookup across all naming systems
+           const resolved = await reverseResolveAddress(address)
+           if (resolved) {
+             resolvedAddressesRef.current.add(address.toLowerCase())
+             // #region agent log
+             fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1755',message:'About to update resolvedEnsNames and walletNames',data:{address,resolvedName:resolved.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+             // #endregion
+             setResolvedEnsNames(prev => {
+               const key = address.toLowerCase()
+               if (prev[key] === resolved.name) return prev // Prevent unnecessary updates
+               // #region agent log
+               fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1759',message:'setResolvedEnsNames updating state',data:{key,resolvedName:resolved.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+               // #endregion
+               const updated = { ...prev, [key]: resolved.name }
+               resolvedEnsNamesRef.current = updated // Keep ref in sync
+               return updated
+             })
+             // If no manual name is set, use resolved name as the wallet name
+             setWalletNames(prev => {
+               if (prev[address]) return prev // Don't overwrite manual names
+               // #region agent log
+               fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1766',message:'setWalletNames updating state',data:{address,resolvedName:resolved.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+               // #endregion
+               const updated = { ...prev, [address]: resolved.name }
+               walletNamesRef.current = updated // Keep ref in sync
+               return updated
+             })
+             console.log(`Resolved ${resolved.resolver} name for wallet ${address}: ${resolved.name}`)
+           }
+         } catch (error) {
+           console.error(`Error resolving name for wallet ${address}:`, error)
+         } finally {
+           // Remove from processing set
+           resolvingInOnEvmConnectRef.current.delete(address.toLowerCase())
+         }
+       }
+
+       // Resolve name in background (don't block)
+       resolveWalletName(addr)
+     } else {
+       // Already resolved, just remove from processing set
+       resolvingInOnEvmConnectRef.current.delete(addrLower)
+     }
+
+     // Set as selected if it's the first wallet or no wallet is selected
+     if (selectedWalletForLoading === null) {
+       setSelectedWalletForLoading(addr)
+     }
+     // Request signature to verify ownership - NON-BLOCKING (don't await)
+     // Verification happens in background, user can continue using the app
+     if (!verifiedAddresses.has(addr)) {
+       // Don't await - let it run in background to prevent UI blocking
+       verifyWalletOwnership(addr).catch(error => {
+         // Silently handle errors - verification is optional for basic functionality
+         console.log('Wallet verification skipped or failed:', error)
+       })
+     }
+   } else {
+     // Address already connected, just remove from processing set
+     resolvingInOnEvmConnectRef.current.delete(addr.toLowerCase())
+   }
+ }, [connectedEVMAddresses, queuedSessions.length, isConnected, evmAddress, disconnect, setConnectedEVMAddresses, setWalletProviders, selectedWalletForLoading, verifiedAddresses, verifyWalletOwnership, setError, setSelectedWalletForLoading])
+
+ // #region agent log
+ // Track when onEvmConnect callback dependencies change
+ useEffect(() => {
+   fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1797',message:'onEvmConnect callback dependencies changed',data:{connectedEVMAddressesSize:connectedEVMAddresses.size,queuedSessionsLength:queuedSessions.length,isConnected,evmAddress,resolvedEnsNamesKeys:Object.keys(resolvedEnsNames).length,walletNamesKeys:Object.keys(walletNames).length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+ }, [connectedEVMAddresses, queuedSessions.length, isConnected, evmAddress]);
+ // #endregion
+
  return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden flex flex-col">
       {/* Animated background gradient */}
@@ -2318,7 +2465,7 @@ Connect Additional Wallets
 <p className="text-sm text-bright-soft mb-4">
 Connect more wallets to add their assets. You can connect multiple EVM wallets and Bitcoin wallets.
 </p>
- <WalletConnect
+<WalletConnect
               onBitcoinConnect={async (addr, provider, ordinalsAddr) => {
                 if (!addr) return
                 setBtcAddress(addr)
@@ -2332,103 +2479,8 @@ Connect more wallets to add their assets. You can connect multiple EVM wallets a
                 // Stay on connect step - user can manually load assets when ready
                 // Don't automatically navigate to assets step
               }}
- onEvmConnect={useCallback(async (addr: string, provider?: string) => {
-if (!addr) return
-
-// CRITICAL: Check if we're already processing this address to prevent infinite loops
-if (resolvingInOnEvmConnectRef.current.has(addr.toLowerCase())) {
-console.log(`[onEvmConnect] Already processing ${addr}, skipping duplicate call`)
-return
-}
-
-if (!connectedEVMAddresses.has(addr)) {
-// Check wallet limit (20 wallets max including queued)
-if (connectedEVMAddresses.size + queuedSessions.length >= 20) {
-setError('Maximum 20 wallets allowed (including queued). Please disconnect a wallet or remove from queue first.')
-return
-}
-
-// Mark as being processed
-resolvingInOnEvmConnectRef.current.add(addr.toLowerCase())
-
-// IMPORTANT: Disconnect previous wagmi connection before adding new wallet
-// This prevents WalletConnect session limits and wagmi state conflicts
-if (isConnected && evmAddress && evmAddress !== addr) {
-try {
-await disconnect()
-// Small delay to ensure disconnect completes
-await new Promise(resolve => setTimeout(resolve, 100))
-} catch (err) {
-console.warn('Error disconnecting previous wallet:', err)
-// Continue anyway - the address is already captured
-}
-}
-
-setConnectedEVMAddresses(prev => new Set([...prev, addr]))
-// Track wallet provider
-if (provider) {
-setWalletProviders(prev => ({ ...prev, [addr]: provider }))
-}
-
-// DON'T remove backdrops during connection - WalletConnect needs them
-// Only clean up AFTER connection is complete and modal should be closed
-// This cleanup will happen naturally when the modal closes
-
-// Resolve wallet name across all blockchain naming systems - ONLY if not already resolved
-const addrLower = addr.toLowerCase()
-if (!resolvedAddressesRef.current.has(addrLower) && !resolvedEnsNames[addrLower]) {
-const resolveWalletName = async (address: string) => {
-try {
-// Try reverse lookup across all naming systems
-const resolved = await reverseResolveAddress(address)
-if (resolved) {
-resolvedAddressesRef.current.add(address.toLowerCase())
-setResolvedEnsNames(prev => {
-const key = address.toLowerCase()
-if (prev[key] === resolved.name) return prev // Prevent unnecessary updates
-return { ...prev, [key]: resolved.name }
-})
-// If no manual name is set, use resolved name as the wallet name
-setWalletNames(prev => {
-if (prev[address]) return prev // Don't overwrite manual names
-return { ...prev, [address]: resolved.name }
-})
-console.log(`Resolved ${resolved.resolver} name for wallet ${address}: ${resolved.name}`)
-}
-} catch (error) {
-console.error(`Error resolving name for wallet ${address}:`, error)
-} finally {
-// Remove from processing set
-resolvingInOnEvmConnectRef.current.delete(address.toLowerCase())
-}
-}
-
-// Resolve name in background (don't block)
-resolveWalletName(addr)
-} else {
-// Already resolved, just remove from processing set
-resolvingInOnEvmConnectRef.current.delete(addrLower)
-}
-
-// Set as selected if it's the first wallet or no wallet is selected
-if (selectedWalletForLoading === null) {
-  setSelectedWalletForLoading(addr)
-}
-// Request signature to verify ownership - NON-BLOCKING (don't await)
-// Verification happens in background, user can continue using the app
-if (!verifiedAddresses.has(addr)) {
-  // Don't await - let it run in background to prevent UI blocking
-  verifyWalletOwnership(addr).catch(error => {
-    // Silently handle errors - verification is optional for basic functionality
-    console.log('Wallet verification skipped or failed:', error)
-  })
-}
-} else {
-// Address already connected, just remove from processing set
-resolvingInOnEvmConnectRef.current.delete(addr.toLowerCase())
-}
-}, [connectedEVMAddresses, queuedSessions.length, isConnected, evmAddress, disconnect, setConnectedEVMAddresses, setWalletProviders, resolvedEnsNames, walletNames, selectedWalletForLoading, verifiedAddresses, verifyWalletOwnership, setError, setSelectedWalletForLoading])}
- />
+              onEvmConnect={onEvmConnectCallback}
+/>
  </div>
  
  {/* Show verification status */}
