@@ -92,6 +92,7 @@ export default function Home() {
  const [resolvedEnsNames, setResolvedEnsNames] = useState<Record<string, string>>({})
  const [walletProviders, setWalletProviders] = useState<Record<string, string>>({}) // Track wallet provider (MetaMask, Rainbow, etc.)
  const [connectedEVMAddresses, setConnectedEVMAddresses] = useState<Set<string>>(new Set())
+ const [verifiedAddresses, setVerifiedAddresses] = useState<Set<string>>(new Set()) // Addresses that have signed
  const [mounted, setMounted] = useState(false)
  const [invoiceId, setInvoiceId] = useState<string | null>(null)
  const [paymentVerified, setPaymentVerified] = useState(false)
@@ -115,13 +116,11 @@ export default function Home() {
  useEffect(() => {
  setMounted(true)
  
- // Clear wallet connections on app load (prevents auto-reconnect, but preserves form data)
- // This must run BEFORE loading state from localStorage
- // Note: This is async but we don't await - it runs in background and clears indexedDB
- // before wagmi can auto-restore connections
- clearWalletConnectionsOnLoad().catch(err => {
-   console.error('[App] Error clearing wallet connections:', err)
- })
+ // DON'T clear wallet connections on every page load - allow wallets to persist
+ // Users can manually disconnect if needed, or use "Clear All" button
+ // clearWalletConnectionsOnLoad().catch(err => {
+ //   console.error('[App] Error clearing wallet connections:', err)
+ // })
  
  // Load persisted state from localStorage
  if (typeof window !== 'undefined') {
@@ -129,7 +128,7 @@ export default function Home() {
  const saved = localStorage.getItem('lastwish_state')
  if (saved) {
  const parsed = JSON.parse(saved)
- // Restore all state (except wallet connections which need to be re-established)
+ // Restore all state including wallet connections
  if (parsed.assets) setAssets(parsed.assets)
  if (parsed.beneficiaries) setBeneficiaries(parsed.beneficiaries)
  if (parsed.allocations) setAllocations(parsed.allocations)
@@ -158,6 +157,17 @@ export default function Home() {
  if (parsed.discountApplied) setDiscountApplied(parsed.discountApplied)
  if (parsed.queuedSessions) setQueuedSessions(parsed.queuedSessions)
  if (parsed.selectedTier) setSelectedTier(parsed.selectedTier)
+ 
+ // RESTORE wallet connection state
+ if (parsed.connectedEVMAddresses && Array.isArray(parsed.connectedEVMAddresses)) {
+   setConnectedEVMAddresses(new Set(parsed.connectedEVMAddresses))
+ }
+ if (parsed.verifiedAddresses && Array.isArray(parsed.verifiedAddresses)) {
+   setVerifiedAddresses(new Set(parsed.verifiedAddresses))
+ }
+ if (parsed.btcAddress) setBtcAddress(parsed.btcAddress)
+ if (parsed.walletNames) setWalletNames(parsed.walletNames)
+ if (parsed.walletProviders) setWalletProviders(parsed.walletProviders)
  }
  } catch (err) {
  console.error('Error loading saved state:', err)
@@ -198,6 +208,12 @@ export default function Home() {
  discountApplied,
  queuedSessions,
  selectedTier,
+ // Persist wallet connection state
+ connectedEVMAddresses: Array.from(connectedEVMAddresses),
+ verifiedAddresses: Array.from(verifiedAddresses),
+ btcAddress,
+ walletNames,
+ walletProviders,
  }
  localStorage.setItem('lastwish_state', JSON.stringify(stateToSave))
  } catch (err) {
@@ -234,11 +250,16 @@ export default function Home() {
  queuedSessions,
  selectedTier,
  mounted,
+ // Add wallet connection state to dependencies
+ connectedEVMAddresses,
+ verifiedAddresses,
+ btcAddress,
+ walletNames,
+ walletProviders,
  ])
 
  // Track loaded wallet addresses to avoid duplicates
  const [loadedWallets, setLoadedWallets] = useState<Set<string>>(new Set())
- const [verifiedAddresses, setVerifiedAddresses] = useState<Set<string>>(new Set()) // Addresses that have signed
  const [pendingVerification, setPendingVerification] = useState<string | null>(null) // Address waiting for signature
  const resolvedAddressesRef = useRef<Set<string>>(new Set()) // Track which addresses we've resolved to prevent infinite loops
 
@@ -1427,12 +1448,17 @@ setTimeout(() => {
    queuedSessions: queuedSessions.length
  })
  
- // Check if we have a connected wallet
- const walletAddress = evmAddress || btcAddress
- console.log('[Save to Queue] Wallet address:', walletAddress)
+ // Check if we have a connected wallet - use connectedEVMAddresses as fallback
+ // This handles cases where wallet is connected but evmAddress/btcAddress are cleared on refresh
+ const walletAddress = evmAddress || btcAddress || (connectedEVMAddresses.size > 0 ? Array.from(connectedEVMAddresses)[0] : null)
+ console.log('[Save to Queue] Wallet address:', walletAddress, {
+   evmAddress,
+   btcAddress,
+   connectedEVMAddresses: Array.from(connectedEVMAddresses)
+ })
  if (!walletAddress) {
    console.log('[Save to Queue] ❌ No wallet connected')
-   setError('No wallet connected. Please connect a wallet first.')
+   setError('Wallet Not Connected\n\nPlease connect your wallet to continue.\n\nWhat to do: Go to the Connect step and connect your wallet')
    return
  }
 
@@ -2787,9 +2813,13 @@ onSelectionChange={setSelectedAssetIds}
                            // Remove this beneficiary (will be re-added when saved)
                            setBeneficiaries(beneficiaries.filter((b) => b.id !== ben.id))
                            
-                           // Scroll to form and focus
-                           nameInput?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                           setTimeout(() => nameInput?.focus(), 300)
+                           // Scroll to form and focus - use requestAnimationFrame to prevent blocking
+                           requestAnimationFrame(() => {
+                             setTimeout(() => {
+                               nameInput?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                               setTimeout(() => nameInput?.focus(), 300)
+                             }, 100)
+                           })
                          }
                        }}
                        className="text-blue-600 hover:text-blue-300 text-xs font-semibold px-1"
