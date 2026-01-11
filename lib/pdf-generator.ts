@@ -773,7 +773,7 @@ export async function generatePDF(
         const assetAllocations = userData.allocations.filter((a) => a.assetId === asset.id)
         if (assetAllocations.length === 0) continue
         
-        const isNFT = asset.type === 'erc721' || asset.type === 'erc1155'
+        const isNFT = asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'nft'
         checkNewPage(isNFT ? 100 : 35)
         
         // Determine asset color (for text only, no boxes)
@@ -789,7 +789,7 @@ export async function generatePDF(
         // For NFTs, try to embed and display the image
         if (isNFT && asset.imageUrl) {
           try {
-            const nftImage = await fetchAndEmbedImage(pdfDoc, asset.imageUrl)
+            const nftImage = await fetchAndEmbedImage(pdfDoc, nftImageUrl)
             if (nftImage) {
               const imageSize = 60
               const imageX = margin + 30
