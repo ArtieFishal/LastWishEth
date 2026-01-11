@@ -21,7 +21,7 @@ import { generatePDF } from '@/lib/pdf-generator'
 import { getCurrentPricing, getPaymentAmountETH, getFormattedPrice, getTierPricing, getAllTiers, PricingTier } from '@/lib/pricing'
 import { getUserFriendlyError } from '@/lib/errorMessages'
 import { fetchWithCache, getCached, setCached } from '@/lib/requestCache'
-import { clearWalletConnectionsOnLoad } from '@/lib/wallet-cleanup'
+import { clearWalletConnectionsOnLoad, clearWagmiIndexedDB } from '@/lib/wallet-cleanup'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 
@@ -1299,6 +1299,68 @@ setError('Failed to load Bitcoin assets. Please try again.')
  }
  }
 
+ // Helper function to clear all sensitive data for privacy
+ const clearAllSensitiveData = async () => {
+   console.log('[Privacy Cleanup] 🧹 Starting complete data cleanup...')
+   
+   // Clear all state
+   setAssets([])
+   setSelectedAssetIds([])
+   setBeneficiaries([])
+   setAllocations([])
+   setQueuedSessions([])
+   setConnectedEVMAddresses(new Set())
+   setVerifiedAddresses(new Set())
+   setBtcAddress(null)
+   setBtcOrdinalsAddress(null)
+   setWalletNames({})
+   setResolvedEnsNames({})
+   setWalletProviders({})
+   setLoadedWallets(new Set())
+   setSelectedWalletForLoading(null)
+   setCurrentSessionWallet(null)
+   setOwnerName('')
+   setOwnerFullName('')
+   setOwnerEnsName('')
+   setOwnerAddress('')
+   setOwnerCity('')
+   setOwnerState('')
+   setOwnerZipCode('')
+   setOwnerPhone('')
+   setExecutorName('')
+   setExecutorAddress('')
+   setExecutorPhone('')
+   setExecutorEmail('')
+   setExecutorTwitter('')
+   setExecutorLinkedIn('')
+   setKeyInstructions('')
+   setPaymentVerified(false)
+   setDiscountApplied(false)
+   setDiscountCode('')
+   setInvoiceId(null)
+   setPaymentWalletAddress(null)
+   
+   // Disconnect wallets
+   if (isConnected) {
+     try {
+       await disconnect()
+     } catch (err) {
+       console.error('Error disconnecting wallet:', err)
+     }
+   }
+   
+   // Clear storage
+   if (typeof window !== 'undefined') {
+     localStorage.removeItem('lastwish_state')
+     await clearWagmiIndexedDB()
+   }
+   
+   setStep('connect')
+   setError(null)
+   
+   console.log('[Privacy Cleanup] ✅ Complete privacy cleanup finished')
+ }
+
  const handleDownloadPDF = async () => {
  if (!paymentVerified && !discountApplied) {
  setError('Payment must be verified or discount applied before downloading PDF')
@@ -1440,37 +1502,12 @@ setError('Failed to load Bitcoin assets. Please try again.')
  URL.revokeObjectURL(url)
  }, 5000)
  
- // Reset payment state after successful PDF generation
- // This locks the document again, requiring payment/discount for next generation
-// Use setTimeout to ensure PDF download completes before resetting
-setTimeout(() => {
-  // Clear payment state
- setPaymentVerified(false)
- setDiscountApplied(false)
- setDiscountCode('')
- setInvoiceId(null)
-  
-  // Clear payment state from localStorage to prevent restoration
-  if (typeof window !== 'undefined') {
-    try {
-      const saved = localStorage.getItem('lastwish_state')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        // Remove payment-related fields
-        delete parsed.paymentVerified
-        delete parsed.discountApplied
-        delete parsed.discountCode
-        delete parsed.invoiceId
-        localStorage.setItem('lastwish_state', JSON.stringify(parsed))
-      }
-    } catch (err) {
-      console.error('Error clearing payment state from localStorage:', err)
-    }
-  }
-  
-  // Also reset step to payment so user must pay again for another download
-  setStep('payment')
-}, 2000) // Wait 2 seconds to ensure download completes
+ // Complete privacy cleanup after successful PDF generation
+ // This ensures NO sensitive data persists after PDF is generated
+ // Critical for public computers - all data is cleared
+ setTimeout(() => {
+   clearAllSensitiveData()
+ }, 3000) // Wait 3 seconds to ensure PDF download completes
  
  } catch (error) {
  console.error('Error generating PDF:', error)
