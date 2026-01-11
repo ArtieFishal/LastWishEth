@@ -2353,15 +2353,16 @@ Connect more wallets to add their assets. You can connect multiple EVM wallets a
  
  // Set as selected if it's the first wallet or no wallet is selected
  if (selectedWalletForLoading === null) {
- setSelectedWalletForLoading(addr)
+   setSelectedWalletForLoading(addr)
  }
- // Request signature to verify ownership
+ // Request signature to verify ownership - NON-BLOCKING (don't await)
+ // Verification happens in background, user can continue using the app
  if (!verifiedAddresses.has(addr)) {
- const verified = await verifyWalletOwnership(addr)
- // If verified and no wallet is selected, select this one
- if (verified && selectedWalletForLoading === null) {
- setSelectedWalletForLoading(addr)
- }
+   // Don't await - let it run in background to prevent UI blocking
+   verifyWalletOwnership(addr).catch(error => {
+     // Silently handle errors - verification is optional for basic functionality
+     console.log('Wallet verification skipped or failed:', error)
+   })
  }
  }
  }}
