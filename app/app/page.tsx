@@ -1622,13 +1622,16 @@ setTimeout(() => {
    queuedSessions: queuedSessions.length
  })
  
- // Check if we have a connected wallet - use connectedEVMAddresses as fallback
+ // Check if we have a connected wallet - use connectedEVMAddresses/connectedSolanaAddresses as fallback
  // This handles cases where wallet is connected but evmAddress/btcAddress are cleared on refresh
- const walletAddress = evmAddress || btcAddress || (connectedEVMAddresses.size > 0 ? Array.from(connectedEVMAddresses)[0] : null)
+ const solanaAddress = connectedSolanaAddresses.size > 0 ? Array.from(connectedSolanaAddresses)[0] : null
+ const walletAddress = evmAddress || btcAddress || solanaAddress || (connectedEVMAddresses.size > 0 ? Array.from(connectedEVMAddresses)[0] : null)
  console.log('[Save to Queue] Wallet address:', walletAddress, {
    evmAddress,
    btcAddress,
-   connectedEVMAddresses: Array.from(connectedEVMAddresses)
+   solanaAddress,
+   connectedEVMAddresses: Array.from(connectedEVMAddresses),
+   connectedSolanaAddresses: Array.from(connectedSolanaAddresses)
  })
  if (!walletAddress) {
    console.log('[Save to Queue] ❌ No wallet connected')
@@ -1680,8 +1683,11 @@ setTimeout(() => {
  const sessionAssets = assets.filter(a => selectedAssetIds.includes(a.id))
 
  // Get wallet name - check all possible addresses
- const addressToUse = walletAddress || evmAddress || btcAddress
+ const addressToUse = walletAddress || evmAddress || btcAddress || solanaAddress
  const normalizedAddress = addressToUse?.toLowerCase()
+ 
+ // Determine wallet type
+ const walletType: 'evm' | 'btc' | 'solana' = evmAddress ? 'evm' : (btcAddress ? 'btc' : (solanaAddress ? 'solana' : 'evm'))
  
  // Try to get wallet name from any of the possible addresses
  let walletName: string | undefined = undefined
@@ -1696,9 +1702,11 @@ setTimeout(() => {
    walletAddress,
    evmAddress,
    btcAddress,
+   solanaAddress,
    addressToUse,
    normalizedAddress,
    walletName,
+   walletType,
    walletNames: Object.keys(walletNames),
    resolvedEnsNames: Object.keys(resolvedEnsNames),
    foundInWalletNames: normalizedAddress ? (walletNames[normalizedAddress] || (addressToUse ? walletNames[addressToUse] : undefined)) : undefined,
@@ -1709,13 +1717,17 @@ setTimeout(() => {
  const session: QueuedWalletSession = {
  id: `${walletAddress.toLowerCase()}-${Date.now()}`,
  walletAddress: walletAddress.toLowerCase(),
- walletType: evmAddress ? 'evm' : 'btc',
- walletProvider: evmAddress ? (walletProviders[evmAddress] || 'Unknown') : 'Xverse',
- ensName: evmAddress ? (resolvedEnsNames[evmAddress.toLowerCase()] || undefined) : undefined,
+ walletType: walletType,
+ walletProvider: evmAddress ? (walletProviders[evmAddress] || 'Unknown') : 
+                 btcAddress ? (walletProviders[btcAddress] || 'Xverse') :
+                 solanaAddress ? (walletProviders[solanaAddress] || 'Solana Wallet') : 'Unknown',
+ ensName: evmAddress ? (resolvedEnsNames[evmAddress.toLowerCase()] || undefined) : 
+          solanaAddress ? (resolvedEnsNames[solanaAddress.toLowerCase()] || undefined) : undefined,
  walletName: walletName || undefined, // Store custom wallet name
  assets: sessionAssets,
  allocations: sessionAllocations,
- verified: evmAddress ? verifiedAddresses.has(evmAddress) : true,
+ verified: evmAddress ? verifiedAddresses.has(evmAddress) : 
+           solanaAddress ? verifiedAddresses.has(solanaAddress) : true,
  createdAt: Date.now()
  }
 
@@ -1749,6 +1761,14 @@ setTimeout(() => {
  if (btcAddress) {
    console.log('[Save to Queue] Disconnecting BTC wallet')
    setBtcAddress(null)
+ }
+ if (solanaAddress) {
+   console.log('[Save to Queue] Disconnecting Solana wallet')
+   setConnectedSolanaAddresses(prev => {
+     const next = new Set(prev)
+     next.delete(solanaAddress)
+     return next
+   })
  }
 
  // Show success message
