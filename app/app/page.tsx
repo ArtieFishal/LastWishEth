@@ -785,8 +785,8 @@ hasAutoSelectedRef.current = false
       return true
     }
     
-    // Always show NFTs
-    if (asset.type === 'erc721' || asset.type === 'erc1155') return true
+    // Always show NFTs (EVM and Solana)
+    if (asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'nft') return true
    
    // Always show ethscriptions
     if (asset.type === 'ethscription') return true

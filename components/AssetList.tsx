@@ -149,10 +149,10 @@ export function AssetList({ assets }: AssetListProps) {
                   {asset.contractAddress.slice(0, 10)}...{asset.contractAddress.slice(-8)}
                 </p>
               )}
-              {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription' || asset.type === 'ordinal') && (
+              {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription' || asset.type === 'ordinal' || asset.type === 'nft') && (
                 <div className="mt-3">
                   <NFTImage
-                    imageUrl={asset.imageUrl}
+                    imageUrl={asset.imageUrl || asset.image}
                     tokenUri={asset.type === 'ordinal'
                       ? (asset.imageUrl?.startsWith('/api/ordinal-image') ? asset.imageUrl : (asset.metadata?.contentUrl || asset.contentUri))
                       : (asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri)}

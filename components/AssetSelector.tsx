@@ -427,10 +427,10 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
                       </div>
                       <div className="text-right ml-4">
                         <p className="font-bold text-lg text-gray-900">{asset.balanceFormatted} {asset.symbol}</p>
-                        {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription' || asset.type === 'ordinal') && (
+                        {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription' || asset.type === 'ordinal' || asset.type === 'nft') && (
                           <div className="mt-2">
                             <NFTImage
-                              imageUrl={asset.imageUrl}
+                              imageUrl={asset.imageUrl || asset.image}
                               tokenUri={asset.type === 'ordinal' 
                                 ? (asset.imageUrl?.startsWith('/api/ordinal-image') ? asset.imageUrl : (asset.metadata?.contentUrl || asset.contentUri))
                                 : (asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri)}

@@ -1,0 +1,228 @@
+================================================================================
+LASTWISH.ETH - X SPACE TALKING POINTS SCRIPT
+================================================================================
+
+OPENING (30 seconds)
+--------------------------------------------------------------------------------
+
+Hey everyone. I want to share a tool that solves a real problem in crypto: what 
+happens to your assets if something happens to you? Most people don't have a plan, 
+and their families can't access their wallets. LastWish.eth helps you create a 
+clear, printable inheritance plan for your crypto assets. It's not a custodian, 
+it doesn't hold your keys, and it doesn't execute anything - it just generates 
+instructions your family can follow.
+
+
+THE PROBLEM (1-2 minutes)
+--------------------------------------------------------------------------------
+
+Here's the issue: if you pass away, your family may not know:
+- Which wallets you used
+- What assets you held
+- How to access them
+- How you wanted them distributed
+
+Traditional estate planning doesn't cover crypto well. Wills often don't include 
+wallet addresses, seed phrases, or instructions. LastWish.eth fills that gap by 
+creating a document that lists your assets, shows how to access them, and 
+specifies how you want them distributed - all in one PDF you can print, notarize, 
+and store safely.
+
+
+HOW IT WORKS (2-3 minutes)
+--------------------------------------------------------------------------------
+
+The flow is straightforward:
+
+Step 1: Connect your wallets
+- Connect via WalletConnect (MetaMask, Rainbow, Coinbase Wallet, etc.)
+- Or connect Bitcoin wallets like Xverse
+- You can connect multiple wallets - up to 20 on the standard plan
+- Each wallet requires a signature to verify ownership
+
+Step 2: View your assets
+- It pulls your holdings: native tokens, ERC-20s, NFTs, Bitcoin, Ordinals
+- You choose which assets to include
+- It filters spam tokens automatically
+
+Step 3: Allocate to beneficiaries
+- Add beneficiaries with their wallet addresses
+- Allocate by percentage or fixed amount
+- NFTs can't be split - they go to one person
+- Real-time validation prevents over-allocation
+
+Step 4: Add details
+- Owner information
+- Executor information
+- Key access instructions
+- Everything needed for your family to execute the plan
+
+Step 5: Generate PDF
+- Creates a professional, printable PDF
+- Includes all wallet addresses, asset details, allocations
+- NFT images are embedded
+- Ready to print, notarize, and store securely
+
+
+SECURITY AND PRIVACY (1-2 minutes)
+--------------------------------------------------------------------------------
+
+Important points:
+
+We never touch your keys
+- We never ask for seed phrases or private keys
+- We use standard wallet connection protocols
+- Your keys stay in your wallet
+
+Privacy-first design
+- No accounts, no database storage
+- Everything runs in your browser
+- After you generate the PDF, all data is cleared
+- Safe to use on public computers
+
+We're not a custodian
+- We don't hold your assets
+- We don't execute transfers
+- We only generate instructions
+- You control your assets at all times
+
+Stateless architecture
+- No persistent storage of your data
+- Each session is independent
+- If you want to update, you create a new plan
+
+
+SUPPORTED CHAINS AND WALLETS (1 minute)
+--------------------------------------------------------------------------------
+
+Multi-chain support:
+- Ethereum mainnet
+- Base, Arbitrum, Polygon
+- Bitcoin (including Ordinals)
+- Solana support is coming
+
+Wallets:
+- Any WalletConnect-compatible wallet (MetaMask, Rainbow, Coinbase Wallet, 
+  Trust Wallet, Ledger, etc.)
+- Bitcoin wallets like Xverse
+- Manual address entry as a fallback
+
+You can mix and match - connect an Ethereum wallet, a Bitcoin wallet, and more, 
+all in one plan.
+
+
+PRICING AND VALUE (1 minute)
+--------------------------------------------------------------------------------
+
+Three tiers:
+
+Free tier
+- 1 wallet, 2 beneficiaries
+- Full PDF generation
+- Good for testing
+
+Standard tier - $20.26 (special pricing until Feb 2026, normally $42)
+- Up to 20 wallets
+- Up to 10 beneficiaries
+- Full PDF generation
+
+Premium tier - $99
+- Unlimited wallets and beneficiaries
+- Priority support
+- PDF updates for 2 years
+
+Payment is in crypto - ETH on Ethereum mainnet. There's also a discount code for 
+testing if you want to try it first.
+
+
+USE CASES (1 minute)
+--------------------------------------------------------------------------------
+
+Who should use this?
+
+Individual crypto holders
+- Anyone with significant crypto holdings
+- People who want their family to have clear instructions
+- Those who want to document their wishes
+
+Estate planners
+- Attorneys working with crypto clients
+- Financial advisors helping clients plan
+- Anyone creating estate documents
+
+Families
+- Documenting existing holdings
+- Creating a record for future reference
+- Ensuring assets aren't lost
+
+
+COMMON QUESTIONS (1-2 minutes)
+--------------------------------------------------------------------------------
+
+Q: Is this legal?
+A: It generates instructions, not legal documents. Consult an attorney for your 
+   jurisdiction. The PDF is a tool your lawyer can use.
+
+Q: What if I update my holdings?
+A: Generate a new PDF. Since we don't store data, each plan is a snapshot.
+
+Q: Can I use this on a public computer?
+A: Yes. All data is cleared after PDF generation. Nothing persists.
+
+Q: What if I forget my password?
+A: There are no passwords. We don't store accounts. Each session is independent.
+
+Q: Do you have access to my wallets?
+A: No. We only read balances via public APIs. We never have access to move funds.
+
+
+CLOSING AND CALL TO ACTION (30 seconds)
+--------------------------------------------------------------------------------
+
+LastWish.eth is live and ready to use. It's a planning tool that helps you 
+document your crypto inheritance wishes clearly and securely. Check it out at 
+LastWish.eth - no signup required, just connect your wallet and start planning.
+
+If you have questions, drop them in the chat. I'm happy to answer.
+
+Remember: this is about planning, not execution. You control your assets. We 
+just help you document your wishes clearly.
+
+
+QUICK REFERENCE (for Q&A)
+--------------------------------------------------------------------------------
+
+Key points:
+- Stateless, no accounts, no keys stored
+- Multi-chain support (Ethereum, Base, Arbitrum, Polygon, Bitcoin)
+- Privacy-first: data cleared after PDF generation
+- Planning tool only, not a custodian
+- Professional PDF output
+- Flexible pricing from free to premium
+
+Technical highlights:
+- Client-side PDF generation
+- WalletConnect integration
+- ENS name resolution
+- Spam token filtering
+- NFT image embedding
+
+
+DELIVERY TIPS
+--------------------------------------------------------------------------------
+
+1. Pause after each section for questions
+2. Use natural transitions: "That brings me to...", "Another thing to mention..."
+3. Emphasize security and privacy
+4. Be clear about what it is NOT (not a custodian, not legal advice)
+5. Share real examples if you have them
+6. Keep it conversational, not salesy
+
+This script is about 8-10 minutes if delivered straight, or 15-20 minutes with 
+Q&A. Adjust based on your audience and time.
+
+
+================================================================================
+END OF SCRIPT
+================================================================================
+
