@@ -78,18 +78,19 @@ export async function POST(request: NextRequest) {
       }
 
       // Get SPL tokens and NFTs using Helius API (if available) or direct RPC
+      let tokensData: any = null
       if (HELIUS_API_KEY) {
         try {
           const tokensResponse = await fetch(
             `https://api.helius.xyz/v0/addresses/${address}/balances?api-key=${HELIUS_API_KEY}`,
             { 
               headers: { 'Accept': 'application/json' },
-              signal: AbortSignal.timeout(10000), // 10 second timeout
+              signal: AbortSignal.timeout(15000), // 15 second timeout for better reliability
             }
           )
 
           if (tokensResponse.ok) {
-            const tokensData = await tokensResponse.json()
+            tokensData = await tokensResponse.json()
             
             // Process SPL tokens
             if (tokensData.tokens && Array.isArray(tokensData.tokens)) {
@@ -99,50 +100,135 @@ export async function POST(request: NextRequest) {
                 // Skip zero balances
                 if (balance <= 0) continue
                 
-                assets.push({
-                  id: `${address}-spl-${token.mint}`,
-                  name: token.name || 'Unknown Token',
-                  symbol: token.symbol || 'UNKNOWN',
-                  type: 'spl-token',
-                  balance: balance.toString(),
-                  balanceFormatted: balance.toFixed(token.decimals || 9),
-                  usdValue: 0, // Would need price API for accurate USD value
-                  contractAddress: token.mint,
-                  tokenId: null,
-                  image: token.image || null,
-                  decimals: token.decimals || 9,
-                  chain: 'solana',
-                })
+                // Check if this is actually an NFT (balance of 1, decimals 0, and has image/name suggesting NFT)
+                const isLikelyNFT = balance === 1 && 
+                                   (token.decimals === 0 || token.decimals === null || token.decimals === undefined) &&
+                                   (token.image || token.name)
+                
+                if (isLikelyNFT) {
+                  // Treat as NFT
+                  assets.push({
+                    id: `${address}-nft-${token.mint}`,
+                    name: token.name || `NFT #${token.mint.slice(0, 8)}`,
+                    symbol: token.symbol || 'NFT',
+                    type: 'nft',
+                    balance: '1',
+                    balanceFormatted: '1',
+                    usdValue: 0,
+                    contractAddress: token.mint,
+                    tokenId: token.mint,
+                    image: token.image || null,
+                    decimals: 0,
+                    chain: 'solana',
+                    metadata: {
+                      collection: token.collection?.name || null,
+                      description: token.description || null,
+                    },
+                  })
+                } else {
+                  // Regular SPL token
+                  assets.push({
+                    id: `${address}-spl-${token.mint}`,
+                    name: token.name || 'Unknown Token',
+                    symbol: token.symbol || 'UNKNOWN',
+                    type: 'spl-token',
+                    balance: balance.toString(),
+                    balanceFormatted: balance.toFixed(token.decimals || 9),
+                    usdValue: 0, // Would need price API for accurate USD value
+                    contractAddress: token.mint,
+                    tokenId: null,
+                    image: token.image || null,
+                    decimals: token.decimals || 9,
+                    chain: 'solana',
+                  })
+                }
               }
             }
 
-            // Process NFTs
+            // Process NFTs from nfts array
             if (tokensData.nfts && Array.isArray(tokensData.nfts)) {
               for (const nft of tokensData.nfts) {
-                assets.push({
-                  id: `${address}-nft-${nft.mint}`,
-                  name: nft.name || `NFT #${nft.mint.slice(0, 8)}`,
-                  symbol: 'NFT',
-                  type: 'nft',
-                  balance: '1',
-                  balanceFormatted: '1',
-                  usdValue: 0,
-                  contractAddress: nft.mint,
-                  tokenId: nft.mint,
-                  image: nft.image || null,
-                  decimals: 0,
-                  chain: 'solana',
-                  metadata: {
-                    collection: nft.collection?.name || null,
-                    description: nft.description || null,
-                  },
-                })
+                // Skip if already added as NFT from tokens array
+                if (!assets.some(a => a.contractAddress === nft.mint && a.type === 'nft')) {
+                  assets.push({
+                    id: `${address}-nft-${nft.mint}`,
+                    name: nft.name || `NFT #${nft.mint.slice(0, 8)}`,
+                    symbol: 'NFT',
+                    type: 'nft',
+                    balance: '1',
+                    balanceFormatted: '1',
+                    usdValue: 0,
+                    contractAddress: nft.mint,
+                    tokenId: nft.mint,
+                    image: nft.image || null,
+                    decimals: 0,
+                    chain: 'solana',
+                    metadata: {
+                      collection: nft.collection?.name || null,
+                      description: nft.description || null,
+                    },
+                  })
+                }
               }
             }
           }
         } catch (heliusError: any) {
           console.error('[Solana API] Helius error:', heliusError)
           // Fallback to basic RPC calls
+        }
+      }
+
+      // Also check for NFTs in the nativeBalances or other fields if Helius returns them differently
+      // Some Helius responses might have NFTs in different fields
+      if (tokensData) {
+        // Check for NFTs in any array field that might contain them
+        const allNFTs: any[] = []
+        if (tokensData.nativeBalances) {
+          // Sometimes NFTs are in nativeBalances
+          for (const item of Array.isArray(tokensData.nativeBalances) ? tokensData.nativeBalances : []) {
+            if (item.mint && (item.image || item.name)) {
+              allNFTs.push(item)
+            }
+          }
+        }
+        // Add any other potential NFT fields from Helius response
+        for (const [key, value] of Object.entries(tokensData)) {
+          if (key !== 'tokens' && key !== 'nfts' && Array.isArray(value)) {
+            for (const item of value) {
+              if (item && item.mint && (item.image || item.name) && !assets.some(a => a.contractAddress === item.mint)) {
+                // Check if it's likely an NFT
+                const balance = parseFloat(item.amount || item.balance || '0')
+                const decimals = item.decimals || 0
+                if (balance === 1 && decimals === 0) {
+                  allNFTs.push(item)
+                }
+              }
+            }
+          }
+        }
+        
+        // Process any additional NFTs found
+        for (const nft of allNFTs) {
+          if (!assets.some(a => a.contractAddress === nft.mint)) {
+            assets.push({
+              id: `${address}-nft-${nft.mint}`,
+              name: nft.name || `NFT #${nft.mint.slice(0, 8)}`,
+              symbol: 'NFT',
+              type: 'nft',
+              balance: '1',
+              balanceFormatted: '1',
+              usdValue: 0,
+              contractAddress: nft.mint,
+              tokenId: nft.mint,
+              image: nft.image || null,
+              decimals: 0,
+              chain: 'solana',
+              metadata: {
+                collection: nft.collection?.name || null,
+                description: nft.description || null,
+              },
+            })
+          }
         }
       }
 
