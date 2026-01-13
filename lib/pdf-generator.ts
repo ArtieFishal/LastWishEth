@@ -787,7 +787,8 @@ export async function generatePDF(
         }
         
         // For NFTs, try to embed and display the image
-        if (isNFT && asset.imageUrl) {
+        const nftImageUrl = asset.imageUrl || asset.image // Support both imageUrl and image (Solana uses image)
+        if (isNFT && nftImageUrl) {
           try {
             const nftImage = await fetchAndEmbedImage(pdfDoc, nftImageUrl)
             if (nftImage) {
