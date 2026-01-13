@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 export const dynamicParams = true
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAccount, useDisconnect, useSignMessage, useSendTransaction, useWaitForTransactionReceipt, useConnect } from 'wagmi'
 import { createPublicClient, http, parseEther, formatEther, isAddress } from 'viem'
 import { mainnet } from 'viem/chains'
