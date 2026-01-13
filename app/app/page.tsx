@@ -1560,20 +1560,95 @@ setError('Failed to load Bitcoin assets. Please try again.')
  // Detect mobile devices
  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
  
+ // Track if print dialog was opened
+ let printDialogOpened = false
+ let printDialogClosed = false
+ let cleanupScheduled = false
+ 
+ // Function to schedule cleanup after print dialog closes
+ const scheduleCleanup = () => {
+   if (cleanupScheduled) return
+   cleanupScheduled = true
+   
+   console.log('[PDF] Scheduling cleanup after print dialog closes...')
+   
+   // Wait for print dialog to close, then clean up
+   // Use a longer timeout to ensure user has time to print
+   setTimeout(() => {
+     console.log('[PDF] Print dialog should be closed, starting cleanup...')
+     
+     // Clean up iframe and URL
+     if (iframe.parentNode) {
+       iframe.parentNode.removeChild(iframe)
+     }
+     URL.revokeObjectURL(url)
+     
+     // Now clear all data and reset step
+     setStep('connect')
+     setError(null)
+     clearAllSensitiveData()
+   }, 60000) // Wait 60 seconds to give user plenty of time to print
+ }
+ 
+ // Listen for print events on the iframe's window
+ const setupPrintListeners = () => {
+   if (!iframe.contentWindow) return
+   
+   try {
+     // Listen for beforeprint (dialog opens)
+     iframe.contentWindow.addEventListener('beforeprint', () => {
+       console.log('[PDF] Print dialog opened')
+       printDialogOpened = true
+     })
+     
+     // Listen for afterprint (dialog closes - user printed or cancelled)
+     iframe.contentWindow.addEventListener('afterprint', () => {
+       console.log('[PDF] Print dialog closed')
+       printDialogClosed = true
+       
+       // Clean up immediately after print dialog closes
+       setTimeout(() => {
+         if (iframe.parentNode) {
+           iframe.parentNode.removeChild(iframe)
+         }
+         URL.revokeObjectURL(url)
+         
+         // Clear data and reset step
+         setStep('connect')
+         setError(null)
+         clearAllSensitiveData()
+       }, 2000) // Small delay to ensure print completes
+     })
+   } catch (e) {
+     console.warn('[PDF] Could not set up print listeners:', e)
+     // Fallback: schedule cleanup anyway
+     scheduleCleanup()
+   }
+ }
+ 
  // Wait for iframe to load, then trigger print (desktop only)
  iframe.onload = () => {
- setTimeout(() => {
- try {
- // On mobile, skip print dialog and just download
- // On desktop, try to print
- if (!isMobile && iframe.contentWindow) {
-   iframe.contentWindow.focus()
-   iframe.contentWindow.print()
- }
- } catch (e) {
- console.error('Error printing from iframe:', e)
- }
- }, isMobile ? 500 : 1000) // Faster on mobile, give desktop more time
+   setTimeout(() => {
+     try {
+       // Set up print event listeners
+       setupPrintListeners()
+       
+       // On mobile, skip print dialog and just download
+       // On desktop, try to print
+       if (!isMobile && iframe.contentWindow) {
+         iframe.contentWindow.focus()
+         iframe.contentWindow.print()
+         printDialogOpened = true
+       } else {
+         // On mobile, just download - schedule cleanup after download
+         scheduleCleanup()
+       }
+     } catch (e) {
+       console.error('Error printing from iframe:', e)
+       // If print fails, still schedule cleanup
+       scheduleCleanup()
+     }
+   }, isMobile ? 500 : 1000) // Faster on mobile, give desktop more time
  }
  
  // Always download the file (works on both mobile and desktop)
@@ -1583,32 +1658,21 @@ setError('Failed to load Bitcoin assets. Please try again.')
  a.style.display = 'none'
  document.body.appendChild(a)
  a.click()
- // Clean up after a short delay
+ // Clean up download link after a short delay
  setTimeout(() => {
    if (document.body.contains(a)) {
      document.body.removeChild(a)
    }
  }, 100)
  
- // Clean up iframe and URL after printing
+ // Fallback: If print listeners don't work, schedule cleanup anyway
+ // This ensures data is eventually cleared even if events don't fire
  setTimeout(() => {
- if (iframe.parentNode) {
- iframe.parentNode.removeChild(iframe)
- }
- URL.revokeObjectURL(url)
- }, 5000)
- 
- // Immediately reset step to connect (user should see fresh start)
- // Then complete privacy cleanup after PDF download completes
- setStep('connect')
- setError(null)
- 
- // Complete privacy cleanup after successful PDF generation
- // This ensures NO sensitive data persists after PDF is generated
- // Critical for public computers - all data is cleared
-setTimeout(() => {
-   clearAllSensitiveData()
- }, 3000) // Wait 3 seconds to ensure PDF download completes
+   if (!printDialogClosed && !cleanupScheduled) {
+     console.log('[PDF] Fallback: Scheduling cleanup (print events may not have fired)')
+     scheduleCleanup()
+   }
+ }, 10000) // 10 second fallback
  
  } catch (error) {
  console.error('Error generating PDF:', error)
