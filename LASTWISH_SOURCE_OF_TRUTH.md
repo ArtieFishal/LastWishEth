@@ -134,14 +134,14 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 - ✅ Arbitrum
 - ✅ Polygon
 - ✅ Bitcoin
+- ✅ Solana (wallet connection, SOL, SPL tokens, NFTs)
 
 **NOT Supported:**
-- ❌ Solana (name resolution only, no wallet connection or asset loading)
 - ❌ Cosmos chains
 - ❌ Cardano
-- ❌ Other non-EVM chains (except Bitcoin)
+- ❌ Other non-EVM chains (except Bitcoin and Solana)
 
-**Note:** Solana Name Service (.sol) resolution works, but Solana wallet connection and asset loading are NOT implemented.
+**Note:** Solana support includes wallet connection (Phantom, Solflare), asset loading (SOL, SPL tokens, NFTs), and name resolution (.sol domains).
 
 ### Supported Wallet Types
 
@@ -402,13 +402,14 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 ### ✅ Asset Loading
 - EVM assets (native, ERC-20, NFTs, Ethscriptions)
 - Bitcoin assets (BTC, SATs, Ordinals)
-- Multi-chain support (Ethereum, Base, Arbitrum, Polygon, Bitcoin)
+- Solana assets (SOL, SPL tokens, NFTs)
+- Multi-chain support (Ethereum, Base, Arbitrum, Polygon, Bitcoin, Solana)
 - Spam token filtering
-- Asset images (NFTs, Ordinals)
+- Asset images (NFTs, Ordinals, Solana NFTs)
 
 ### ✅ Name Resolution
 - ENS (.eth, .base.eth, .farcaster.eth)
-- Solana Name Service (.sol) - **NAME RESOLUTION ONLY**
+- Solana Name Service (.sol) - **FULL SUPPORT** (name resolution + wallet connection)
 - Unstoppable Domains (.crypto, .nft, .wallet, etc.)
 - Space ID (.arb, .bnb)
 - Lens Protocol (.lens)
@@ -454,6 +455,8 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 
 ### ✅ Privacy & Security
 - All data cleared after PDF generation
+- Print dialog stays open until user prints or cancels
+- Navigation to homepage after cleanup (fresh start)
 - No persistent storage
 - Wallet verification required
 - Client-side processing
