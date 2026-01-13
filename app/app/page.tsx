@@ -1073,7 +1073,14 @@ hasAutoSelectedRef.current = false
  setLoadedWallets(new Set([...loadedWallets, walletKey]))
 
  if (newAssets.length === 0) {
- setError('No new assets found. Make sure your wallet has balances.')
+   // Only show error if we actually tried to load and got no results
+   // Don't show error if wallet wasn't verified or address wasn't found
+   const isVerified = verifiedAddresses.has(walletAddress) || connectedSolanaAddresses.has(walletAddress)
+   if (isVerified) {
+     setError('No new assets found. Make sure your wallet has balances.')
+   } else {
+     setError('Wallet must be verified (signature required) before loading assets.')
+   }
  }
  } catch (error) {
  console.error('Error loading assets:', error)
