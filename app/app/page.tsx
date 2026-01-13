@@ -879,11 +879,48 @@ hasAutoSelectedRef.current = false
  try {
  const newAssets: Asset[] = []
  
+ // Check if this is a Solana address (in connectedSolanaAddresses or base58 format)
+ const isSolanaAddress = connectedSolanaAddresses.has(walletAddress) || 
+   (!walletAddress.startsWith('0x') && !walletAddress.startsWith('1') && !walletAddress.startsWith('3') && !walletAddress.startsWith('bc1') && walletAddress.length >= 32 && walletAddress.length <= 44)
+ 
  if (verifiedAddresses.has(walletAddress)) {
- try {
- // Check cache first
- const cacheKey = `evm-portfolio:${walletAddress}`
- const cached = getCached<any>(cacheKey)
+   if (isSolanaAddress) {
+     // Load Solana assets
+     try {
+       console.log('[Solana] Loading assets for address:', walletAddress)
+       const solanaResponse = await axios.post('/api/portfolio/solana', {
+         address: walletAddress,
+       })
+       
+       if (solanaResponse.data?.assets && Array.isArray(solanaResponse.data.assets)) {
+         const existingIds = new Set(assets.map(a => a.id))
+         const walletProvider = walletProviders[walletAddress] || 'Solana Wallet'
+         const uniqueAssets = solanaResponse.data.assets
+           .filter((a: Asset) => !existingIds.has(a.id))
+           .map((a: Asset) => ({
+             ...a,
+             walletAddress: walletAddress,
+             walletProvider: walletProvider,
+             imageUrl: a.image || a.imageUrl, // Use image or imageUrl
+           }))
+         
+         // Apply spam filtering
+         const filteredAssets = filterSpamTokens(uniqueAssets)
+         newAssets.push(...filteredAssets)
+         console.log(`[Solana] Loaded ${filteredAssets.length} assets from ${walletAddress}`)
+       } else {
+         console.log('[Solana] No assets found in response')
+       }
+     } catch (err) {
+       console.error('[Solana] Error loading assets:', err)
+       setError('Failed to load Solana assets. Please try again.')
+     }
+   } else {
+     // Load EVM assets (original logic)
+     try {
+       // Check cache first
+       const cacheKey = `evm-portfolio:${walletAddress}`
+       const cached = getCached<any>(cacheKey)
  if (cached) {
    console.log('Using cached EVM portfolio data')
    const evmResponse = { data: cached }
@@ -930,14 +967,14 @@ hasAutoSelectedRef.current = false
       console.log(`Loaded ${filteredAssets.length} assets from wallet (${walletProvider})`)
    }
    }
- } catch (err) {
- console.error('Error loading EVM assets:', err)
- setError('Failed to load EVM assets. Please try again.')
- }
+     } catch (err) {
+       console.error('Error loading EVM assets:', err)
+       setError('Failed to load EVM assets. Please try again.')
+     }
 
-  // Load Ethscriptions for this wallet
-  try {
-    console.log(`[Load Assets From Wallet] Fetching ethscriptions for wallet: ${walletAddress}`)
+     // Load Ethscriptions for this wallet (only for EVM addresses)
+     try {
+       console.log(`[Load Assets From Wallet] Fetching ethscriptions for wallet: ${walletAddress}`)
     // Check cache first
     const ethscriptionsCacheKey = `ethscriptions-portfolio:${walletAddress}`
     const cachedEthscriptions = getCached<any>(ethscriptionsCacheKey)
@@ -1006,8 +1043,9 @@ hasAutoSelectedRef.current = false
         data: err.response?.data
       })
     }
-    // Don't set error for ethscriptions - it's optional
-  }
+     // Don't set error for ethscriptions - it's optional
+     }
+   }
  } else {
  setError('Wallet must be verified (signature required) before loading assets.')
  setLoading(false)
