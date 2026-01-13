@@ -3359,7 +3359,7 @@ onSelectionChange={setSelectedAssetIds}
                            const notesInput = Array.from(inputs).find((el: any) => el.placeholder === 'Additional info to find them') as HTMLInputElement
                            
                            if (nameInput) { nameInput.value = ben.name; nameInput.dispatchEvent(new Event('input', { bubbles: true })) }
-                           if (walletInput) { walletInput.value = ben.ensName || ben.walletAddress; walletInput.dispatchEvent(new Event('input', { bubbles: true })) }
+                            if (walletInput) { walletInput.value = ben.ensName || ben.walletAddress || ''; walletInput.dispatchEvent(new Event('input', { bubbles: true })) }
                            if (phoneInput) { phoneInput.value = ben.phone || ''; phoneInput.dispatchEvent(new Event('input', { bubbles: true })) }
                            if (emailInput) { emailInput.value = ben.email || ''; emailInput.dispatchEvent(new Event('input', { bubbles: true })) }
                            if (notesInput) { notesInput.value = ben.notes || ''; notesInput.dispatchEvent(new Event('input', { bubbles: true })) }
