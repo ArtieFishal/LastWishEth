@@ -2,10 +2,12 @@
 
 import { useAccount, useConnect, useDisconnect, useConnectorClient } from 'wagmi'
 import { useState, useEffect, useRef } from 'react'
+import { SolanaWalletConnect } from './SolanaWalletConnect'
 
 interface WalletConnectProps {
   onBitcoinConnect?: (address: string, provider?: string, ordinalsAddress?: string) => void
   onEvmConnect?: (address: string, provider?: string) => void
+  onSolanaConnect?: (address: string, provider?: string) => void
 }
 
 // Wallet configuration with colors and icons
@@ -103,7 +105,7 @@ const extractBitcoinAddress = (account: any): string | null => {
   return null
 }
 
-export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectProps) {
+export function WalletConnect({ onBitcoinConnect, onEvmConnect, onSolanaConnect }: WalletConnectProps) {
   const { address, isConnected, connector } = useAccount()
   const { connect, connectors, isPending, error: connectError } = useConnect()
   const { disconnect } = useDisconnect()
@@ -112,7 +114,7 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
   const [mounted, setMounted] = useState(false)
   const [detectedBtcWallets, setDetectedBtcWallets] = useState<Array<{ name: string; provider: any; method: string; icon: string }>>([])
   const [scanningWallets, setScanningWallets] = useState(false)
-  const [activeTab, setActiveTab] = useState<'evm' | 'bitcoin'>('evm')
+  const [activeTab, setActiveTab] = useState<'evm' | 'bitcoin' | 'solana'>('evm')
   const manualBtcInputRef = useRef<HTMLInputElement>(null)
 
   // Prevent hydration mismatch by only rendering after mount
@@ -725,6 +727,16 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
           }`}
         >
           Bitcoin Wallets
+        </button>
+        <button
+          onClick={() => setActiveTab('solana')}
+          className={`px-6 py-3 font-semibold transition-colors ${
+            activeTab === 'solana'
+              ? 'text-purple-600 border-b-2 border-purple-600'
+              : 'text-purple-400 hover:text-purple-500'
+          }`}
+        >
+          Solana Wallets
         </button>
       </div>
 
@@ -1446,7 +1458,24 @@ export function WalletConnect({ onBitcoinConnect, onEvmConnect }: WalletConnectP
               Add
             </button>
           </div>
+          </div>
         </div>
+      )}
+
+      {/* Solana Wallets Tab */}
+      {activeTab === 'solana' && (
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">
+            Connect Solana Wallet
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Connect your Solana wallet to view SOL, SPL tokens, and NFTs
+          </p>
+          <p className="text-xs text-gray-500 mb-6">
+            Supported wallets: Phantom, Solflare, and other Solana wallet adapters
+          </p>
+          
+          <SolanaWalletConnect onSolanaConnect={onSolanaConnect} />
         </div>
       )}
     </div>

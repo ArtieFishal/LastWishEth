@@ -1,7 +1,7 @@
 export interface Asset {
   id: string
   chain: string
-  type: 'native' | 'erc20' | 'erc721' | 'erc1155' | 'btc' | 'ethscription' | 'ordinal'
+  type: 'native' | 'erc20' | 'erc721' | 'erc1155' | 'btc' | 'ethscription' | 'ordinal' | 'spl-token' | 'nft'
   symbol: string
   name: string
   balance: string
@@ -12,8 +12,9 @@ export interface Asset {
   collectionName?: string
   decimals?: number
   walletAddress?: string // Wallet address this asset belongs to
-  walletProvider?: string // Wallet provider name (MetaMask, Rainbow, WalletConnect, Xverse, OKX, Blockchain.com, etc.)
+  walletProvider?: string // Wallet provider name (MetaMask, Rainbow, WalletConnect, Xverse, OKX, Blockchain.com, Phantom, Solflare, etc.)
   imageUrl?: string // NFT image URL
+  image?: string // Alternative image field (used by Solana)
   metadata?: {
     sats?: string
     satsFormatted?: string
@@ -21,6 +22,8 @@ export interface Asset {
     inscriptionId?: string // Ordinal inscription ID
     contentType?: string // Ordinal content type
     contentUrl?: string // Ordinal content URL
+    collection?: string // Solana NFT collection name
+    description?: string // Solana NFT description
     note?: string
     [key: string]: any // Full NFT metadata
   }
@@ -50,9 +53,9 @@ export interface Allocation {
 export interface QueuedWalletSession {
   id: string // Unique ID for this session
   walletAddress: string
-  walletType: 'evm' | 'btc'
-  walletProvider?: string // Wallet provider name (MetaMask, Rainbow, WalletConnect, Xverse, etc.)
-  ensName?: string // Resolved ENS name if available
+  walletType: 'evm' | 'btc' | 'solana'
+  walletProvider?: string // Wallet provider name (MetaMask, Rainbow, WalletConnect, Xverse, Phantom, Solflare, etc.)
+  ensName?: string // Resolved ENS name if available (or SNS name for Solana)
   walletName?: string // Custom wallet name (manual or auto-resolved)
   assets: Asset[]
   allocations: Allocation[] // Allocations for assets in this wallet
@@ -81,6 +84,7 @@ export interface UserData {
   connectedWallets: {
     evm: string[]
     btc?: string
+    solana?: string[]
   }
   walletNames: Record<string, string> // Maps address to ENS name or custom name
   resolvedEnsNames?: Record<string, string> // Maps lowercase address to ENS name

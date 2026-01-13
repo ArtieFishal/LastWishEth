@@ -27,7 +27,7 @@ export function AllocationPanel({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
   // Helper to check if asset is NFT (non-fungible) - includes ethscriptions and ordinals
-  const isNFT = (asset: Asset) => asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription' || asset.type === 'ordinal'
+  const isNFT = (asset: Asset) => asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'ethscription' || asset.type === 'ordinal' || asset.type === 'nft'
   
   // Helper to check if asset is fungible (can be split)
   // BTC with ordinals cannot be split - only individual ordinals can be allocated
@@ -588,9 +588,9 @@ export function AllocationPanel({
                             isEthscription ? 'text-green-600 focus:ring-green-500' : 'text-pink-600 focus:ring-pink-500'
                           }`}
                         />
-                        {(asset.imageUrl || asset.contentUri) && (
+                        {(asset.imageUrl || asset.image || asset.contentUri) && (
                           <NFTImage
-                            imageUrl={asset.imageUrl}
+                            imageUrl={asset.imageUrl || asset.image}
                             tokenUri={asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri}
                             contractAddress={asset.contractAddress}
                             tokenId={asset.tokenId}
