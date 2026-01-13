@@ -1,8 +1,8 @@
 # LastWish.eth - Single Source of Truth Documentation
 
 **Last Updated:** January 2025  
-**Version:** 1.1.0  
-**Status:** Production-Ready MVP with Solana Support
+**Version:** 1.2.0  
+**Status:** Production-Ready MVP with Multi-Wallet Upgrades
 
 ---
 
@@ -310,6 +310,7 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 
 **Step 3: Allocate**
 - Add beneficiaries (up to tier limit)
+- **Assign wallet group labels** (Long-term, Active trading, Cold storage) for executor comprehension
 - Allocate assets by percentage or amount
 - Real-time validation prevents over-allocation
 - NFTs cannot be split (full allocation only)
@@ -319,6 +320,9 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 - Enter executor information
 - Add key access instructions
 - ENS resolution for addresses
+- **Beneficiary form:** Only name required, all other fields optional
+- **Complete address fields:** Street, city, state, zip code
+- **Automatic phone formatting:** Formats as XXX-XXX-XXXX as you type
 
 **Step 5: Payment**
 - Select pricing tier
@@ -412,6 +416,7 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 - Wallet ownership verification (signature)
 - Multiple wallet support (up to tier limit)
 - Wallet naming (custom or ENS/SNS)
+- **Wallet grouping labels** (Long-term, Active trading, Cold storage) for executor comprehension
 
 ### ✅ Asset Loading
 - EVM assets (native, ERC-20, NFTs, Ethscriptions)
@@ -434,11 +439,16 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 - Asset grouping and sorting
 - Filtering (spam tokens)
 - Asset images display
+- **Assets unchecked by default** (user must manually select)
 
 ### ✅ Beneficiary Management
 - Add/remove beneficiaries
 - Up to tier limit
-- Optional contact information
+- **Only name is required** (all other fields optional)
+- **Wallet address/ENS optional** (not mandatory)
+- **Complete address fields** (street, city, state, zip code)
+- **Automatic phone number formatting** (XXX-XXX-XXXX)
+- Optional contact information (phone, email, address, notes)
 - ENS resolution for addresses
 
 ### ✅ Asset Allocation
@@ -466,6 +476,14 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 - All required sections
 - NFT/Ordinal images embedded
 - Automatic print dialog
+- **Uniform 50-state US document structure** (works in all US states)
+- **RUFADAA references** (Revised Uniform Fiduciary Access to Digital Assets Act)
+- **Executor packet framing** (standalone Letter of Instruction + Exhibit A support)
+- **Wallet grouping labels** referenced in executor packet (not raw addresses)
+- **Conditional executor booklet sections:**
+  - Bitcoin recovery instructions (if BTC wallets present)
+  - NFT marketplace and royalty information (if NFTs detected)
+  - Exchange KYC and probate warnings (if exchanges detected)
 
 ### ✅ Privacy & Security
 - All data cleared after PDF generation
