@@ -387,8 +387,11 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 
 ### Jurisdiction
 
-**Current:** US-focused (not explicitly restricted)  
-**Future:** May need jurisdiction-specific disclaimers
+**Current:** US-focused with uniform 50-state document structure  
+**Document Type:** Uniform Digital Asset Intent Packet (works in all 50 US states)  
+**Legal Framework:** References RUFADAA (Revised Uniform Fiduciary Access to Digital Assets Act)  
+**Framing Options:** Can be used as standalone Letter of Instruction or as Exhibit A to formal will  
+**Future:** May need jurisdiction-specific disclaimers for international use
 
 ### Data Handling
 
