@@ -100,12 +100,21 @@ export async function POST(request: NextRequest) {
                 // Skip zero balances
                 if (balance <= 0) continue
                 
-                // Check if this is actually an NFT (balance of 1, decimals 0, and has image/name suggesting NFT)
-                const isLikelyNFT = balance === 1 && 
-                                   (token.decimals === 0 || token.decimals === null || token.decimals === undefined) &&
-                                   (token.image || token.name)
+                // Check if this is actually an NFT
+                // NFTs typically have: balance of 1, decimals 0, and often have metadata/image
+                // But be more aggressive - if balance is exactly 1 and decimals is 0, it's likely an NFT
+                const decimals = token.decimals || 0
+                const isLikelyNFT = balance === 1 && decimals === 0
                 
-                if (isLikelyNFT) {
+                // Also check for NFT indicators in the token data
+                const hasNFTIndicators = token.image || 
+                                        token.collection || 
+                                        token.description ||
+                                        (token.name && !token.symbol) || // NFTs often have names but no symbol
+                                        token.uri || // NFT metadata URI
+                                        token.metadata // NFT metadata object
+                
+                if (isLikelyNFT || (balance === 1 && hasNFTIndicators)) {
                   // Treat as NFT
                   assets.push({
                     id: `${address}-nft-${token.mint}`,
@@ -121,8 +130,9 @@ export async function POST(request: NextRequest) {
                     decimals: 0,
                     chain: 'solana',
                     metadata: {
-                      collection: token.collection?.name || null,
+                      collection: token.collection?.name || token.collection || null,
                       description: token.description || null,
+                      uri: token.uri || null,
                     },
                   })
                 } else {
