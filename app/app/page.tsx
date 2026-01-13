@@ -1456,6 +1456,13 @@ setError('Failed to load Bitcoin assets. Please try again.')
    setError(null)
    
    console.log('[Privacy Cleanup] ✅ Complete privacy cleanup finished - user can start fresh')
+   
+   // Navigate back to homepage after cleanup
+   setTimeout(() => {
+     if (typeof window !== 'undefined') {
+       window.location.href = '/'
+     }
+   }, 500) // Small delay to ensure state updates complete
  }
 
  const handleDownloadPDF = async () => {
