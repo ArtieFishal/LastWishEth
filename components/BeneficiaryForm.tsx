@@ -14,11 +14,38 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
   const [walletAddress, setWalletAddress] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [address, setAddress] = useState('')
+  const [city, setCity] = useState('')
+  const [state, setState] = useState('')
+  const [zipCode, setZipCode] = useState('')
   const [notes, setNotes] = useState('')
   const [resolvingEns, setResolvingEns] = useState(false)
   const [ensName, setEnsName] = useState<string | null>(null)
   const [resolvedAddress, setResolvedAddress] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  // Format phone number with automatic dashes (865-851-2242)
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, '')
+    
+    // Limit to 10 digits
+    const limited = digits.slice(0, 10)
+    
+    // Format: XXX-XXX-XXXX
+    if (limited.length <= 3) {
+      return limited
+    } else if (limited.length <= 6) {
+      return `${limited.slice(0, 3)}-${limited.slice(3)}`
+    } else {
+      return `${limited.slice(0, 3)}-${limited.slice(3, 6)}-${limited.slice(6)}`
+    }
+  }
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumber(e.target.value)
+    setPhone(formatted)
+  }
   
   // Resolve blockchain name or address when wallet address changes
   useEffect(() => {
@@ -79,8 +106,8 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
   }, [walletAddress])
 
   const handleAdd = () => {
-    if (!name.trim() || !walletAddress.trim()) {
-      alert('Please fill in both name and wallet address')
+    if (!name.trim()) {
+      alert('Please fill in the name')
       return
     }
     if (beneficiaries.length >= 10) {
@@ -88,22 +115,31 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
       return
     }
 
-    // Use resolved address if available (from ENS lookup), otherwise use input
-    const finalAddress = resolvedAddress || walletAddress.trim()
-    
-    // Validate address format
-    if (!finalAddress.startsWith('0x') || finalAddress.length !== 42) {
-      alert('Invalid wallet address. Please enter a valid Ethereum address (0x...) or ENS name (.eth)')
-      return
+    // Only validate address format if an address is provided
+    let finalAddress: string | undefined = undefined
+    if (walletAddress.trim()) {
+      const resolved = resolvedAddress || walletAddress.trim()
+      
+      // Validate address format only if provided
+      if (resolved.startsWith('0x') && resolved.length === 42) {
+        finalAddress = resolved.toLowerCase()
+      } else {
+        alert('Invalid wallet address. Please enter a valid Ethereum address (0x...) or ENS name (.eth), or leave it blank')
+        return
+      }
     }
 
     const newBeneficiary: Beneficiary = {
       id: `ben-${Date.now()}`,
       name: name.trim(),
-      walletAddress: finalAddress.toLowerCase(),
+      walletAddress: finalAddress,
       ensName: ensName || undefined,
       phone: phone.trim() || undefined,
       email: email.trim() || undefined,
+      address: address.trim() || undefined,
+      city: city.trim() || undefined,
+      state: state.trim() || undefined,
+      zipCode: zipCode.trim() || undefined,
       notes: notes.trim() || undefined,
     }
 
@@ -112,6 +148,10 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
     setWalletAddress('')
     setPhone('')
     setEmail('')
+    setAddress('')
+    setCity('')
+    setState('')
+    setZipCode('')
     setNotes('')
     setEnsName(null)
     setResolvedAddress(null)
@@ -124,9 +164,13 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
   const handleEdit = (beneficiary: Beneficiary) => {
     setEditingId(beneficiary.id)
     setName(beneficiary.name)
-    setWalletAddress(beneficiary.ensName || beneficiary.walletAddress)
+    setWalletAddress(beneficiary.ensName || beneficiary.walletAddress || '')
     setPhone(beneficiary.phone || '')
     setEmail(beneficiary.email || '')
+    setAddress(beneficiary.address || '')
+    setCity(beneficiary.city || '')
+    setState(beneficiary.state || '')
+    setZipCode(beneficiary.zipCode || '')
     setNotes(beneficiary.notes || '')
     setEnsName(beneficiary.ensName || null)
     setResolvedAddress(beneficiary.walletAddress || null)
@@ -134,17 +178,21 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
 
   const handleSaveEdit = () => {
     if (!editingId) return
-    if (!name.trim() || !walletAddress.trim()) {
-      alert('Name and wallet address are required')
+    if (!name.trim()) {
+      alert('Name is required')
       return
     }
 
-    const finalAddress = resolvedAddress || walletAddress.trim()
-    
-    // Validate address format
-    if (!finalAddress.startsWith('0x') || finalAddress.length !== 42) {
-      alert('Invalid wallet address. Please enter a valid Ethereum address (0x...) or ENS name (.eth)')
-      return
+    let finalAddress: string | undefined = undefined
+    if (walletAddress.trim()) {
+      const resolved = resolvedAddress || walletAddress.trim()
+      
+      if (resolved.startsWith('0x') && resolved.length === 42) {
+        finalAddress = resolved.toLowerCase()
+      } else {
+        alert('Invalid wallet address. Please enter a valid Ethereum address (0x...) or ENS name (.eth), or leave it blank')
+        return
+      }
     }
 
     const updatedBeneficiaries = beneficiaries.map(b => 
@@ -152,10 +200,14 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
         ? {
             ...b,
             name: name.trim(),
-            walletAddress: finalAddress.toLowerCase(),
+            walletAddress: finalAddress,
             ensName: ensName || undefined,
             phone: phone.trim() || undefined,
             email: email.trim() || undefined,
+            address: address.trim() || undefined,
+            city: city.trim() || undefined,
+            state: state.trim() || undefined,
+            zipCode: zipCode.trim() || undefined,
             notes: notes.trim() || undefined,
           }
         : b
@@ -171,6 +223,10 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
     setWalletAddress('')
     setPhone('')
     setEmail('')
+    setAddress('')
+    setCity('')
+    setState('')
+    setZipCode('')
     setNotes('')
     setEnsName(null)
     setResolvedAddress(null)
@@ -181,7 +237,7 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
       {/* Main fields - horizontal */}
       <div className="flex items-end gap-3">
         <div className="flex-1">
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Name</label>
+          <label className="block text-sm font-bold text-gray-900 mb-1">Name *</label>
           <input
             type="text"
             value={name}
@@ -191,8 +247,8 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
           />
         </div>
         <div className="flex-1">
-          <label className="block text-xs font-semibold text-gray-700 mb-1">
-            Wallet Address or ENS Name
+          <label className="block text-sm font-bold text-gray-900 mb-1">
+            Wallet Address or ENS Name (Optional)
           </label>
           <input
             type="text"
@@ -221,7 +277,7 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
           <div className="flex gap-2">
             <button
               onClick={handleSaveEdit}
-              disabled={!name.trim() || !walletAddress.trim()}
+              disabled={!name.trim()}
               className="rounded-lg bg-green-600 text-white px-4 py-2 text-sm font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
             >
               ✓ Save
@@ -236,7 +292,7 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
         ) : (
         <button
           onClick={handleAdd}
-          disabled={!name.trim() || !walletAddress.trim() || beneficiaries.length >= 10}
+          disabled={!name.trim() || beneficiaries.length >= 10}
           className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
         >
           Add ({beneficiaries.length}/10)
@@ -247,17 +303,18 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
       {/* Optional fields - horizontal */}
       <div className="flex items-end gap-3">
         <div className="flex-1">
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Phone (Optional)</label>
+          <label className="block text-sm font-bold text-gray-900 mb-1">Phone (Optional)</label>
           <input
             type="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={handlePhoneChange}
             className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
-            placeholder="+1 (555) 123-4567"
+            placeholder="865-851-2242"
+            maxLength={12}
           />
         </div>
         <div className="flex-1">
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Email (Optional)</label>
+          <label className="block text-sm font-bold text-gray-900 mb-1">Email (Optional)</label>
           <input
             type="email"
             value={email}
@@ -266,8 +323,58 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
             placeholder="john@example.com"
           />
         </div>
+      </div>
+
+      {/* Address fields */}
+      <div className="flex items-end gap-3">
         <div className="flex-1">
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Notes (Optional)</label>
+          <label className="block text-sm font-bold text-gray-900 mb-1">Street Address (Optional)</label>
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+            placeholder="123 Main St"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm font-bold text-gray-900 mb-1">City (Optional)</label>
+          <input
+            type="text"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+            placeholder="City"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm font-bold text-gray-900 mb-1">State (Optional)</label>
+          <input
+            type="text"
+            value={state}
+            onChange={(e) => setState(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+            placeholder="State"
+            maxLength={2}
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm font-bold text-gray-900 mb-1">ZIP Code (Optional)</label>
+          <input
+            type="text"
+            value={zipCode}
+            onChange={(e) => setZipCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
+            className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+            placeholder="12345"
+            maxLength={5}
+          />
+        </div>
+      </div>
+
+      {/* Notes field */}
+      <div className="flex items-end gap-3">
+        <div className="flex-1">
+          <label className="block text-sm font-bold text-gray-900 mb-1">Notes (Optional)</label>
           <input
             type="text"
             value={notes}

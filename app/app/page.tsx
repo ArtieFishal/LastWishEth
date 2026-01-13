@@ -16,7 +16,7 @@ import { BeneficiaryForm } from '@/components/BeneficiaryForm'
 import { AllocationPanel } from '@/components/AllocationPanel'
 import { WalletNameEditor } from '@/components/WalletNameEditor'
 import { resolveBlockchainName, reverseResolveAddress, type ResolvedName } from '@/lib/name-resolvers'
-import { Asset, Beneficiary, Allocation, UserData, QueuedWalletSession } from '@/types'
+import { Asset, Beneficiary, Allocation, UserData, QueuedWalletSession, WalletGroup } from '@/types'
 import axios from 'axios'
 import { generatePDF } from '@/lib/pdf-generator'
 import { getCurrentPricing, getPaymentAmountETH, getFormattedPrice, getTierPricing, getAllTiers, PricingTier } from '@/lib/pricing'
@@ -92,6 +92,7 @@ export default function Home() {
  const [walletNames, setWalletNames] = useState<Record<string, string>>({})
  const [resolvedEnsNames, setResolvedEnsNames] = useState<Record<string, string>>({})
  const [walletProviders, setWalletProviders] = useState<Record<string, string>>({}) // Track wallet provider (MetaMask, Rainbow, etc.)
+ const [walletGroups, setWalletGroups] = useState<Record<string, WalletGroup>>({}) // Track wallet groups
  const [connectedEVMAddresses, setConnectedEVMAddresses] = useState<Set<string>>(new Set())
   const [connectedSolanaAddresses, setConnectedSolanaAddresses] = useState<Set<string>>(new Set())
   const [verifiedAddresses, setVerifiedAddresses] = useState<Set<string>>(new Set()) // Addresses that have signed
@@ -647,16 +648,6 @@ hasAutoSelectedRef.current = false
  }
  }, [step, paymentRecipientAddress])
 
- // Auto-select queued assets when navigating to Allocate step
- useEffect(() => {
-   if (step === 'allocate' && selectedAssetIds.length === 0 && assets.length === 0) {
-     const queuedAssets = queuedSessions.flatMap(s => s.assets)
-     if (queuedAssets.length > 0) {
-       const queuedAssetIds = queuedAssets.map(a => a.id)
-       setSelectedAssetIds(queuedAssetIds)
-     }
-   }
- }, [step, queuedSessions, selectedAssetIds.length, assets.length])
 
  // Auto-reallocate when beneficiaries are deleted
  useEffect(() => {
@@ -1058,16 +1049,13 @@ hasAutoSelectedRef.current = false
   const ethscriptionCount = finalAssets.filter(a => a.type === 'ethscription').length
   console.log(`📊 Setting assets (append): ${finalAssets.length} total, ${ethscriptionCount} ethscriptions`)
   setAssets(finalAssets)
- if (newAssets.length > 0) {
- setSelectedAssetIds([...selectedAssetIds, ...newAssets.map(a => a.id)])
- }
+  // Don't auto-select - let user choose
  } else {
   const ethscriptionCount = newAssets.filter(a => a.type === 'ethscription').length
   console.log(`📊 Setting assets (replace): ${newAssets.length} total, ${ethscriptionCount} ethscriptions`)
  setAssets(newAssets)
- if (newAssets.length > 0) {
- setSelectedAssetIds(newAssets.map(a => a.id))
- }
+ // Start with all assets deselected - user must manually select
+ setSelectedAssetIds([])
  }
 
  const walletKey = `${walletAddress}-`
@@ -1527,6 +1515,16 @@ setError('Failed to load Bitcoin assets. Please try again.')
    }
  })
 
+ // Build wallet groups map from queued sessions
+ const walletGroupsMap: Record<string, WalletGroup> = {}
+ queuedSessions.forEach(session => {
+   if (session.walletGroup) {
+     walletGroupsMap[session.walletAddress.toLowerCase()] = session.walletGroup
+   }
+ })
+ // Merge with current walletGroups state
+ const allWalletGroups = { ...walletGroups, ...walletGroupsMap }
+
  const userData: UserData = {
     ownerName,
     ownerFullName,
@@ -1551,6 +1549,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  },
  walletNames,
  resolvedEnsNames,
+ walletGroups: allWalletGroups,
  }
 
  try {
@@ -1792,6 +1791,10 @@ setError('Failed to load Bitcoin assets. Please try again.')
    foundInResolved: normalizedAddress ? resolvedEnsNames[normalizedAddress] : undefined
  })
 
+ // Get wallet group (from state or default to unassigned)
+ const normalizedWalletAddr = walletAddress.toLowerCase()
+ const walletGroup = walletGroups[normalizedWalletAddr] || 'unassigned'
+
  // Create session
  const session: QueuedWalletSession = {
  id: `${walletAddress.toLowerCase()}-${Date.now()}`,
@@ -1803,6 +1806,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  ensName: evmAddress ? (resolvedEnsNames[evmAddress.toLowerCase()] || undefined) : 
           solanaAddress ? (resolvedEnsNames[solanaAddress.toLowerCase()] || undefined) : undefined,
  walletName: walletName || undefined, // Store custom wallet name
+ walletGroup: walletGroup, // Store wallet group label
  assets: sessionAssets,
  allocations: sessionAllocations,
  verified: evmAddress ? verifiedAddresses.has(evmAddress) : 
@@ -2414,10 +2418,52 @@ session.verified ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-ye
 <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-300 border-2 border-blue-500/30">
 {session.walletType.toUpperCase()}
 </span>
+{(() => {
+  const groupLabels: Record<string, string> = {
+    'long-term': 'Long-term',
+    'active-trading': 'Active trading',
+    'cold-storage': 'Cold storage',
+    'unassigned': 'Unassigned'
+  }
+  const groupColors: Record<string, string> = {
+    'long-term': 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    'active-trading': 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+    'cold-storage': 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+    'unassigned': 'bg-gray-500/20 text-gray-300 border-gray-500/30'
+  }
+  const group = session.walletGroup || 'unassigned'
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-semibold border-2 ${groupColors[group]}`}>
+      {groupLabels[group]}
+    </span>
+  )
+})()}
 </div>
+<div className="flex items-center gap-3 mt-2">
 <div className="text-sm text-bright-soft group-hover:text-white transition-colors">
 <span className="font-semibold">{totalAssets}</span> asset{totalAssets !== 1 ? 's' : ''} • 
 <span className="font-semibold"> {totalAllocations}</span> allocation{totalAllocations !== 1 ? 's' : ''}
+</div>
+<select
+  value={session.walletGroup || 'unassigned'}
+  onChange={(e) => {
+    const newGroup = e.target.value as WalletGroup
+    setQueuedSessions(prev => prev.map(s => 
+      s.id === session.id ? { ...s, walletGroup: newGroup } : s
+    ))
+    // Also update walletGroups state for consistency
+    setWalletGroups(prev => ({
+      ...prev,
+      [session.walletAddress.toLowerCase()]: newGroup
+    }))
+  }}
+  className="text-xs rounded-lg border border-white/20 bg-white/5 backdrop-blur-xl p-1.5 text-bright focus:border-purple-500 focus:outline-none transition-colors"
+>
+  <option value="unassigned">Unassigned</option>
+  <option value="long-term">Long-term</option>
+  <option value="active-trading">Active trading</option>
+  <option value="cold-storage">Cold storage</option>
+</select>
 </div>
 </div>
 <button
@@ -3440,6 +3486,38 @@ onSelectionChange={setSelectedAssetIds}
    </div>
  </div>
  
+ {/* Wallet Group Selection */}
+ {(() => {
+   const currentWalletAddr = evmAddress || btcAddress || (connectedSolanaAddresses.size > 0 ? Array.from(connectedSolanaAddresses)[0] : null)
+   const currentGroup = currentWalletAddr ? (walletGroups[currentWalletAddr.toLowerCase()] || 'unassigned') : 'unassigned'
+   return currentWalletAddr ? (
+     <div className="mt-6 p-4 bg-gradient-to-br from-purple-500/20 to-blue-500/20 backdrop-blur-xl border-2 border-purple-500/30 rounded-lg border-glow">
+       <label className="block text-sm font-semibold text-bright mb-2">
+         Wallet Group Label (for executor comprehension)
+       </label>
+       <p className="text-xs text-bright-soft mb-3">
+         Group this wallet to help your executor understand its purpose. This label will appear in the executor packet.
+       </p>
+       <select
+         value={currentGroup}
+         onChange={(e) => {
+           const newGroup = e.target.value as WalletGroup
+           setWalletGroups(prev => ({
+             ...prev,
+             [currentWalletAddr.toLowerCase()]: newGroup
+           }))
+         }}
+         className="w-full rounded-lg border-2 border-white/20 bg-white/5 backdrop-blur-xl p-3 text-bright focus:border-purple-500 focus:outline-none transition-colors"
+       >
+         <option value="unassigned">Unassigned</option>
+         <option value="long-term">Long-term</option>
+         <option value="active-trading">Active trading</option>
+         <option value="cold-storage">Cold storage</option>
+       </select>
+     </div>
+   ) : null
+ })()}
+
  <div className="mt-8 flex gap-4">
    <button
      onClick={() => setStep('assets')}

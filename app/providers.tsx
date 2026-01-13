@@ -191,6 +191,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
         if (args.some(arg => typeof arg === 'string' && arg.includes('Extension ID'))) {
           return
         }
+        // Skip chrome extension runtime errors (from injected extension scripts)
+        if (args.some(arg => typeof arg === 'string' && (
+          arg.includes('chrome.runtime.sendMessage() called from a webpage') ||
+          arg.includes('must specify an Extension ID') ||
+          arg.includes('chrome-extension://') ||
+          arg.includes('inpage.js')
+        ))) {
+          return
+        }
+        // Skip errors from specific extension IDs (common wallet extensions)
+        if (args.some(arg => typeof arg === 'string' && arg.includes('opfgelmcmbiajamepnmloijbpoleiama'))) {
+          return
+        }
         originalError(...args)
       }
       
@@ -202,9 +215,43 @@ export function Providers({ children }: { children: React.ReactNode }) {
         originalWarn(...args)
       }
 
+      // Also catch unhandled errors from window.onerror (catches extension errors)
+      const handleWindowError = (event: ErrorEvent) => {
+        // Skip chrome extension errors
+        if (
+          event.message?.includes('chrome.runtime.sendMessage') ||
+          event.message?.includes('Extension ID') ||
+          event.message?.includes('chrome-extension://') ||
+          event.filename?.includes('chrome-extension://') ||
+          event.filename?.includes('inpage.js')
+        ) {
+          event.preventDefault()
+          return true // Suppress the error
+        }
+        return false // Let other errors through
+      }
+
+      window.addEventListener('error', handleWindowError)
+
+      // Also catch unhandled promise rejections from extensions
+      const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+        const reason = event.reason?.toString() || ''
+        if (
+          reason.includes('chrome.runtime.sendMessage') ||
+          reason.includes('Extension ID') ||
+          reason.includes('chrome-extension://')
+        ) {
+          event.preventDefault()
+        }
+      }
+
+      window.addEventListener('unhandledrejection', handleUnhandledRejection)
+
       return () => {
         console.error = originalError
         console.warn = originalWarn
+        window.removeEventListener('error', handleWindowError)
+        window.removeEventListener('unhandledrejection', handleUnhandledRejection)
       }
     }
   }, [])

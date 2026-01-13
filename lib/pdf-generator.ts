@@ -360,7 +360,9 @@ export async function generatePDF(
   yPosition -= 50
 
   // Main Title - Large and Centered
-  yPosition = addCenteredText('LASTWISH INSTRUCTIONS', yPosition, 32, true, colors.title)
+  yPosition = addCenteredText('UNIFORM DIGITAL ASSET INTENT PACKET', yPosition, 28, true, colors.title)
+  yPosition -= 30
+  yPosition = addCenteredText('(LastWish Instructions)', yPosition, 18, false, rgb(0.3, 0.3, 0.3))
   yPosition -= 60
 
   // Decorative line
@@ -496,10 +498,80 @@ export async function generatePDF(
   addPageNumber(2)
 
   // ============================================
-  // LEGAL DISCLAIMER
+  // LEGAL DISCLAIMER AND UNIFORM 50-STATE NOTICE
   // ============================================
-  checkNewPage(60)
+  checkNewPage(200)
   yPosition = addText('LEGAL DISCLAIMER AND IMPORTANT NOTICE', margin, yPosition, 14, true, rgb(0.1, 0.1, 0.1))
+  yPosition -= lineHeight * 1.5
+  
+  // Uniform 50-State Notice
+  yPosition = addText('UNIFORM DIGITAL ASSET INTENT PACKET', margin, yPosition, 12, true, rgb(0.2, 0.3, 0.6))
+  yPosition -= lineHeight * 1.5
+  yPosition = addText(
+    'This document is a Uniform Digital Asset Intent Packet designed to work in all 50 U.S. states. This document supplements, but does not replace, a formal will or estate plan.',
+    margin,
+    yPosition,
+    10,
+    false,
+    rgb(0.1, 0.1, 0.1)
+  )
+  yPosition -= lineHeight * 2
+  
+  // Executor Packet Framing
+  yPosition = addText('EXECUTOR PACKET FRAMING', margin, yPosition, 11, true, rgb(0.2, 0.3, 0.6))
+  yPosition -= lineHeight * 1.5
+  yPosition = addText(
+    'This document can be used in two ways:',
+    margin,
+    yPosition,
+    10,
+    false,
+    rgb(0.1, 0.1, 0.1)
+  )
+  yPosition -= lineHeight * 1.5
+  yPosition = addText(
+    '1. As a Standalone Letter of Instruction: This document can serve as a complete Letter of Instruction for executors, providing all necessary information to locate and access digital assets. It is legally valid as an instruction document in all 50 U.S. states.',
+    margin,
+    yPosition,
+    10,
+    false,
+    rgb(0.1, 0.1, 0.1)
+  )
+  yPosition -= lineHeight * 2
+  yPosition = addText(
+    '2. As Exhibit A to a Formal Will: This document can be explicitly referenced and attached as "Exhibit A" to a formal will. When used this way, reference this document in your will with language such as: "I direct my executor to follow the instructions contained in Exhibit A, my Digital Asset Intent Packet, dated [DATE]."',
+    margin,
+    yPosition,
+    10,
+    false,
+    rgb(0.1, 0.1, 0.1)
+  )
+  yPosition -= lineHeight * 2
+  yPosition = addText(
+    'RECOMMENDATION: For maximum legal protection, we recommend using this document as Exhibit A attached to a formal will. However, this document is legally valid as a standalone Letter of Instruction if you do not yet have a formal will. Consult with an estate attorney to determine the best approach for your situation.',
+    margin,
+    yPosition,
+    10,
+    true,
+    colors.warning
+  )
+  yPosition -= lineHeight * 2
+  
+  // RUFADAA Reference
+  yPosition = addText('RUFADAA (Revised Uniform Fiduciary Access to Digital Assets Act) Reference', margin, yPosition, 11, true, rgb(0.2, 0.3, 0.6))
+  yPosition -= lineHeight * 1.5
+  yPosition = addText(
+    'This document references concepts from the Revised Uniform Fiduciary Access to Digital Assets Act (RUFADAA), which has been adopted in most U.S. states. RUFADAA provides a legal framework for fiduciaries (executors, trustees, etc.) to access digital assets. This document does not over-claim RUFADAA authority but provides instructions that align with RUFADAA principles. The executor should consult with legal counsel to understand how RUFADAA applies in the specific state of jurisdiction.',
+    margin,
+    yPosition,
+    10,
+    false,
+    rgb(0.1, 0.1, 0.1)
+  )
+  yPosition -= lineHeight * 2
+  
+  // General Disclaimer
+  yPosition = addText('General Disclaimer', margin, yPosition, 11, true, rgb(0.1, 0.1, 0.1))
   yPosition -= lineHeight * 1.5
   yPosition = addText(
     'This document is provided for informational purposes only and does not constitute legal, financial, or tax advice. The information contained herein is intended to assist the executor and beneficiaries in locating and accessing digital assets, but does not create any legal obligations or guarantees. The owner of these assets is solely responsible for ensuring the accuracy of the information provided. LastWishCrypto is not a legal service provider, custodian, or executor of these instructions. Consult with qualified legal, financial, and tax professionals before taking any action based on this document. This document should be kept in a secure location and shared only with trusted parties.',
@@ -594,11 +666,24 @@ export async function generatePDF(
         yPosition -= lineHeight
         yPosition = addText(`   ENS Name: ${ben.ensName}`, margin + 20, yPosition, 11, true, colors.ens)
         yPosition -= lineHeight
-        yPosition = addText(`   Address: ${ben.walletAddress}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
+        yPosition = addText(`   Wallet Address: ${ben.walletAddress || 'Not provided'}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
       } else {
         yPosition = addText(`${ben.name}:`, margin, yPosition, 12, true, rgb(0.1, 0.1, 0.1))
         yPosition -= lineHeight
-        yPosition = addText(`   Address: ${ben.walletAddress}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
+        yPosition = addText(`   Wallet Address: ${ben.walletAddress || 'Not provided'}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
+      }
+      // Display physical address if provided
+      if (ben.address || ben.city || ben.state || ben.zipCode) {
+        yPosition -= lineHeight
+        const addressParts = [
+          ben.address,
+          ben.city,
+          ben.state,
+          ben.zipCode
+        ].filter(Boolean)
+        if (addressParts.length > 0) {
+          yPosition = addText(`   Physical Address: ${addressParts.join(', ')}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
+        }
       }
       yPosition -= lineHeight
     })
@@ -657,9 +742,22 @@ export async function generatePDF(
     if (ben.ensName) {
       yPosition = addText(`   ENS Name: ${ben.ensName}`, margin + 20, yPosition, 11, true, colors.ens)
       yPosition -= lineHeight
-      yPosition = addText(`   Wallet Address: ${ben.walletAddress}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
+      yPosition = addText(`   Wallet Address: ${ben.walletAddress || 'Not provided'}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
     } else {
-      yPosition = addText(`   Wallet Address: ${ben.walletAddress}`, margin + 20, yPosition, 10, false, rgb(0.3, 0.3, 0.3))
+      yPosition = addText(`   Wallet Address: ${ben.walletAddress || 'Not provided'}`, margin + 20, yPosition, 10, false, rgb(0.3, 0.3, 0.3))
+    }
+    // Display physical address if provided
+    if (ben.address || ben.city || ben.state || ben.zipCode) {
+      yPosition -= lineHeight
+      const addressParts = [
+        ben.address,
+        ben.city,
+        ben.state,
+        ben.zipCode
+      ].filter(Boolean)
+      if (addressParts.length > 0) {
+        yPosition = addText(`   Physical Address: ${addressParts.join(', ')}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
+      }
     }
     if (ben.phone) {
       yPosition -= lineHeight
@@ -748,9 +846,19 @@ export async function generatePDF(
     const walletColor = colors.walletColors[walletIndex % colors.walletColors.length]
     const walletEnsName = userData.resolvedEnsNames?.[walletAddr.toLowerCase()] || userData.walletNames?.[walletAddr]
     const walletProvider = chainGroups[0]?.provider || 'Unknown Wallet'
+    const walletGroup = userData.walletGroups?.[walletAddr.toLowerCase()] || 'unassigned'
+    const groupLabels: Record<string, string> = {
+      'long-term': 'Long-term',
+      'active-trading': 'Active trading',
+      'cold-storage': 'Cold storage',
+      'unassigned': 'Unassigned'
+    }
+    const groupLabel = groupLabels[walletGroup] || 'Unassigned'
     
-    checkNewPage(70)
+    checkNewPage(80)
     yPosition = addText(`WALLET ${walletIndex + 1}`, margin, yPosition, 14, true, rgb(0.1, 0.1, 0.1))
+    yPosition -= lineHeight
+    yPosition = addText(`Group: ${groupLabel}`, margin + 20, yPosition, 11, true, rgb(0.3, 0.5, 0.7))
     yPosition -= lineHeight
     yPosition = addText(`Wallet App: ${walletProvider}`, margin + 20, yPosition, 12, true, rgb(0.1, 0.1, 0.1))
     yPosition -= lineHeight
@@ -1064,6 +1172,144 @@ export async function generatePDF(
       })
       yPosition -= 5
     }
+    yPosition -= sectionSpacing
+  }
+
+  // ============================================
+  // CONDITIONAL EXECUTOR BOOKLET SECTIONS
+  // ============================================
+  
+  // Detect asset types for conditional sections
+  const hasBitcoinWallets = assets.some(a => a.chain === 'bitcoin' || a.type === 'btc' || a.type === 'ordinal')
+  const hasNFTs = assets.some(a => a.type === 'erc721' || a.type === 'erc1155' || a.type === 'nft')
+  const hasExchanges = false // Placeholder - could detect exchange addresses in future
+  
+  // Section 1: Bitcoin Recovery (if Bitcoin wallets present)
+  if (hasBitcoinWallets) {
+    checkNewPage(200)
+    yPosition = addText('BITCOIN WALLET RECOVERY INSTRUCTIONS', margin, yPosition, 16, true, rgb(0.1, 0.1, 0.1))
+    yPosition -= lineHeight * 1.5
+    yPosition = addText(
+      'IMPORTANT: Bitcoin wallets require special handling. The following information is critical for accessing Bitcoin assets:',
+      margin,
+      yPosition,
+      11,
+      true,
+      colors.warning
+    )
+    yPosition -= lineHeight * 2
+    
+    const btcInstructions = [
+      '1. Bitcoin wallets may contain both regular Bitcoin (BTC) and Ordinals (inscribed SATs).',
+      '2. Access to Bitcoin wallets typically requires:',
+      '   - Private keys or seed phrases (12/24 word mnemonic)',
+      '   - Wallet software (e.g., Xverse, Electrum, Bitcoin Core)',
+      '   - Hardware wallet devices (if applicable)',
+      '3. Ordinals (inscribed SATs) require special handling:',
+      '   - They are stored on specific SATs within Bitcoin transactions',
+      '   - Use Ordinal-compatible wallets (e.g., Xverse, Hiro Wallet)',
+      '   - Transferring Bitcoin may move Ordinals - exercise caution',
+      '4. Test transactions are recommended before moving large amounts.',
+      '5. Bitcoin transactions are irreversible - verify all addresses carefully.'
+    ]
+    
+    btcInstructions.forEach((instruction) => {
+      checkNewPage(25)
+      yPosition = addText(instruction, margin, yPosition, 10, false, rgb(0.1, 0.1, 0.1))
+      yPosition -= lineHeight * 1.2
+    })
+    yPosition -= sectionSpacing
+  }
+  
+  // Section 2: NFT Marketplace and Royalty Notes (if NFTs detected)
+  if (hasNFTs) {
+    checkNewPage(250)
+    yPosition = addText('NFT MARKETPLACE AND ROYALTY INFORMATION', margin, yPosition, 16, true, rgb(0.1, 0.1, 0.1))
+    yPosition -= lineHeight * 1.5
+    yPosition = addText(
+      'IMPORTANT: Non-Fungible Tokens (NFTs) have unique characteristics that executors should understand:',
+      margin,
+      yPosition,
+      11,
+      true,
+      colors.warning
+    )
+    yPosition -= lineHeight * 2
+    
+    const nftInstructions = [
+      '1. NFTs are unique digital assets that cannot be split or divided.',
+      '2. Each NFT is allocated to a specific beneficiary as a whole unit.',
+      '3. NFT Marketplaces:',
+      '   - OpenSea (Ethereum, Polygon, Base, Arbitrum)',
+      '   - Blur (Ethereum)',
+      '   - Magic Eden (Solana, Bitcoin Ordinals)',
+      '   - LooksRare (Ethereum)',
+      '   - Rarible (Multiple chains)',
+      '4. Royalty Information:',
+      '   - Some NFTs generate ongoing royalties for creators',
+      '   - Royalties are typically paid automatically when NFTs are sold',
+      '   - Check the NFT contract for royalty percentage (usually 2.5-10%)',
+      '   - Royalties may continue to benefit heirs if NFTs are held',
+      '5. Valuation Considerations:',
+      '   - NFT values are highly volatile',
+      '   - Use reputable marketplaces for price discovery',
+      '   - Consider professional appraisals for high-value collections',
+      '6. Transfer Process:',
+      '   - NFTs are transferred via blockchain transactions',
+      '   - Gas fees apply on Ethereum and other chains',
+      '   - Verify recipient wallet addresses before transferring',
+      '7. Storage: NFTs are stored on-chain, but access requires wallet control.'
+    ]
+    
+    nftInstructions.forEach((instruction) => {
+      checkNewPage(25)
+      yPosition = addText(instruction, margin, yPosition, 10, false, rgb(0.1, 0.1, 0.1))
+      yPosition -= lineHeight * 1.2
+    })
+    yPosition -= sectionSpacing
+  }
+  
+  // Section 3: Exchange KYC and Probate Warning (if exchanges detected)
+  if (hasExchanges) {
+    checkNewPage(200)
+    yPosition = addText('EXCHANGE ACCOUNT ACCESS AND PROBATE CONSIDERATIONS', margin, yPosition, 16, true, rgb(0.1, 0.1, 0.1))
+    yPosition -= lineHeight * 1.5
+    yPosition = addText(
+      'WARNING: Assets held on cryptocurrency exchanges require special probate procedures:',
+      margin,
+      yPosition,
+      11,
+      true,
+      colors.warning
+    )
+    yPosition -= lineHeight * 2
+    
+    const exchangeInstructions = [
+      '1. Know Your Customer (KYC) Requirements:',
+      '   - Exchanges require identity verification',
+      '   - Executors may need to provide death certificates',
+      '   - Legal documentation proving executor authority is typically required',
+      '   - Process can take weeks to months',
+      '2. Exchange-Specific Procedures:',
+      '   - Each exchange has different probate procedures',
+      '   - Contact exchange support immediately upon account holder\'s death',
+      '   - Provide all requested documentation promptly',
+      '3. Account Freezing:',
+      '   - Exchanges may freeze accounts upon notification of death',
+      '   - This protects assets but delays access',
+      '   - Work with exchange legal/compliance teams',
+      '4. Recommended Exchanges (with probate support):',
+      '   - Coinbase (has established probate process)',
+      '   - Kraken (requires legal documentation)',
+      '   - Gemini (has estate planning resources)',
+      '5. Consider transferring assets to self-custody wallets before death to avoid delays.'
+    ]
+    
+    exchangeInstructions.forEach((instruction) => {
+      checkNewPage(25)
+      yPosition = addText(instruction, margin, yPosition, 10, false, rgb(0.1, 0.1, 0.1))
+      yPosition -= lineHeight * 1.2
+    })
     yPosition -= sectionSpacing
   }
 

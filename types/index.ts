@@ -35,10 +35,14 @@ export interface Asset {
 export interface Beneficiary {
   id: string
   name: string
-  walletAddress: string
+  walletAddress?: string // Optional wallet address or ENS name
   ensName?: string // Resolved ENS name for Ethereum addresses
   phone?: string // Optional phone number
   email?: string // Optional email
+  address?: string // Optional physical address (street address)
+  city?: string // Optional city
+  state?: string // Optional state
+  zipCode?: string // Optional zip code
   notes?: string // Optional notes/description
 }
 
@@ -50,6 +54,8 @@ export interface Allocation {
   type: 'amount' | 'percentage'
 }
 
+export type WalletGroup = 'long-term' | 'active-trading' | 'cold-storage' | 'unassigned'
+
 export interface QueuedWalletSession {
   id: string // Unique ID for this session
   walletAddress: string
@@ -57,6 +63,7 @@ export interface QueuedWalletSession {
   walletProvider?: string // Wallet provider name (MetaMask, Rainbow, WalletConnect, Xverse, Phantom, Solflare, etc.)
   ensName?: string // Resolved ENS name if available (or SNS name for Solana)
   walletName?: string // Custom wallet name (manual or auto-resolved)
+  walletGroup?: WalletGroup // Wallet grouping label for executor comprehension
   assets: Asset[]
   allocations: Allocation[] // Allocations for assets in this wallet
   verified: boolean
@@ -88,6 +95,7 @@ export interface UserData {
   }
   walletNames: Record<string, string> // Maps address to ENS name or custom name
   resolvedEnsNames?: Record<string, string> // Maps lowercase address to ENS name
+  walletGroups?: Record<string, WalletGroup> // Maps wallet address to group label
 }
 
 export interface Invoice {
