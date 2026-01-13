@@ -305,6 +305,7 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 **Step 2: Assets**
 - View all assets from connected wallets
 - Select assets to include in inheritance plan
+- **Assets unchecked by default** (user must manually select)
 - Spam token filtering (enabled by default)
 - Can load assets from selected wallet or all wallets
 
