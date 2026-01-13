@@ -1,8 +1,8 @@
 # LastWish.eth - Single Source of Truth Documentation
 
 **Last Updated:** January 2025  
-**Version:** 1.0.0  
-**Status:** Production-Ready MVP
+**Version:** 1.1.0  
+**Status:** Production-Ready MVP with Solana Support
 
 ---
 
@@ -160,8 +160,12 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 - ⚠️ OKX (detected but may have issues)
 - ⚠️ Blockchain.com (detected but may have issues)
 
+**Solana Wallets:**
+- ✅ Phantom (browser extension)
+- ✅ Solflare (browser extension)
+- ✅ Any Solana wallet adapter compatible wallet
+
 **NOT Supported:**
-- ❌ Solana wallets (Phantom, Solflare, etc.)
 - ❌ Hardware wallets (except via WalletConnect)
 - ❌ Direct wallet file imports
 
@@ -179,8 +183,12 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 - ✅ SATs (including rare SATs detection)
 - ✅ Ordinals (inscriptions with images)
 
+**Solana:**
+- ✅ Native Solana (SOL)
+- ✅ SPL tokens
+- ✅ Solana NFTs (with images and metadata)
+
 **NOT Supported:**
-- ❌ Solana assets (SOL, SPL tokens, Solana NFTs)
 - ❌ Cosmos assets
 - ❌ Other non-EVM assets
 
@@ -190,12 +198,15 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 - ✅ Moralis API (for EVM asset fetching)
 - ✅ Blockstream API (for Bitcoin balance)
 - ✅ Multiple Ordinal APIs (for Bitcoin ordinals)
+- ✅ Helius API (for Solana assets - SOL, SPL tokens, NFTs)
+- ✅ Solana RPC (for Solana balance and fallback)
 - ✅ Etherscan API (for payment verification)
 - ✅ Ethereum RPC (for ENS resolution and payment verification)
 
 **Rate Limits:**
 - EVM Portfolio: 30 requests per minute per IP
 - Bitcoin Portfolio: Rate limited per API
+- Solana Portfolio: 30 requests per minute per IP
 - Payment Verification: Uses Etherscan rate limits
 
 ### Technical Stack
@@ -211,6 +222,8 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 - viem (Ethereum utilities)
 - WalletConnect (EVM wallet connections)
 - Xverse (Bitcoin wallet)
+- @solana/wallet-adapter-react (Solana wallets)
+- @solana/web3.js (Solana utilities)
 
 **PDF Generation:**
 - pdf-lib (client-side)
@@ -314,9 +327,9 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 
 **Step 6: Download**
 - Generate PDF
-- Automatic print dialog
-- All data cleared after generation
-- Returns to Step 1 (connect)
+- Automatic print dialog (stays open until user prints or cancels)
+- All data cleared after print dialog closes
+- Navigates to homepage (landing page) after cleanup
 
 ### Navigation Rules
 
@@ -394,10 +407,11 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 ### ✅ Wallet Connection
 - EVM wallets via WalletConnect (QR code)
 - Bitcoin wallets via Xverse extension
+- Solana wallets via Phantom/Solflare (browser extension)
 - Manual Bitcoin address input
 - Wallet ownership verification (signature)
 - Multiple wallet support (up to tier limit)
-- Wallet naming (custom or ENS)
+- Wallet naming (custom or ENS/SNS)
 
 ### ✅ Asset Loading
 - EVM assets (native, ERC-20, NFTs, Ethscriptions)
@@ -466,17 +480,9 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 
 ## Known Limitations
 
-### ❌ Solana Blockchain Support
-**Status:** NOT SUPPORTED  
-**What Works:** Solana Name Service (.sol) name resolution  
-**What Doesn't Work:**
-- Solana wallet connection
-- Solana asset loading (SOL, SPL tokens, NFTs)
-- Solana portfolio API endpoint
+**Status:** All major features implemented. No known critical limitations.
 
-**Impact:** Users cannot include Solana assets in inheritance plans.
-
-**Note:** This is the ONLY known limitation found during documentation review.
+**Note:** Solana blockchain support was added in January 2025. All previously identified limitations have been resolved.
 
 ### ⚠️ Bitcoin Wallet Detection
 **Status:** Partial  
@@ -497,27 +503,69 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 ## Decision Log
 
 ### 2025-01 - Privacy Cleanup After PDF
-**Decision:** Clear all sensitive data immediately after PDF generation  
+**Decision:** Clear all sensitive data after PDF generation  
 **Rationale:** Critical for public computers, user privacy  
+**Status:** ✅ Implemented
+
+### 2025-01 - Print Dialog Persistence
+**Decision:** Keep print dialog open until user prints or cancels  
+**Rationale:** User needs time to print before data is cleared  
+**Status:** ✅ Implemented  
+**Implementation:** Uses `beforeprint`/`afterprint` events to detect when print dialog closes
+
+### 2025-01 - Homepage Navigation After Cleanup
+**Decision:** Navigate to homepage (landing page) after PDF cleanup  
+**Rationale:** Better UX - user sees fresh start on homepage instead of connect step  
 **Status:** ✅ Implemented
 
 ### 2025-01 - Immediate Step Reset
 **Decision:** Reset to connect step immediately after PDF generation  
 **Rationale:** User should see fresh start, not payment screen  
-**Status:** ✅ Implemented
+**Status:** ✅ Implemented (now navigates to homepage instead)
 
 ### 2025-01 - Wallet Persistence
 **Decision:** Allow wallets to persist during session (don't auto-clear on load)  
 **Rationale:** Better UX, users can refresh without losing progress  
 **Status:** ✅ Implemented
 
+### 2025-01 - Solana Blockchain Support
+**Decision:** Add full Solana blockchain support (wallets, assets, NFTs)  
+**Rationale:** Solana is a major blockchain with significant user base  
+**Status:** ✅ Implemented (January 2025)  
+**Features Added:**
+- Solana wallet connection (Phantom, Solflare)
+- SOL balance loading
+- SPL token support
+- Solana NFT support with images
+- Solana Name Service (.sol) resolution
+- Integration with existing wallet management system
+
 ---
+
+## Recent Updates (January 2025)
+
+### ✅ Solana Blockchain Support Added
+- Full Solana wallet connection (Phantom, Solflare)
+- SOL, SPL tokens, and NFT support
+- Solana NFT images and metadata display
+- Integration with existing wallet management
+- Solana Name Service (.sol) resolution
+
+### ✅ Print Dialog Improvements
+- Print dialog now stays open until user prints or cancels
+- Uses `beforeprint`/`afterprint` events for detection
+- Data only clears after print dialog closes
+- 60-second fallback timeout for safety
+
+### ✅ Homepage Navigation
+- After PDF cleanup, user is navigated to homepage
+- Better UX - fresh start on landing page
+- Shows "Protect Your Crypto Legacy" homepage
 
 ## Future Considerations
 
 ### Potential Additions (Not Planned)
-- Solana blockchain support (identified as needed)
-- Additional blockchain support
+- Additional blockchain support (Cosmos, Cardano, etc.)
 - Fiat payment options
 - Terms of Service page
 - Privacy Policy page
