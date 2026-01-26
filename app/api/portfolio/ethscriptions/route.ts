@@ -338,17 +338,26 @@ export async function POST(request: NextRequest) {
               
               if (contentUri && mimetype.startsWith('image/')) {
                 // Only set imageUrl for actual image mimetypes
-                imageUrl = validateImageUrl(contentUri)
-                
-                // If validation failed but it's a data URI with image data, use it
-                if (!imageUrl && contentUri.startsWith('data:image/')) {
-                  imageUrl = contentUri
-                  console.log(`[Ethscriptions API] Using image data URI for ethscription ${ethscriptionId}`)
+                // For ethscriptions, use our proxy API to fetch the correct image by transaction hash
+                // This ensures we get the correct image content, not just the content_uri
+                if (ethscriptionId) {
+                  // Use our ethscription-image proxy API to fetch the correct image
+                  imageUrl = `/api/ethscription-image?id=${ethscriptionId}`
+                  console.log(`[Ethscriptions API] Using ethscription-image proxy for ${ethscriptionId}`)
+                } else {
+                  // Fallback: try to validate contentUri directly
+                  imageUrl = validateImageUrl(contentUri)
+                  
+                  // If validation failed but it's a data URI with image data, use it
+                  if (!imageUrl && contentUri.startsWith('data:image/')) {
+                    imageUrl = contentUri
+                    console.log(`[Ethscriptions API] Using image data URI for ethscription ${ethscriptionId}`)
+                  }
                 }
                 
                 // Log if we couldn't set imageUrl for an image mimetype
                 if (!imageUrl) {
-                  console.warn(`[Ethscriptions API] Failed to validate imageUrl for ethscription ${ethscriptionId} with mimetype ${mimetype}, contentUri: ${contentUri.substring(0, 100)}`)
+                  console.warn(`[Ethscriptions API] Failed to set imageUrl for ethscription ${ethscriptionId} with mimetype ${mimetype}, contentUri: ${contentUri?.substring(0, 100)}`)
                 }
               } else if (contentUri && mimetype.startsWith('text/')) {
                 // Extract text content from data URI for text/plain ethscriptions

@@ -591,7 +591,9 @@ export function AllocationPanel({
                         {(asset.imageUrl || asset.image || asset.contentUri) && (
                           <NFTImage
                             imageUrl={asset.imageUrl || asset.image}
-                            tokenUri={asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri}
+                            tokenUri={asset.type === 'ethscription' && asset.ethscriptionId
+                              ? `/api/ethscription-image?id=${asset.ethscriptionId}`
+                              : (asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri)}
                             contractAddress={asset.contractAddress}
                             tokenId={asset.tokenId}
                             alt={asset.name || asset.symbol}

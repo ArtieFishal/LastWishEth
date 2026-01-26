@@ -190,7 +190,7 @@ export function AssetList({ assets }: AssetListProps) {
                     tokenUri={asset.type === 'ordinal'
                       ? (asset.imageUrl?.startsWith('/api/ordinal-image') ? asset.imageUrl : (asset.metadata?.contentUrl || asset.contentUri))
                       : asset.type === 'ethscription'
-                      ? (asset.contentUri || asset.imageUrl || asset.metadata?.token_uri || asset.metadata?.tokenUri)
+                      ? (asset.imageUrl?.startsWith('/api/ethscription-image') ? asset.imageUrl : (asset.ethscriptionId ? `/api/ethscription-image?id=${asset.ethscriptionId}` : (asset.contentUri || asset.metadata?.token_uri || asset.metadata?.tokenUri)))
                       : (asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri)}
                     contractAddress={asset.contractAddress}
                     tokenId={asset.tokenId || asset.ethscriptionId}
