@@ -38,12 +38,39 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
     // For custom charity, clear fields for manual entry
     if (charity.id === 'custom_charity') {
       setName('')
+      setPhone('')
+      setEmail('')
+      setAddress('')
+      setCity('')
+      setState('')
+      setZipCode('')
       setNotes('')
       return
     }
 
     // Autofill beneficiary form fields from charity data
+    // Populate all publicly available and verifiable information
     setName(charity.name)
+    
+    // Populate contact information if available
+    if (charity.phone) {
+      setPhone(charity.phone)
+    }
+    if (charity.email) {
+      setEmail(charity.email)
+    }
+    if (charity.address) {
+      setAddress(charity.address)
+    }
+    if (charity.city) {
+      setCity(charity.city)
+    }
+    if (charity.state) {
+      setState(charity.state)
+    }
+    if (charity.zipCode) {
+      setZipCode(charity.zipCode)
+    }
     
     // Persist snapshot of selected charity data in notes field
     // This includes EIN, mission category, and donation URLs for executor reference

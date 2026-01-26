@@ -120,4 +120,11 @@ export interface CharityOption {
   logoAssetPath: string // local /public path
   logoSourceURL: string // official source
   notes?: string // optional
+  // Publicly available contact information
+  phone?: string // Public phone number
+  email?: string // Public contact email
+  address?: string // Street address
+  city?: string
+  state?: string
+  zipCode?: string
 }

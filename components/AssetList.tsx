@@ -68,18 +68,52 @@ export function AssetList({ assets }: AssetListProps) {
                 ) : null}
               </div>
               <p className="text-sm text-gray-600 font-medium">{asset.name}</p>
-              {asset.type === 'btc' && asset.walletAddress && (
-                <p className="text-xs text-gray-500 font-mono mt-1 break-all" title={asset.walletAddress}>
-                  Address: {asset.walletAddress}
+              
+              {/* Show wallet info */}
+              {asset.walletAddress && (
+                <p className="text-xs text-blue-600 font-medium mt-1">
+                  Wallet: {asset.walletProvider || 'Unknown'} {asset.walletAddress.substring(0, 6)}...{asset.walletAddress.substring(asset.walletAddress.length - 4)}
                 </p>
               )}
+              
+              {/* Add collection name for NFTs */}
+              {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'nft') && asset.metadata?.collection && (
+                <p className="text-xs text-gray-500 mt-1">Collection: {asset.metadata.collection}</p>
+              )}
+              
+              {/* Add description for NFTs */}
+              {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'nft') && asset.metadata?.description && (
+                <p className="text-xs text-gray-500 mt-1 line-clamp-2">{asset.metadata.description}</p>
+              )}
+              
               {asset.type === 'btc' && asset.walletAddress && (
                 <p className="text-xs text-gray-500 font-mono mt-1 break-all" title={asset.walletAddress}>
-                  Address: {asset.walletAddress}
+                  Bitcoin Address: {asset.walletAddress}
                 </p>
               )}
               {asset.tokenId && (
                 <p className="text-xs text-gray-500 font-mono mt-1">Token ID: {asset.tokenId}</p>
+              )}
+              
+              {/* Show contract address for NFTs and tokens (not native) */}
+              {asset.contractAddress && asset.type !== 'native' && asset.type !== 'btc' && (
+                <p className="text-xs text-gray-400 font-mono mt-1 truncate" title={`Contract: ${asset.contractAddress}`}>
+                  Contract: {asset.contractAddress.substring(0, 10)}...{asset.contractAddress.substring(asset.contractAddress.length - 8)}
+                </p>
+              )}
+              
+              {/* Add attributes/traits for NFTs */}
+              {(asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'nft') && asset.metadata?.attributes && Array.isArray(asset.metadata.attributes) && asset.metadata.attributes.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {asset.metadata.attributes.slice(0, 3).map((attr: any, idx: number) => (
+                    <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">
+                      {attr.trait_type || attr.name}: {attr.value}
+                    </span>
+                  ))}
+                  {asset.metadata.attributes.length > 3 && (
+                    <span className="text-xs text-gray-500">+{asset.metadata.attributes.length - 3} more</span>
+                  )}
+                </div>
               )}
               {asset.type === 'ordinal' && (
                 <div className="mt-2 space-y-1">
@@ -155,18 +189,29 @@ export function AssetList({ assets }: AssetListProps) {
                     imageUrl={asset.imageUrl || asset.image}
                     tokenUri={asset.type === 'ordinal'
                       ? (asset.imageUrl?.startsWith('/api/ordinal-image') ? asset.imageUrl : (asset.metadata?.contentUrl || asset.contentUri))
+                      : asset.type === 'ethscription'
+                      ? (asset.contentUri || asset.imageUrl || asset.metadata?.token_uri || asset.metadata?.tokenUri)
                       : (asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri)}
                     contractAddress={asset.contractAddress}
-                    tokenId={asset.tokenId}
+                    tokenId={asset.tokenId || asset.ethscriptionId}
                     alt={asset.name}
-                    className="w-32 h-32 object-contain rounded border-2 border-gray-300 bg-gray-50"
+                    className="w-48 h-48 object-contain rounded-lg border-2 border-gray-300 bg-gray-50 shadow-sm hover:shadow-md transition-shadow"
                   />
                   {asset.type === 'ethscription' && !asset.imageUrl && asset.contentUri && (
-                    <p className="text-xs text-gray-400 mt-1 text-center">
-                      {asset.metadata?.mimetype?.startsWith('text/') ? 'Text Content' : 
-                       asset.metadata?.mimetype?.includes('json') ? 'JSON Data' : 
-                       'Content Available'}
-                    </p>
+                    <div className="mt-2">
+                      {asset.metadata?.textContent ? (
+                        <div className="text-xs text-gray-700 bg-gray-50 p-3 rounded border border-gray-200 max-h-32 overflow-y-auto">
+                          <p className="font-semibold text-gray-600 mb-1">Text Content:</p>
+                          <p className="break-words whitespace-pre-wrap font-mono">{asset.metadata.textContent}</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400 text-center">
+                          {asset.metadata?.mimetype?.startsWith('text/') ? 'Text Content' : 
+                           asset.metadata?.mimetype?.includes('json') ? 'JSON Data' : 
+                           'Content Available'}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

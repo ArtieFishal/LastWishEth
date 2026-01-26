@@ -58,7 +58,7 @@ const getWalletProviderName = (provider?: string): string => {
 
 export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, walletNames = {}, resolvedEnsNames = {} }: AssetSelectorProps) {
   const [filter, setFilter] = useState<'all' | 'currencies' | 'nfts' | 'ethscriptions' | 'ordinals'>('all')
-  const [sortBy, setSortBy] = useState<'chain' | 'type' | 'value' | 'wallet'>('type')
+  const [sortBy, setSortBy] = useState<'chain' | 'type' | 'value' | 'wallet' | 'collection'>('type')
 
   // Group and filter assets
   const groupedAssets = useMemo(() => {
@@ -113,6 +113,25 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
         const chainCompare = a.chain.localeCompare(b.chain)
         if (chainCompare !== 0) return chainCompare
         return getAssetCategory(a).localeCompare(getAssetCategory(b))
+      } else if (sortBy === 'collection') {
+        // Sort by collection name or contract address
+        const getCollectionName = (asset: Asset): string => {
+          // Priority: collectionName > metadata.collection > contractAddress > name (for non-NFTs)
+          return asset.collectionName || 
+                 asset.metadata?.collection || 
+                 asset.contractAddress || 
+                 asset.name
+        }
+        const aCollection = getCollectionName(a)
+        const bCollection = getCollectionName(b)
+        const collectionCompare = aCollection.localeCompare(bCollection)
+        if (collectionCompare !== 0) return collectionCompare
+        // If same collection, sort by tokenId, then by name
+        if (a.tokenId && b.tokenId) {
+          const tokenCompare = a.tokenId.localeCompare(b.tokenId)
+          if (tokenCompare !== 0) return tokenCompare
+        }
+        return a.name.localeCompare(b.name)
       } else {
         const aValue = a.usdValue || 0
         const bValue = b.usdValue || 0
@@ -285,6 +304,16 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
             >
               Value
             </button>
+            <button
+              onClick={() => setSortBy('collection')}
+              className={`px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                sortBy === 'collection'
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-teal-100 text-teal-700 hover:bg-teal-200'
+              }`}
+            >
+              Collection
+            </button>
           </div>
         </div>
       </div>
@@ -371,13 +400,28 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
                             ) : null}
                           </div>
                           <p className="text-sm text-gray-600 font-medium">{asset.name}</p>
+                          
+                          {/* Show wallet info */}
+                          {asset.walletAddress && (
+                            <p className="text-xs text-blue-600 font-medium mt-1">
+                              Wallet: {asset.walletProvider || 'Unknown'} {asset.walletAddress.substring(0, 6)}...{asset.walletAddress.substring(asset.walletAddress.length - 4)}
+                            </p>
+                          )}
+                          
                           {asset.type === 'btc' && asset.walletAddress && (
                             <p className="text-xs text-gray-500 font-mono mt-1 break-all" title={asset.walletAddress}>
-                              Address: {asset.walletAddress}
+                              Bitcoin Address: {asset.walletAddress}
                             </p>
                           )}
                           {asset.tokenId && (
                             <p className="text-xs text-gray-500 font-mono mt-1">Token ID: {asset.tokenId}</p>
+                          )}
+                          
+                          {/* Show contract address for NFTs and tokens (not native) */}
+                          {asset.contractAddress && asset.type !== 'native' && asset.type !== 'btc' && (
+                            <p className="text-xs text-gray-400 font-mono mt-1 truncate" title={`Contract: ${asset.contractAddress}`}>
+                              Contract: {asset.contractAddress.substring(0, 10)}...{asset.contractAddress.substring(asset.contractAddress.length - 8)}
+                            </p>
                           )}
                           {asset.type === 'ethscription' && (
                             <div className="mt-2 space-y-1">
@@ -433,18 +477,29 @@ export function AssetSelector({ assets, selectedAssetIds, onSelectionChange, wal
                               imageUrl={asset.imageUrl || asset.image}
                               tokenUri={asset.type === 'ordinal' 
                                 ? (asset.imageUrl?.startsWith('/api/ordinal-image') ? asset.imageUrl : (asset.metadata?.contentUrl || asset.contentUri))
+                                : asset.type === 'ethscription'
+                                ? (asset.contentUri || asset.imageUrl || asset.metadata?.token_uri || asset.metadata?.tokenUri)
                                 : (asset.metadata?.token_uri || asset.metadata?.tokenUri || asset.contentUri)}
                               contractAddress={asset.contractAddress}
-                              tokenId={asset.tokenId}
+                              tokenId={asset.tokenId || asset.ethscriptionId}
                               alt={asset.name}
                               className="w-20 h-20 object-contain rounded border-2 border-gray-300 bg-gray-50"
                             />
                             {asset.type === 'ethscription' && !asset.imageUrl && asset.contentUri && (
-                              <p className="text-xs text-gray-400 mt-1 text-center">
-                                {asset.metadata?.mimetype?.startsWith('text/') ? 'Text' : 
-                                 asset.metadata?.mimetype?.includes('json') ? 'JSON' : 
-                                 'Content'}
-                              </p>
+                              <div className="mt-1">
+                                {asset.metadata?.textContent ? (
+                                  <div className="text-xs text-gray-700 bg-gray-50 p-2 rounded border border-gray-200 max-h-20 overflow-y-auto">
+                                    <p className="font-semibold text-gray-600 mb-1">Text Content:</p>
+                                    <p className="break-words whitespace-pre-wrap font-mono">{asset.metadata.textContent}</p>
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-gray-400 text-center">
+                                    {asset.metadata?.mimetype?.startsWith('text/') ? 'Text' : 
+                                     asset.metadata?.mimetype?.includes('json') ? 'JSON' : 
+                                     'Content'}
+                                  </p>
+                                )}
+                              </div>
                             )}
                             {asset.type === 'ordinal' && !asset.imageUrl && asset.metadata?.contentType && (
                               <p className="text-xs text-gray-400 mt-1 text-center">

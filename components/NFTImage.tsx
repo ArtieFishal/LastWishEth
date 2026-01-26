@@ -31,17 +31,33 @@ export function NFTImage({
   const maxRetries = 3
 
   useEffect(() => {
+    // Reset error state when props change
+    setError(false)
+    setRetryCount(0)
+    
     // If we have an initial image URL, use it
     if (initialImageUrl) {
-      // For ethscriptions, contentUri might be a data URI - use it directly
-      if (initialImageUrl.startsWith('data:')) {
+      // For ethscriptions, only use data URIs if they're actually images
+      // Text/JSON data URIs should not be loaded as images
+      if (initialImageUrl.startsWith('data:image/')) {
+        // This is an image data URI - use it
         setImageUrl(initialImageUrl)
         setLoading(false)
+        console.log(`[NFTImage] Using image data URI for ${alt || contractAddress || 'NFT'}`)
+      } else if (initialImageUrl.startsWith('data:')) {
+        // This is a non-image data URI (text/JSON) - don't try to load as image
+        console.log(`[NFTImage] Skipping non-image data URI for ${alt || contractAddress || 'NFT'}`)
+        setError(true)
+        setLoading(false)
+        return
       } else {
         // For ordinals, try the URL as-is first (ord.io, hiro.so, etc.)
         const normalizedUrl = getImageUrlWithIPFSFallback(initialImageUrl)
         setImageUrl(normalizedUrl)
-        console.log(`[NFTImage] Using imageUrl: ${normalizedUrl} (original: ${initialImageUrl})`)
+        console.log(`[NFTImage] Using imageUrl: ${normalizedUrl} (original: ${initialImageUrl?.substring(0, 100)}) for ${alt || contractAddress || 'NFT'} (type: ordinal, tokenId: ${tokenId})`)
+        if (!normalizedUrl) {
+          console.warn(`[NFTImage] WARNING: normalizedUrl is undefined for ${initialImageUrl}`)
+        }
         setLoading(false)
       }
       return
@@ -51,8 +67,17 @@ export function NFTImage({
     // Skip if tokenUri is an ord.io URL and we're using proxy (to avoid CORS)
     if (tokenUri && !imageUrl && !error) {
       // Check if tokenUri is a data URI (common for ethscriptions)
-      if (tokenUri.startsWith('data:')) {
+      // Only use image data URIs, skip text/JSON data URIs
+      if (tokenUri.startsWith('data:image/')) {
+        // This is an image data URI - use it
         setImageUrl(tokenUri)
+        setLoading(false)
+        console.log(`[NFTImage] Using image data URI from tokenUri for ${alt || contractAddress || 'NFT'}`)
+        return
+      } else if (tokenUri.startsWith('data:')) {
+        // This is a non-image data URI (text/JSON) - don't try to load as image
+        console.log(`[NFTImage] Skipping non-image data URI from tokenUri for ${alt || contractAddress || 'NFT'}`)
+        setError(true)
         setLoading(false)
         return
       }
@@ -65,6 +90,7 @@ export function NFTImage({
         return
       }
       
+      console.log(`[NFTImage] Fetching metadata from tokenUri for ${alt || contractAddress || 'NFT'}:`, tokenUri.substring(0, 100))
       setLoading(true)
       fetchNFTMetadata(tokenUri, contractAddress, tokenId)
         .then((result) => {
@@ -72,27 +98,37 @@ export function NFTImage({
             const normalizedUrl = getImageUrlWithIPFSFallback(result.image)
             setImageUrl(normalizedUrl)
             setError(false)
+            console.log(`[NFTImage] Successfully fetched image from metadata: ${normalizedUrl?.substring(0, 100)}`)
           } else {
+            // Don't log as warning - it's normal for some NFTs to not have images in metadata
             setError(true)
           }
         })
         .catch((err) => {
-          console.warn(`[NFTImage] Failed to fetch metadata for ${tokenUri}:`, err)
+          // Don't log CORS/network errors as warnings - they're expected for some external APIs
+          if (err?.message && !err.message.includes('Failed to fetch') && !err.message.includes('CORS')) {
+            console.warn(`[NFTImage] Failed to fetch metadata for ${alt || contractAddress || 'NFT'} from ${tokenUri}:`, err)
+          }
           setError(true)
         })
         .finally(() => {
           setLoading(false)
         })
+    } else if (!tokenUri && !initialImageUrl) {
+      // No imageUrl and no tokenUri - can't load image
+      console.warn(`[NFTImage] No imageUrl or tokenUri for ${alt || contractAddress || 'NFT'} (contract: ${contractAddress}, tokenId: ${tokenId})`)
+      setError(true)
+      setLoading(false)
     }
-  }, [initialImageUrl, tokenUri, contractAddress, tokenId, error])
+  }, [initialImageUrl, tokenUri, contractAddress, tokenId])
 
   // Handle image load errors with IPFS fallback and ordinal URL fallbacks
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const currentSrc = e.currentTarget.src
-    console.log(`[NFTImage] Image load error for: ${currentSrc} (retry ${retryCount}/${maxRetries})`)
+    console.warn(`[NFTImage] Image load error for ${alt || contractAddress || 'NFT'}: ${currentSrc} (retry ${retryCount}/${maxRetries})`)
     
     if (retryCount >= maxRetries) {
-      console.log(`[NFTImage] Max retries reached, showing error state`)
+      console.error(`[NFTImage] Max retries reached for ${alt || contractAddress || 'NFT'}, showing error state. Final URL: ${currentSrc}`)
       setError(true)
       return
     }
@@ -175,14 +211,46 @@ export function NFTImage({
     setRetryCount(0)
   }
 
-  // Show fallback UI instead of hiding
+  // Show fallback UI with diagnostic info
   if (error && showFallback) {
+    const diagnosticInfo: string[] = []
+    if (!initialImageUrl && !tokenUri) {
+      diagnosticInfo.push('No imageUrl or tokenUri')
+    } else if (!initialImageUrl && tokenUri) {
+      diagnosticInfo.push('Has tokenUri, fetch failed')
+    } else if (initialImageUrl) {
+      diagnosticInfo.push('imageUrl failed to load')
+    }
+    
     return (
-      <div className={fallbackClassName}>
+      <div 
+        className={fallbackClassName}
+        title={`Image diagnostic: ${diagnosticInfo.join(', ')}${tokenUri ? ` | tokenUri: ${tokenUri.substring(0, 50)}...` : ''}${initialImageUrl ? ` | imageUrl: ${initialImageUrl.substring(0, 50)}...` : ''}`}
+      >
         <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
         <span className="text-xs text-gray-500 mt-1 text-center px-1">Image unavailable</span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            const info = [
+              `Image Diagnostic for: ${alt || 'NFT'}`,
+              `imageUrl: ${initialImageUrl || 'none'}`,
+              `tokenUri: ${tokenUri || 'none'}`,
+              `contractAddress: ${contractAddress || 'none'}`,
+              `tokenId: ${tokenId || 'none'}`,
+              `Retry count: ${retryCount}/${maxRetries}`,
+              `Error: ${error ? 'Yes' : 'No'}`,
+            ].join('\n')
+            console.log('[NFTImage Diagnostic]', info)
+            alert(info)
+          }}
+          className="text-xs text-blue-600 hover:text-blue-800 mt-1 underline"
+          title="Click to see diagnostic info in console"
+        >
+          Why?
+        </button>
       </div>
     )
   }

@@ -8,6 +8,7 @@ export default function Header() {
   const [scrollY, setScrollY] = useState(0)
   const pathname = usePathname()
   const isAppPage = pathname === '/app'
+  const isInventoryPage = pathname === '/inventory'
 
   useEffect(() => {
     const handleScroll = () => {
@@ -45,7 +46,7 @@ export default function Header() {
             </span>
           </Link>
           
-          {!isAppPage && (
+          {!isAppPage && !isInventoryPage && (
             <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
               <button 
                 onClick={() => scrollToSection('problem')}
@@ -83,6 +84,13 @@ export default function Header() {
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-blue-400 group-hover:w-full transition-all duration-300"></span>
               </button>
               <Link 
+                href="/inventory"
+                className="text-gray-300 hover:text-white transition-colors font-medium text-sm lg:text-base relative group"
+              >
+                Inventory
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-blue-400 group-hover:w-full transition-all duration-300"></span>
+              </Link>
+              <Link 
                 href="/app"
                 className="px-5 lg:px-6 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-purple-500/50 text-sm lg:text-base transform hover:scale-105"
               >
@@ -91,7 +99,7 @@ export default function Header() {
             </div>
           )}
 
-          {isAppPage && (
+          {(isAppPage || isInventoryPage) && (
             <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
               <button 
                 onClick={() => {
@@ -138,6 +146,13 @@ export default function Header() {
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-blue-400 group-hover:w-full transition-all duration-300"></span>
               </button>
               <Link 
+                href="/inventory"
+                className="text-gray-300 hover:text-white transition-colors font-medium text-sm lg:text-base relative group"
+              >
+                Inventory
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-blue-400 group-hover:w-full transition-all duration-300"></span>
+              </Link>
+              <Link 
                 href="/"
                 className="px-5 lg:px-6 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-purple-500/50 text-sm lg:text-base transform hover:scale-105"
               >
@@ -147,10 +162,10 @@ export default function Header() {
           )}
 
           <Link 
-            href={isAppPage ? "/" : "/app"}
+            href={isAppPage || isInventoryPage ? "/" : "/app"}
             className="md:hidden px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg text-sm"
           >
-            {isAppPage ? "Home" : "Start"}
+            {isAppPage || isInventoryPage ? "Home" : "Start"}
           </Link>
         </div>
       </nav>
