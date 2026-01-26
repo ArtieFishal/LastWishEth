@@ -3,6 +3,7 @@
 import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { useEffect, useState } from 'react'
+import { useSolanaWalletInit } from './SolanaProvider'
 
 interface SolanaWalletConnectProps {
   onSolanaConnect?: (address: string, provider?: string) => void
@@ -12,10 +13,16 @@ export function SolanaWalletConnect({ onSolanaConnect }: SolanaWalletConnectProp
   const { publicKey, wallet, connected, disconnect } = useWallet()
   const { connection } = useConnection()
   const [mounted, setMounted] = useState(false)
+  const initializeWallets = useSolanaWalletInit()
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+    // Trigger wallet initialization when this component mounts
+    // This ensures wallets are only initialized when user accesses Solana tab
+    if (initializeWallets) {
+      initializeWallets()
+    }
+  }, [initializeWallets])
 
   useEffect(() => {
     if (connected && publicKey && onSolanaConnect) {
