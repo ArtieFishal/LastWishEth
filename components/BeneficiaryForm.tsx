@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Beneficiary } from '@/types'
+import { Beneficiary, CharityOption } from '@/types'
 import { resolveBlockchainName, reverseResolveAddress } from '@/lib/name-resolvers'
+import { CharitySelector } from '@/components/CharitySelector'
 
 interface BeneficiaryFormProps {
   beneficiaries: Beneficiary[]
@@ -23,6 +24,33 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
   const [ensName, setEnsName] = useState<string | null>(null)
   const [resolvedAddress, setResolvedAddress] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [selectedCharityId, setSelectedCharityId] = useState<string | null>(null)
+
+  // Handle charity selection - autofill beneficiary fields
+  const handleCharitySelect = (charity: CharityOption | null) => {
+    if (!charity) {
+      setSelectedCharityId(null)
+      return
+    }
+
+    setSelectedCharityId(charity.id)
+
+    // For custom charity, clear fields for manual entry
+    if (charity.id === 'custom_charity') {
+      setName('')
+      setNotes('')
+      return
+    }
+
+    // Autofill beneficiary form fields from charity data
+    setName(charity.name)
+    
+    // Persist snapshot of selected charity data in notes field
+    // This includes EIN, mission category, and donation URLs for executor reference
+    const charityInfo = `Charity: ${charity.name}\nMission: ${charity.missionCategory}${charity.ein ? `\nEIN: ${charity.ein}` : ''}\nWebsite: ${charity.websiteURL}\nDonation: ${charity.donationURL}${charity.cryptoDonationURL ? `\nCrypto Donation: ${charity.cryptoDonationURL}` : ''}${charity.notes ? `\nNotes: ${charity.notes}` : ''}`
+    
+    setNotes(charityInfo)
+  }
 
   // Format phone number with automatic dashes (865-851-2242)
   const formatPhoneNumber = (value: string) => {
@@ -230,10 +258,24 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
     setNotes('')
     setEnsName(null)
     setResolvedAddress(null)
+    setSelectedCharityId(null)
+  }
+
+  // Reset charity selection when beneficiary is added
+  const handleAddWithCharityReset = () => {
+    handleAdd()
+    setSelectedCharityId(null)
   }
 
   return (
     <div className="space-y-3">
+      {/* Charity Selector - optional */}
+      <div className="mb-4 pb-4 border-b border-gray-300">
+        <CharitySelector
+          onSelectCharity={handleCharitySelect}
+          selectedCharityId={selectedCharityId || undefined}
+        />
+      </div>
       {/* Main fields - horizontal */}
       <div className="flex items-end gap-3">
         <div className="flex-1">
@@ -291,7 +333,7 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
           </div>
         ) : (
         <button
-          onClick={handleAdd}
+          onClick={handleAddWithCharityReset}
           disabled={!name.trim() || beneficiaries.length >= 10}
           className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
         >
