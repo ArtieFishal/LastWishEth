@@ -338,9 +338,13 @@ export async function POST(request: NextRequest) {
               
               if (contentUri && mimetype.startsWith('image/')) {
                 // Only set imageUrl for actual image mimetypes
-                // For ethscriptions, use our proxy API to fetch the correct image by transaction hash
-                // This ensures we get the correct image content, not just the content_uri
-                if (ethscriptionId) {
+                // For ethscriptions, prefer using content_uri directly if it's a data URI
+                // Otherwise use our proxy API to fetch the correct image by transaction hash
+                if (contentUri.startsWith('data:image/')) {
+                  // Use data URI directly - it's already the image data
+                  imageUrl = contentUri
+                  console.log(`[Ethscriptions API] Using image data URI directly for ethscription ${ethscriptionId}`)
+                } else if (ethscriptionId) {
                   // Use our ethscription-image proxy API to fetch the correct image
                   imageUrl = `/api/ethscription-image?id=${ethscriptionId}`
                   console.log(`[Ethscriptions API] Using ethscription-image proxy for ${ethscriptionId}`)

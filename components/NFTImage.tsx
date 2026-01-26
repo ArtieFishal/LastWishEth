@@ -51,14 +51,21 @@ export function NFTImage({
         setLoading(false)
         return
       } else {
-        // For ordinals, try the URL as-is first (ord.io, hiro.so, etc.)
-        const normalizedUrl = getImageUrlWithIPFSFallback(initialImageUrl)
-        setImageUrl(normalizedUrl)
-        console.log(`[NFTImage] Using imageUrl: ${normalizedUrl} (original: ${initialImageUrl?.substring(0, 100)}) for ${alt || contractAddress || 'NFT'} (type: ordinal, tokenId: ${tokenId})`)
-        if (!normalizedUrl) {
-          console.warn(`[NFTImage] WARNING: normalizedUrl is undefined for ${initialImageUrl}`)
+        // For proxy APIs (ordinal-image, ethscription-image), use as-is without normalization
+        if (initialImageUrl.startsWith('/api/ordinal-image') || initialImageUrl.startsWith('/api/ethscription-image')) {
+          setImageUrl(initialImageUrl)
+          setLoading(false)
+          console.log(`[NFTImage] Using proxy API URL: ${initialImageUrl} for ${alt || contractAddress || 'NFT'}`)
+        } else {
+          // For other URLs, try normalization (IPFS, etc.)
+          const normalizedUrl = getImageUrlWithIPFSFallback(initialImageUrl)
+          setImageUrl(normalizedUrl)
+          console.log(`[NFTImage] Using imageUrl: ${normalizedUrl} (original: ${initialImageUrl?.substring(0, 100)}) for ${alt || contractAddress || 'NFT'}`)
+          if (!normalizedUrl) {
+            console.warn(`[NFTImage] WARNING: normalizedUrl is undefined for ${initialImageUrl}`)
+          }
+          setLoading(false)
         }
-        setLoading(false)
       }
       return
     }
