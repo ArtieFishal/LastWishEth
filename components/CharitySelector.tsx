@@ -80,9 +80,9 @@ export function CharitySelector({
         <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5 space-y-1.5 text-xs">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h4 className="font-medium text-gray-900 text-xs">{selectedCharity.name}</h4>
+              <h4 className="font-semibold text-black text-sm">{selectedCharity.name}</h4>
               {selectedCharity.missionCategory && (
-                <p className="text-xs text-gray-700 mt-0.5">{selectedCharity.missionCategory}</p>
+                <p className="text-xs text-gray-800 mt-0.5">{selectedCharity.missionCategory}</p>
               )}
             </div>
             {selectedCharity.logoAssetPath && (

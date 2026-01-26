@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Beneficiary, CharityOption } from '@/types'
 import { resolveBlockchainName, reverseResolveAddress } from '@/lib/name-resolvers'
 import { CharitySelector } from '@/components/CharitySelector'
+import { charities } from '@/lib/charities'
 
 interface BeneficiaryFormProps {
   beneficiaries: Beneficiary[]
@@ -229,6 +230,23 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
     setNotes(beneficiary.notes || '')
     setEnsName(beneficiary.ensName || null)
     setResolvedAddress(beneficiary.walletAddress || null)
+    
+    // If this is a charity beneficiary, restore the charity selection
+    // Check if notes contain charity information
+    if (beneficiary.notes && beneficiary.notes.includes('Charity:')) {
+      const charityMatch = beneficiary.notes.match(/Charity:\s*([^\n]+)/)
+      if (charityMatch) {
+        const charityName = charityMatch[1].trim()
+        // Find matching charity by name
+        const matchingCharity = charities.find(c => c.name === charityName)
+        if (matchingCharity) {
+          setSelectedCharityId(matchingCharity.id)
+        }
+      }
+    } else {
+      // Not a charity, clear charity selection
+      setSelectedCharityId(null)
+    }
   }
 
   const handleSaveEdit = () => {
