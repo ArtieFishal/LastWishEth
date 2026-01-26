@@ -296,13 +296,6 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
 
   return (
     <div className="space-y-3">
-      {/* Charity Selector - optional */}
-      <div className="mb-4 pb-4 border-b border-gray-300">
-        <CharitySelector
-          onSelectCharity={handleCharitySelect}
-          selectedCharityId={selectedCharityId || undefined}
-        />
-      </div>
       {/* Main fields - horizontal */}
       <div className="flex items-end gap-3">
         <div className="flex-1">
@@ -452,6 +445,16 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
             placeholder="Additional info to find them"
           />
         </div>
+      </div>
+
+      {/* Charity Selector - Optional feature, placed below manual form */}
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <div className="text-xs text-gray-500 mb-2 italic">Optional: Quick-add a charity beneficiary</div>
+        <CharitySelector
+          onSelectCharity={handleCharitySelect}
+          selectedCharityId={selectedCharityId || undefined}
+          className="text-sm"
+        />
       </div>
     </div>
   )
