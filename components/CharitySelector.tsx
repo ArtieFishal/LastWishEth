@@ -58,13 +58,13 @@ export function CharitySelector({
   return (
     <div className={`space-y-2 ${className}`}>
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">
+        <label className="block text-xs font-medium text-gray-900 mb-1">
           Quick-add Charity (Optional)
         </label>
         <select
           value={selectedId}
           onChange={handleChange}
-          className="w-full rounded-lg border border-gray-300 p-1.5 text-xs focus:border-blue-400 focus:outline-none bg-white"
+          className="w-full rounded-lg border border-gray-300 p-1.5 text-xs text-gray-900 focus:border-blue-400 focus:outline-none bg-white"
         >
           <option value="">-- Select a charity --</option>
           {charities.map((charity) => (
@@ -80,9 +80,9 @@ export function CharitySelector({
         <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5 space-y-1.5 text-xs">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h4 className="font-medium text-gray-800 text-xs">{selectedCharity.name}</h4>
+              <h4 className="font-medium text-gray-900 text-xs">{selectedCharity.name}</h4>
               {selectedCharity.missionCategory && (
-                <p className="text-xs text-gray-500 mt-0.5">{selectedCharity.missionCategory}</p>
+                <p className="text-xs text-gray-700 mt-0.5">{selectedCharity.missionCategory}</p>
               )}
             </div>
             {selectedCharity.logoAssetPath && (
@@ -106,7 +106,7 @@ export function CharitySelector({
                 href={selectedCharity.cryptoDonationURL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-xs font-medium hover:bg-green-100 transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-900 rounded text-xs font-medium hover:bg-green-100 transition-colors"
               >
                 <span>✓</span>
                 <span>Crypto Supported</span>
@@ -120,7 +120,7 @@ export function CharitySelector({
                 href={selectedCharity.donationURL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-50 text-yellow-700 rounded text-xs font-medium hover:bg-yellow-100 transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-50 text-yellow-900 rounded text-xs font-medium hover:bg-yellow-100 transition-colors"
               >
                 <span>ℹ️</span>
                 <span>Fiat Only</span>
