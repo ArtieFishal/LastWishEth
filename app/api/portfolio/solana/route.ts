@@ -116,6 +116,7 @@ export async function POST(request: NextRequest) {
                 
                 if (isLikelyNFT || (balance === 1 && hasNFTIndicators)) {
                   // Treat as NFT
+                  const imageUrl = token.image || null
                   assets.push({
                     id: `${address}-nft-${token.mint}`,
                     name: token.name || `NFT #${token.mint.slice(0, 8)}`,
@@ -126,13 +127,16 @@ export async function POST(request: NextRequest) {
                     usdValue: 0,
                     contractAddress: token.mint,
                     tokenId: token.mint,
-                    image: token.image || null,
+                    imageUrl: imageUrl, // Use imageUrl for consistency
+                    image: imageUrl, // Keep for backward compatibility
                     decimals: 0,
                     chain: 'solana',
                     metadata: {
                       collection: token.collection?.name || token.collection || null,
                       description: token.description || null,
                       uri: token.uri || null,
+                      token_uri: token.uri || token.metadata?.uri || null, // Add token_uri for client-side fetching
+                      ...token.metadata, // Include all metadata
                     },
                   })
                 } else {
@@ -157,9 +161,11 @@ export async function POST(request: NextRequest) {
 
             // Process NFTs from nfts array
             if (tokensData.nfts && Array.isArray(tokensData.nfts)) {
+              console.log(`[Solana API] Found ${tokensData.nfts.length} NFTs in nfts array`)
               for (const nft of tokensData.nfts) {
                 // Skip if already added as NFT from tokens array
                 if (!assets.some(a => a.contractAddress === nft.mint && a.type === 'nft')) {
+                  const imageUrl = nft.image || null
                   assets.push({
                     id: `${address}-nft-${nft.mint}`,
                     name: nft.name || `NFT #${nft.mint.slice(0, 8)}`,
@@ -170,12 +176,16 @@ export async function POST(request: NextRequest) {
                     usdValue: 0,
                     contractAddress: nft.mint,
                     tokenId: nft.mint,
-                    image: nft.image || null,
+                    imageUrl: imageUrl, // Use imageUrl for consistency
+                    image: imageUrl, // Keep for backward compatibility
                     decimals: 0,
                     chain: 'solana',
                     metadata: {
                       collection: nft.collection?.name || null,
                       description: nft.description || null,
+                      uri: nft.uri || null,
+                      token_uri: nft.uri || nft.metadata?.uri || null, // Add token_uri
+                      ...nft.metadata, // Include all metadata
                     },
                   })
                 }
@@ -220,6 +230,7 @@ export async function POST(request: NextRequest) {
         // Process any additional NFTs found
         for (const nft of allNFTs) {
           if (!assets.some(a => a.contractAddress === nft.mint)) {
+            const imageUrl = nft.image || null
             assets.push({
               id: `${address}-nft-${nft.mint}`,
               name: nft.name || `NFT #${nft.mint.slice(0, 8)}`,
@@ -230,12 +241,16 @@ export async function POST(request: NextRequest) {
               usdValue: 0,
               contractAddress: nft.mint,
               tokenId: nft.mint,
-              image: nft.image || null,
+              imageUrl: imageUrl, // Use imageUrl for consistency
+              image: imageUrl, // Keep for backward compatibility
               decimals: 0,
               chain: 'solana',
               metadata: {
                 collection: nft.collection?.name || null,
                 description: nft.description || null,
+                uri: nft.uri || null,
+                token_uri: nft.uri || nft.metadata?.uri || null, // Add token_uri
+                ...nft.metadata, // Include all metadata
               },
             })
           }

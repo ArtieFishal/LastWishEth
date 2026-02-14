@@ -331,10 +331,62 @@ export async function POST(request: NextRequest) {
                 name = `Ethscription #${ethscriptionNumber}`
               }
 
-              // Get image URL if it's an image - validate it first
+              // Get image URL - only for actual image ethscriptions
+              // Don't try to display text/JSON ethscriptions as images
               let imageUrl: string | undefined
-              if (mimetype.startsWith('image/') && contentUri) {
-                imageUrl = validateImageUrl(contentUri)
+              let textContent: string | undefined
+              
+              if (contentUri && mimetype.startsWith('image/')) {
+                // Only set imageUrl for actual image mimetypes
+                // For ethscriptions, prefer using content_uri directly if it's a data URI
+                // Otherwise use our proxy API to fetch the correct image by transaction hash
+                if (contentUri.startsWith('data:image/')) {
+                  // Use data URI directly - it's already the image data
+                  imageUrl = contentUri
+                  console.log(`[Ethscriptions API] Using image data URI directly for ethscription ${ethscriptionId}`)
+                } else if (ethscriptionId) {
+                  // Use our ethscription-image proxy API to fetch the correct image
+                  imageUrl = `/api/ethscription-image?id=${ethscriptionId}`
+                  console.log(`[Ethscriptions API] Using ethscription-image proxy for ${ethscriptionId}`)
+                } else {
+                  // Fallback: try to validate contentUri directly
+                  imageUrl = validateImageUrl(contentUri)
+                  
+                  // If validation failed but it's a data URI with image data, use it
+                  if (!imageUrl && contentUri.startsWith('data:image/')) {
+                    imageUrl = contentUri
+                    console.log(`[Ethscriptions API] Using image data URI for ethscription ${ethscriptionId}`)
+                  }
+                }
+                
+                // Log if we couldn't set imageUrl for an image mimetype
+                if (!imageUrl) {
+                  console.warn(`[Ethscriptions API] Failed to set imageUrl for ethscription ${ethscriptionId} with mimetype ${mimetype}, contentUri: ${contentUri?.substring(0, 100)}`)
+                }
+              } else if (contentUri && mimetype.startsWith('text/')) {
+                // Extract text content from data URI for text/plain ethscriptions
+                // Format: data:,text content here or data:text/plain,text content here
+                if (contentUri.startsWith('data:')) {
+                  try {
+                    // Extract text after the comma
+                    const commaIndex = contentUri.indexOf(',')
+                    if (commaIndex !== -1) {
+                      textContent = decodeURIComponent(contentUri.substring(commaIndex + 1))
+                      // Limit text content length to avoid huge strings
+                      if (textContent.length > 1000) {
+                        textContent = textContent.substring(0, 1000) + '...'
+                      }
+                    }
+                  } catch (error) {
+                    console.warn(`[Ethscriptions API] Failed to extract text content from data URI:`, error)
+                  }
+                }
+                // Explicitly don't set imageUrl for text ethscriptions
+                imageUrl = undefined
+              } else if (contentUri && !mimetype.startsWith('image/')) {
+                // Explicitly don't set imageUrl for non-image ethscriptions
+                // This prevents trying to load text/JSON as images
+                imageUrl = undefined
               }
 
               allAssets.push({
@@ -361,6 +413,7 @@ export async function POST(request: NextRequest) {
                   ethscriptionNumber: ethscriptionNumber,
                   isCreator,
                   isOwner,
+                  textContent, // Store extracted text content for text/plain ethscriptions
                   ...ethscription,
                 },
               })

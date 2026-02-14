@@ -20,8 +20,9 @@ import { Asset, Beneficiary, Allocation, UserData, QueuedWalletSession, WalletGr
 import axios from 'axios'
 import { generatePDF } from '@/lib/pdf-generator'
 import { getCurrentPricing, getPaymentAmountETH, getFormattedPrice, getTierPricing, getAllTiers, PricingTier } from '@/lib/pricing'
+import { generateReferralCode, parseReferralFromURL, validateAndResolveReferral, formatReferralLink, calculateReferralPrice, type ReferralInfo, REFERRAL_DISCOUNT_USD } from '@/lib/referrals'
 import { getUserFriendlyError } from '@/lib/errorMessages'
-import { fetchWithCache, getCached, setCached } from '@/lib/requestCache'
+import { fetchWithCache, getCached, setCached, clearCache } from '@/lib/requestCache'
 import { clearWalletConnectionsOnLoad, clearWagmiIndexedDB } from '@/lib/wallet-cleanup'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -105,12 +106,30 @@ export default function Home() {
  const [hideSpamTokens, setHideSpamTokens] = useState(true) // Default: hide spam tokens
  const [discountCode, setDiscountCode] = useState('')
  const [discountApplied, setDiscountApplied] = useState(false)
+ const [referralCode, setReferralCode] = useState<string>('')
+ const [referralInfo, setReferralInfo] = useState<ReferralInfo | null>(null)
+ const [userReferralCode, setUserReferralCode] = useState<string>('')
  const [paymentWalletAddress, setPaymentWalletAddress] = useState<string | null>(null) // First verified wallet for payment
  const [selectedTier, setSelectedTier] = useState<PricingTier>('free') // Default to free tier
  
  // Get current pricing based on selected tier - memoized to avoid recalculation
  const pricing = useMemo(() => getTierPricing(selectedTier), [selectedTier])
- const paymentAmountETH = useMemo(() => getPaymentAmountETH(selectedTier), [selectedTier])
+ const paymentAmountETH = useMemo(() => {
+   // Apply referral discount if applicable
+   if (referralInfo && referralInfo.type !== 'invalid' && pricing.usdAmount > 0) {
+     const { ethAmount } = calculateReferralPrice(pricing.usdAmount, REFERRAL_DISCOUNT_USD)
+     return ethAmount
+   }
+   return getPaymentAmountETH(selectedTier)
+ }, [selectedTier, referralInfo, pricing.usdAmount])
+ 
+ // Calculate final USD amount with referral discount
+ const finalUsdAmount = useMemo(() => {
+   if (referralInfo && referralInfo.type !== 'invalid' && pricing.usdAmount > 0) {
+     return pricing.usdAmount - REFERRAL_DISCOUNT_USD
+   }
+   return pricing.usdAmount
+ }, [referralInfo, pricing.usdAmount])
  const [selectedWalletForLoading, setSelectedWalletForLoading] = useState<string | null>(null) // Currently selected wallet for loading assets
  const [queuedSessions, setQueuedSessions] = useState<QueuedWalletSession[]>([])
  const [currentSessionWallet, setCurrentSessionWallet] = useState<string | null>(null)
@@ -161,6 +180,8 @@ export default function Home() {
  if (parsed.paymentVerified) setPaymentVerified(parsed.paymentVerified)
  if (parsed.discountCode) setDiscountCode(parsed.discountCode)
  if (parsed.discountApplied) setDiscountApplied(parsed.discountApplied)
+ if (parsed.referralCode) setReferralCode(parsed.referralCode)
+ if (parsed.userReferralCode) setUserReferralCode(parsed.userReferralCode)
  if (parsed.queuedSessions) setQueuedSessions(parsed.queuedSessions)
  if (parsed.selectedTier) setSelectedTier(parsed.selectedTier)
 
@@ -763,6 +784,42 @@ hasAutoSelectedRef.current = false
  }
  }, [isPaymentSent, sendTxHash, evmAddress, invoiceId])
 
+ // Parse referral code from URL on mount
+ useEffect(() => {
+   if (typeof window === 'undefined') return
+   const refFromURL = parseReferralFromURL()
+   if (refFromURL) {
+     setReferralCode(refFromURL)
+     // Validate and resolve referral code
+     validateAndResolveReferral(refFromURL).then(info => {
+       setReferralInfo(info)
+       if (info.type !== 'invalid') {
+         // Store in localStorage to persist across navigation
+         localStorage.setItem('lastwish_referral', refFromURL)
+       }
+     })
+   } else {
+     // Check localStorage for persisted referral
+     const stored = localStorage.getItem('lastwish_referral')
+     if (stored) {
+       setReferralCode(stored)
+       validateAndResolveReferral(stored).then(setReferralInfo)
+     }
+   }
+ }, [])
+
+ // Generate user's referral code after payment
+ useEffect(() => {
+   if (paymentVerified && evmAddress && !userReferralCode) {
+     try {
+       const code = generateReferralCode(evmAddress)
+       setUserReferralCode(code)
+     } catch (error) {
+       console.error('Error generating referral code:', error)
+     }
+   }
+ }, [paymentVerified, evmAddress, userReferralCode])
+
  // Filter spam tokens (dust, suspicious names, etc.)
  const filterSpamTokens = (assets: Asset[]): Asset[] => {
    if (!hideSpamTokens) return assets
@@ -967,9 +1024,13 @@ hasAutoSelectedRef.current = false
      // Load Ethscriptions for this wallet (only for EVM addresses)
      try {
        console.log(`[Load Assets From Wallet] Fetching ethscriptions for wallet: ${walletAddress}`)
-    // Check cache first
     const ethscriptionsCacheKey = `ethscriptions-portfolio:${walletAddress}`
-    const cachedEthscriptions = getCached<any>(ethscriptionsCacheKey)
+    // When replacing assets (new wallet), clear cache so we always get fresh per-wallet images
+    if (!append) {
+      clearCache(ethscriptionsCacheKey)
+    }
+    // Check cache first (only used when appending)
+    const cachedEthscriptions = append ? getCached<any>(ethscriptionsCacheKey) : null
     let ethscriptionsResponse: any
     if (cachedEthscriptions) {
       console.log('Using cached ethscriptions data')
@@ -1742,9 +1803,11 @@ setError('Failed to load Bitcoin assets. Please try again.')
 
  // Check queue limit
  console.log('[Save to Queue] Checking queue limit:', queuedSessions.length)
- if (queuedSessions.length >= 20) {
+ const tierInfo = getTierPricing(selectedTier)
+ const maxWallets = tierInfo.maxWallets || Infinity
+ if (queuedSessions.length >= maxWallets) {
    console.log('[Save to Queue] ❌ Queue limit reached')
-   setError('Maximum 20 wallets allowed. Please remove a queued wallet first.')
+   setError(`Maximum ${maxWallets} wallets allowed. Please remove a queued wallet first.`)
    return
  }
 
@@ -1957,9 +2020,11 @@ setError('Failed to load Bitcoin assets. Please try again.')
    }
 
    if (!connectedEVMAddresses.has(addr)) {
-     // Check wallet limit (20 wallets max including queued)
-     if (connectedEVMAddresses.size + connectedSolanaAddresses.size + queuedSessions.length >= 20) {
-       setError('Maximum 20 wallets allowed (including queued). Please disconnect a wallet or remove from queue first.')
+     // Check wallet limit (tier-based max including queued)
+     const tierInfo = getTierPricing(selectedTier)
+     const maxWallets = tierInfo.maxWallets || Infinity
+     if (connectedEVMAddresses.size + connectedSolanaAddresses.size + queuedSessions.length >= maxWallets) {
+       setError(`Maximum ${maxWallets} wallets allowed (including queued). Please disconnect a wallet or remove from queue first.`)
        return
      }
 
@@ -2071,9 +2136,11 @@ setError('Failed to load Bitcoin assets. Please try again.')
    if (!addr) return
 
    if (!connectedSolanaAddresses.has(addr)) {
-     // Check wallet limit (20 wallets max including queued)
-     if (connectedEVMAddresses.size + connectedSolanaAddresses.size + queuedSessions.length >= 20) {
-       setError('Maximum 20 wallets allowed (including queued). Please disconnect a wallet or remove from queue first.')
+     // Check wallet limit (tier-based max including queued)
+     const tierInfo = getTierPricing(selectedTier)
+     const maxWallets = tierInfo.maxWallets || Infinity
+     if (connectedEVMAddresses.size + connectedSolanaAddresses.size + queuedSessions.length >= maxWallets) {
+       setError(`Maximum ${maxWallets} wallets allowed (including queued). Please disconnect a wallet or remove from queue first.`)
        return
      }
 
@@ -3118,36 +3185,12 @@ assets={(() => {
     }
     
     filtered = assetsToShow.filter(a => {
-      if (a.type === 'ethscription') {
-        // For ethscriptions, be more lenient - check walletAddress, creator, and currentOwner
-        const assetWalletLower = a.walletAddress?.toLowerCase()
-        const creator = a.metadata?.creator?.toLowerCase()
-        const currentOwner = a.metadata?.currentOwner?.toLowerCase()
-        
-        const matches = assetWalletLower === selectedWalletLower ||
-                       assetWalletLower === selectedWalletResolved ||
-                       creator === selectedWalletLower ||
-                       creator === selectedWalletResolved ||
-                       currentOwner === selectedWalletLower ||
-                       currentOwner === selectedWalletResolved
-        
-        if (!matches) {
-          console.log(`[Assets Step] Ethscription filtered out:`, {
-            id: a.id,
-            walletAddress: a.walletAddress,
-            creator,
-            currentOwner,
-            selectedWallet: selectedWalletForLoading,
-            selectedWalletResolved
-          })
-        }
-        return matches
-      } else {
-        // For other assets, use normal matching
-        const assetWalletLower = a.walletAddress?.toLowerCase()
-        return assetWalletLower === selectedWalletLower || 
-               assetWalletLower === selectedWalletResolved
-      }
+      // Filter by walletAddress only: show only assets that were loaded for this wallet.
+      // For ethscriptions, do NOT match on creator/currentOwner - an ethscription is
+      // owned by one wallet; we set walletAddress to the queried address when we load.
+      const assetWalletLower = a.walletAddress?.toLowerCase()
+      return assetWalletLower === selectedWalletLower ||
+             assetWalletLower === selectedWalletResolved
     })
     const ethscriptionCountAfter = filtered.filter(a => a.type === 'ethscription').length
     console.log(`[Assets Step] After wallet filter (${selectedWalletForLoading}): ${filtered.length} total, ${ethscriptionCountAfter} ethscriptions`)
@@ -3852,7 +3895,7 @@ Your current setup exceeds the selected tier limits. You can:
 {selectedTier === 'free' ? (
 'Free tier selected - no payment required'
 ) : (
-`Selected plan: ${selectedTier === 'standard' ? 'Standard' : 'Premium'} - $${pricing.usdAmount.toFixed(2)}`
+`Selected plan: ${selectedTier === 'standard' ? 'Standard' : 'Premium'} - $${finalUsdAmount.toFixed(2)}${referralInfo && referralInfo.type !== 'invalid' ? ` ($${REFERRAL_DISCOUNT_USD.toFixed(2)} off with referral!)` : ''}`
 )}
 </p>
 
@@ -3871,6 +3914,13 @@ Your current setup exceeds the selected tier limits. You can:
 <div className="bg-green-500/20 backdrop-blur-xl border-2 border-green-500/30 rounded-lg p-4 mb-6 border-glow">
 <p className="text-green-300 font-semibold mb-2">✓ Discount Code Applied!</p>
 <p className="text-green-300 text-sm">Tier limits bypassed - you have unlimited access with the discount code.</p>
+</div>
+)}
+
+{referralInfo && referralInfo.type !== 'invalid' && (
+<div className="bg-purple-500/20 backdrop-blur-xl border-2 border-purple-500/30 rounded-lg p-4 mb-6 border-glow">
+<p className="text-purple-300 font-semibold mb-2">✓ Referral Code Applied: {referralInfo.code}</p>
+<p className="text-purple-300 text-sm">${REFERRAL_DISCOUNT_USD.toFixed(2)} discount will be applied at checkout!</p>
 </div>
 )}
 
@@ -3905,6 +3955,38 @@ Apply
 )}
 </div>
 
+{(!referralInfo || referralInfo.type === 'invalid') && (
+<div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 backdrop-blur-xl border-2 border-blue-500/30 rounded-lg p-6 mb-6 border-glow">
+<label className="block text-sm font-semibold text-bright mb-3">
+Referral Code (Optional) - Save $20!
+</label>
+<div className="flex gap-2 mb-3">
+<input
+type="text"
+value={referralCode}
+onChange={async (e) => {
+setReferralCode(e.target.value)
+setError(null)
+if (e.target.value.trim()) {
+const info = await validateAndResolveReferral(e.target.value.trim())
+setReferralInfo(info)
+} else {
+setReferralInfo(null)
+}
+}}
+className="flex-1 rounded-lg border-2 border-white/20 bg-white/5 backdrop-blur-xl p-3 text-bright focus:border-blue-500 focus:outline-none transition-colors placeholder:text-gray-500"
+placeholder="Enter wallet address, REF- code, or ENS name"
+/>
+</div>
+{referralInfo?.type === 'invalid' && referralCode && (
+<p className="text-red-400 text-sm mt-2">Invalid referral code</p>
+)}
+<p className="text-xs text-bright-soft mt-2">
+Enter a wallet address (0x...), REF- code, or ENS name to get $20 off your purchase!
+</p>
+</div>
+)}
+
 <div className="flex gap-4">
  <button
  onClick={() => setStep('details')}
@@ -3922,9 +4004,14 @@ try {
 const response = await axios.post('/api/invoice/create', {
 tier: selectedTier,
 discountCode: discountCode.trim() || undefined,
+referralCode: referralCode.trim() || undefined,
 })
 setInvoiceId(response.data.invoice.id)
 setDiscountApplied(response.data.discountApplied)
+if (response.data.referralDiscountApplied) {
+// Referral discount applied - invoice already has discounted amount
+console.log('Referral discount applied:', response.data.invoice.referralDiscountAmount)
+}
 if (response.data.discountApplied) {
 setPaymentVerified(true)
 setStep('download')
@@ -3939,13 +4026,13 @@ className="flex-1 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-w
  >
 {selectedTier === 'free' ? (
 'Continue to Download (Free)'
-) : selectedTier === 'standard' && pricing.isSpecial ? (
-<span className="inline-flex items-center gap-2">
-<span>Pay ${pricing.usdAmount.toFixed(2)}</span>
-<span className="line-through text-sm">${pricing.regularPrice?.toFixed(2)}</span>
-</span>
 ) : (
-`Pay $${pricing.usdAmount.toFixed(2)}`
+<span className="inline-flex items-center gap-2">
+<span>Pay ${finalUsdAmount.toFixed(2)}</span>
+{referralInfo && referralInfo.type !== 'invalid' && (
+<span className="text-sm line-through text-gray-400">${pricing.usdAmount.toFixed(2)}</span>
+)}
+</span>
 )}
  </button>
  </div>
@@ -4278,6 +4365,40 @@ className="flex-1 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-w
  Your document has been generated and is ready to download
  </p>
  </div>
+ {userReferralCode && (
+ <div className="bg-purple-50 border-2 border-purple-300 rounded-lg p-6 mb-6">
+ <h3 className="text-lg font-bold text-purple-900 mb-2">
+ 🎁 Your Referral Code
+ </h3>
+ <p className="text-purple-700 mb-4">
+ Share this code and earn rewards when others use it!
+ </p>
+ <div className="bg-white p-4 rounded border-2 border-purple-200 mb-4">
+ <code className="text-2xl font-mono font-bold text-purple-900">
+ {userReferralCode}
+ </code>
+ </div>
+ <p className="text-sm text-purple-600 mb-2">Share this link:</p>
+ <div className="flex gap-2">
+ <input
+ type="text"
+ readOnly
+ value={formatReferralLink(userReferralCode)}
+ className="flex-1 rounded border p-2 text-sm"
+ />
+ <button
+ onClick={() => {
+ navigator.clipboard.writeText(formatReferralLink(userReferralCode))
+ setError(null)
+ // Show success message
+ }}
+ className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+ >
+ Copy
+ </button>
+ </div>
+ </div>
+ )}
  <button
  onClick={handleDownloadPDF}
  disabled={generatingPDF}

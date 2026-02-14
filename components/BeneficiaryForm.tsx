@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Beneficiary } from '@/types'
+import { Beneficiary, CharityOption } from '@/types'
 import { resolveBlockchainName, reverseResolveAddress } from '@/lib/name-resolvers'
+import { CharitySelector } from '@/components/CharitySelector'
+import { charities } from '@/lib/charities'
 
 interface BeneficiaryFormProps {
   beneficiaries: Beneficiary[]
@@ -23,6 +25,60 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
   const [ensName, setEnsName] = useState<string | null>(null)
   const [resolvedAddress, setResolvedAddress] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [selectedCharityId, setSelectedCharityId] = useState<string | null>(null)
+
+  // Handle charity selection - autofill beneficiary fields
+  const handleCharitySelect = (charity: CharityOption | null) => {
+    if (!charity) {
+      setSelectedCharityId(null)
+      return
+    }
+
+    setSelectedCharityId(charity.id)
+
+    // For custom charity, clear fields for manual entry
+    if (charity.id === 'custom_charity') {
+      setName('')
+      setPhone('')
+      setEmail('')
+      setAddress('')
+      setCity('')
+      setState('')
+      setZipCode('')
+      setNotes('')
+      return
+    }
+
+    // Autofill beneficiary form fields from charity data
+    // Populate all publicly available and verifiable information
+    setName(charity.name)
+    
+    // Populate contact information if available
+    if (charity.phone) {
+      setPhone(charity.phone)
+    }
+    if (charity.email) {
+      setEmail(charity.email)
+    }
+    if (charity.address) {
+      setAddress(charity.address)
+    }
+    if (charity.city) {
+      setCity(charity.city)
+    }
+    if (charity.state) {
+      setState(charity.state)
+    }
+    if (charity.zipCode) {
+      setZipCode(charity.zipCode)
+    }
+    
+    // Persist snapshot of selected charity data in notes field
+    // This includes EIN, mission category, and donation URLs for executor reference
+    const charityInfo = `Charity: ${charity.name}\nMission: ${charity.missionCategory}${charity.ein ? `\nEIN: ${charity.ein}` : ''}\nWebsite: ${charity.websiteURL}\nDonation: ${charity.donationURL}${charity.cryptoDonationURL ? `\nCrypto Donation: ${charity.cryptoDonationURL}` : ''}${charity.notes ? `\nNotes: ${charity.notes}` : ''}`
+    
+    setNotes(charityInfo)
+  }
 
   // Format phone number with automatic dashes (865-851-2242)
   const formatPhoneNumber = (value: string) => {
@@ -174,6 +230,23 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
     setNotes(beneficiary.notes || '')
     setEnsName(beneficiary.ensName || null)
     setResolvedAddress(beneficiary.walletAddress || null)
+    
+    // If this is a charity beneficiary, restore the charity selection
+    // Check if notes contain charity information
+    if (beneficiary.notes && beneficiary.notes.includes('Charity:')) {
+      const charityMatch = beneficiary.notes.match(/Charity:\s*([^\n]+)/)
+      if (charityMatch) {
+        const charityName = charityMatch[1].trim()
+        // Find matching charity by name
+        const matchingCharity = charities.find(c => c.name === charityName)
+        if (matchingCharity) {
+          setSelectedCharityId(matchingCharity.id)
+        }
+      }
+    } else {
+      // Not a charity, clear charity selection
+      setSelectedCharityId(null)
+    }
   }
 
   const handleSaveEdit = () => {
@@ -230,6 +303,13 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
     setNotes('')
     setEnsName(null)
     setResolvedAddress(null)
+    setSelectedCharityId(null)
+  }
+
+  // Reset charity selection when beneficiary is added
+  const handleAddWithCharityReset = () => {
+    handleAdd()
+    setSelectedCharityId(null)
   }
 
   return (
@@ -291,7 +371,7 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
           </div>
         ) : (
         <button
-          onClick={handleAdd}
+          onClick={handleAddWithCharityReset}
           disabled={!name.trim() || beneficiaries.length >= 10}
           className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
         >
@@ -381,6 +461,20 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
             onChange={(e) => setNotes(e.target.value)}
             className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
             placeholder="Additional info to find them"
+          />
+        </div>
+      </div>
+
+      {/* Charity section - visible card matching app theme */}
+      <div className="mt-6 pt-5 border-t border-white/10">
+        <div className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 p-4">
+          <h4 className="text-base font-semibold text-white mb-1">Add a charity as beneficiary</h4>
+          <p className="text-sm text-white/70 mb-3">Select a charity to auto-fill the form above, then click Add.</p>
+          <CharitySelector
+            onSelectCharity={handleCharitySelect}
+            selectedCharityId={selectedCharityId || undefined}
+            variant="dark"
+            className="text-sm"
           />
         </div>
       </div>

@@ -125,7 +125,11 @@ export async function fetchNFTMetadata(
     }
 
     if (!response || !response.ok) {
-      console.warn(`[NFT Metadata] Failed to fetch metadata from ${tokenUri}: ${response?.status || 'network error'}`)
+      // Don't log CORS/network errors as warnings - they're expected for some external APIs
+      // Only log if it's a server error (5xx) or unexpected status
+      if (response && response.status >= 500) {
+        console.warn(`[NFT Metadata] Server error fetching metadata from ${tokenUri}: ${response.status}`)
+      }
       return null
     }
 
@@ -169,8 +173,12 @@ export async function fetchNFTMetadata(
       console.warn(`[NFT Metadata] Failed to parse JSON from ${tokenUri}:`, parseError)
       return null
     }
-  } catch (error) {
-    console.error(`[NFT Metadata] Error fetching metadata from ${tokenUri}:`, error)
+  } catch (error: any) {
+    // Don't log CORS/network errors as errors - they're expected for some external APIs
+    // Only log if it's not a network/CORS error
+    if (error?.name !== 'AbortError' && !error?.message?.includes('Failed to fetch') && !error?.message?.includes('CORS')) {
+      console.warn(`[NFT Metadata] Error fetching metadata from ${tokenUri}:`, error.message || error)
+    }
     return null
   }
 }
@@ -181,6 +189,11 @@ export function getImageUrlWithIPFSFallback(imageUrl?: string): string | undefin
 
   // Already a valid HTTP URL
   if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl
+  }
+
+  // Relative URL (like /api/ordinal-image) - return as-is, browser will resolve it
+  if (imageUrl.startsWith('/')) {
     return imageUrl
   }
 

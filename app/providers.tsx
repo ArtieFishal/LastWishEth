@@ -196,12 +196,29 @@ export function Providers({ children }: { children: React.ReactNode }) {
           arg.includes('chrome.runtime.sendMessage() called from a webpage') ||
           arg.includes('must specify an Extension ID') ||
           arg.includes('chrome-extension://') ||
-          arg.includes('inpage.js')
+          arg.includes('inpage.js') ||
+          arg.includes('evmAsk.js') ||
+          arg.includes('Cannot redefine property: ethereum') ||
+          (arg.includes('Cannot redefine property') && arg.includes('ethereum'))
         ))) {
           return
         }
         // Skip errors from specific extension IDs (common wallet extensions)
         if (args.some(arg => typeof arg === 'string' && arg.includes('opfgelmcmbiajamepnmloijbpoleiama'))) {
+          return
+        }
+        // Skip WalletConnect "Proposal expired" errors (expected when user takes too long)
+        if (args.some(arg => typeof arg === 'string' && (
+          arg.includes('Proposal expired') ||
+          arg.includes('proposal expired')
+        ))) {
+          return
+        }
+        // Skip WalletConnect connection errors that are expected
+        if (args.some(arg => 
+          (typeof arg === 'string' && arg.includes('Proposal expired')) ||
+          (arg instanceof Error && arg.message?.includes('Proposal expired'))
+        )) {
           return
         }
         originalError(...args)
@@ -217,13 +234,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
       // Also catch unhandled errors from window.onerror (catches extension errors)
       const handleWindowError = (event: ErrorEvent) => {
+        const message = event.message || ''
+        const filename = event.filename || ''
+        
         // Skip chrome extension errors
         if (
-          event.message?.includes('chrome.runtime.sendMessage') ||
-          event.message?.includes('Extension ID') ||
-          event.message?.includes('chrome-extension://') ||
-          event.filename?.includes('chrome-extension://') ||
-          event.filename?.includes('inpage.js')
+          message.includes('chrome.runtime.sendMessage') ||
+          message.includes('Extension ID') ||
+          message.includes('chrome-extension://') ||
+          filename.includes('chrome-extension://') ||
+          filename.includes('inpage.js') ||
+          filename.includes('evmAsk.js') ||
+          message.includes('Cannot redefine property: ethereum') ||
+          message.includes('Cannot redefine property') && message.includes('ethereum')
         ) {
           event.preventDefault()
           return true // Suppress the error
@@ -233,15 +256,33 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
       window.addEventListener('error', handleWindowError)
 
-      // Also catch unhandled promise rejections from extensions
+      // Also catch unhandled promise rejections from extensions and WalletConnect
       const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
         const reason = event.reason?.toString() || ''
+        const errorMessage = event.reason?.message || ''
+        
+        // Suppress wallet extension errors
         if (
           reason.includes('chrome.runtime.sendMessage') ||
           reason.includes('Extension ID') ||
-          reason.includes('chrome-extension://')
+          reason.includes('chrome-extension://') ||
+          reason.includes('evmAsk.js') ||
+          errorMessage.includes('Cannot redefine property: ethereum')
         ) {
           event.preventDefault()
+          return
+        }
+        
+        // Suppress WalletConnect "Proposal expired" errors (expected when user takes too long)
+        if (
+          reason.includes('Proposal expired') ||
+          errorMessage.includes('Proposal expired') ||
+          reason.includes('proposal expired') ||
+          errorMessage.includes('proposal expired')
+        ) {
+          // This is expected - user took too long to approve. Don't show error.
+          event.preventDefault()
+          return
         }
       }
 
@@ -267,3 +308,4 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </WagmiProvider>
   )
 }
+

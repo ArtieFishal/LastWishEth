@@ -8,6 +8,15 @@ interface WalletConnectProps {
   onBitcoinConnect?: (address: string, provider?: string, ordinalsAddress?: string) => void
   onEvmConnect?: (address: string, provider?: string) => void
   onSolanaConnect?: (address: string, provider?: string) => void
+  /** Optional verification callback (e.g. inventory page). */
+  onVerify?: (address: string) => Promise<boolean | void> | void
+  connectedEVMAddresses?: Set<string>
+  connectedSolanaAddresses?: Set<string>
+  verifiedAddresses?: Set<string>
+  btcAddress?: string | null
+  walletNames?: Record<string, string>
+  resolvedEnsNames?: Record<string, string>
+  walletProviders?: Record<string, string>
 }
 
 // Wallet configuration with colors and icons

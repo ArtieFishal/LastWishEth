@@ -108,3 +108,23 @@ export interface Invoice {
   createdAt: string
 }
 
+export interface CharityOption {
+  id: string // stable key
+  name: string
+  ein: string | null
+  missionCategory: string
+  cryptoSupport: boolean | null // Derived from cryptoDonationURL presence
+  websiteURL: string
+  donationURL: string
+  cryptoDonationURL?: string | undefined
+  logoAssetPath: string // local /public path
+  logoSourceURL: string // official source
+  notes?: string // optional
+  // Publicly available contact information
+  phone?: string // Public phone number
+  email?: string // Public contact email
+  address?: string // Street address
+  city?: string
+  state?: string
+  zipCode?: string
+}

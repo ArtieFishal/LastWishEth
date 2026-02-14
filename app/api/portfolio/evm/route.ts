@@ -198,6 +198,7 @@ export async function POST(request: NextRequest) {
                   ? (nftsData.result || nftsData.data || [])
                   : [])
               if (Array.isArray(nfts)) {
+                console.log(`[EVM Portfolio API] Found ${nfts.length} NFTs on ${chain} for ${address}`)
                 for (const nft of nfts) {
                   if (nft && typeof nft === 'object' && nft.token_address && nft.token_id) {
                     // Extract image URL from metadata
@@ -209,42 +210,87 @@ export async function POST(request: NextRequest) {
                       metadata = nft.normalized_metadata
                       imageUrl = nft.normalized_metadata.image || 
                                 nft.normalized_metadata.image_url || 
-                                nft.normalized_metadata.imageUrl
+                                nft.normalized_metadata.imageUrl ||
+                                nft.normalized_metadata.animation_url // Add animation_url as fallback
                     }
                     // Fallback to metadata field
-                    if (!imageUrl && nft.metadata && typeof nft.metadata === 'object') {
-                      metadata = nft.metadata
-                      imageUrl = nft.metadata.image || 
-                                nft.metadata.image_url || 
-                                nft.metadata.imageUrl
+                    if (!imageUrl && nft.metadata) {
+                      // If metadata is a string, try to parse it
+                      if (typeof nft.metadata === 'string') {
+                        try {
+                          metadata = JSON.parse(nft.metadata)
+                        } catch (e) {
+                          console.warn(`[EVM Portfolio API] Failed to parse metadata string for ${chain} NFT ${nft.token_id}:`, e)
+                          metadata = {}
+                        }
+                      } else if (typeof nft.metadata === 'object') {
+                        metadata = nft.metadata
+                      }
+                      
+                      if (metadata) {
+                        imageUrl = imageUrl || 
+                                  metadata.image || 
+                                  metadata.image_url || 
+                                  metadata.imageUrl ||
+                                  metadata.animation_url
+                      }
                     }
+                    
                     // Store token_uri in metadata for client-side fetching if image not available
                     if (!metadata) {
                       metadata = {}
                     }
-                    if (nft.token_uri) {
-                      metadata.token_uri = nft.token_uri
+                    
+                    // Always include token_uri for client-side metadata fetching
+                    const tokenUri = nft.token_uri || nft.uri || nft.metadata_uri || metadata.token_uri
+                    if (tokenUri) {
+                      metadata.token_uri = tokenUri
                     }
                     
-                    allAssets.push({
+                    // Extract better name
+                    const nftName = nft.name || 
+                                   nft.token_name || 
+                                   metadata.name ||
+                                   `NFT #${nft.token_id}` || 
+                                   'Unnamed NFT'
+                    
+                    const nftAsset = {
                       id: `${chain}-${address}-${nft.token_address}-${nft.token_id}`,
                       chain,
                       type: nft.contract_type === 'ERC1155' ? 'erc1155' : 'erc721',
                       symbol: nft.symbol || 'NFT',
-                      name: nft.name || 'Unnamed NFT',
-                      balance: '1',
-                      balanceFormatted: '1',
+                      name: nftName,
+                      balance: nft.amount || '1',
+                      balanceFormatted: nft.amount || '1',
                       contractAddress: nft.token_address,
                       tokenId: nft.token_id,
-                      collectionName: nft.name,
+                      collectionName: nft.name || nft.collection_name || metadata.collection,
                       walletAddress: address, // Track which wallet this asset belongs to
                       imageUrl, // NFT image URL (may be undefined, will be fetched client-side)
                       metadata: {
                         ...metadata,
-                        token_uri: nft.token_uri, // Include token_uri for client-side metadata fetching
+                        token_uri: tokenUri,
+                        collection: nft.collection_name || metadata.collection,
+                        description: metadata.description || nft.description,
+                        attributes: metadata.attributes || metadata.traits,
                         ...nft, // Include all NFT data for reference
                       },
-                    })
+                    }
+                    
+                    allAssets.push(nftAsset)
+                    
+                    // Log for debugging ApeChain specifically
+                    if (chain === 'apechain') {
+                      console.log(`[EVM Portfolio API] ApeChain NFT found:`, {
+                        name: nftAsset.name,
+                        contract: nft.token_address,
+                        tokenId: nft.token_id,
+                        hasImage: !!imageUrl,
+                        hasTokenUri: !!tokenUri,
+                        imageUrl: imageUrl?.substring(0, 100),
+                        tokenUri: tokenUri?.substring(0, 100),
+                      })
+                    }
                   }
                 }
               }
