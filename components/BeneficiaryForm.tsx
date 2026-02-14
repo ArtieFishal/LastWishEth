@@ -465,14 +465,18 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
         </div>
       </div>
 
-      {/* Charity Selector - Optional feature, placed below manual form */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <div className="text-xs text-gray-500 mb-2 italic">Optional: Quick-add a charity beneficiary</div>
-        <CharitySelector
-          onSelectCharity={handleCharitySelect}
-          selectedCharityId={selectedCharityId || undefined}
-          className="text-sm"
-        />
+      {/* Charity section - visible card matching app theme */}
+      <div className="mt-6 pt-5 border-t border-white/10">
+        <div className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 p-4">
+          <h4 className="text-base font-semibold text-white mb-1">Add a charity as beneficiary</h4>
+          <p className="text-sm text-white/70 mb-3">Select a charity to auto-fill the form above, then click Add.</p>
+          <CharitySelector
+            onSelectCharity={handleCharitySelect}
+            selectedCharityId={selectedCharityId || undefined}
+            variant="dark"
+            className="text-sm"
+          />
+        </div>
       </div>
     </div>
   )

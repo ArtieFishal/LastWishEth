@@ -8,6 +8,8 @@ interface CharitySelectorProps {
   onSelectCharity: (charity: CharityOption | null) => void
   selectedCharityId?: string | null
   className?: string
+  /** Match app dark/purple theme when used in beneficiaries section */
+  variant?: 'default' | 'dark'
 }
 
 /**
@@ -22,10 +24,12 @@ interface CharitySelectorProps {
 export function CharitySelector({ 
   onSelectCharity, 
   selectedCharityId,
-  className = '' 
+  className = '',
+  variant = 'default',
 }: CharitySelectorProps) {
   const [selectedId, setSelectedId] = useState<string>(selectedCharityId || '')
   const selectedCharity = selectedId ? charities.find(c => c.id === selectedId) : null
+  const isDark = variant === 'dark'
 
   // Sync internal state when prop changes
   useEffect(() => {
@@ -58,13 +62,17 @@ export function CharitySelector({
   return (
     <div className={`space-y-2 ${className}`}>
       <div>
-        <label className="block text-xs font-medium text-gray-900 mb-1">
+        <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-white/90' : 'text-gray-900'}`}>
           Quick-add Charity (Optional)
         </label>
         <select
           value={selectedId}
           onChange={handleChange}
-          className="w-full rounded-lg border border-gray-300 p-1.5 text-xs text-gray-900 focus:border-blue-400 focus:outline-none bg-white"
+          className={`w-full rounded-lg border p-2.5 text-sm focus:outline-none focus:ring-2 ${
+            isDark
+              ? 'border-white/20 bg-white/10 text-white focus:ring-purple-500/50 focus:border-purple-500/50 [&>option]:bg-gray-900 [&>option]:text-white'
+              : 'border-gray-300 text-gray-900 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 bg-white'
+          }`}
         >
           <option value="">-- Select a charity --</option>
           {charities.map((charity) => (
@@ -75,14 +83,16 @@ export function CharitySelector({
         </select>
       </div>
 
-      {/* Show selected charity info with crypto badge - compact version */}
+      {/* Show selected charity info with crypto badge */}
       {selectedCharity && (
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5 space-y-1.5 text-xs">
+        <div className={`rounded-lg border p-3 space-y-2 text-xs ${
+          isDark ? 'bg-white/5 border-white/20' : 'bg-gray-50 border-gray-200'
+        }`}>
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h4 className="font-semibold text-black text-sm">{selectedCharity.name}</h4>
+              <h4 className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-black'}`}>{selectedCharity.name}</h4>
               {selectedCharity.missionCategory && (
-                <p className="text-xs text-gray-800 mt-0.5">{selectedCharity.missionCategory}</p>
+                <p className={`text-xs mt-0.5 ${isDark ? 'text-white/70' : 'text-gray-800'}`}>{selectedCharity.missionCategory}</p>
               )}
             </div>
             {selectedCharity.logoAssetPath && (
@@ -99,14 +109,16 @@ export function CharitySelector({
             )}
           </div>
 
-          {/* Crypto Support Badge - smaller */}
+          {/* Crypto Support Badge */}
           {selectedCharity.cryptoSupport === true && selectedCharity.cryptoDonationURL && (
-            <div className="pt-1.5 border-t border-gray-200">
+            <div className={`pt-2 border-t ${isDark ? 'border-white/20' : 'border-gray-200'}`}>
               <a
                 href={selectedCharity.cryptoDonationURL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-900 rounded text-xs font-medium hover:bg-green-100 transition-colors"
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                  isDark ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30' : 'bg-green-50 text-green-900 hover:bg-green-100'
+                }`}
               >
                 <span>✓</span>
                 <span>Crypto Supported</span>
@@ -115,12 +127,14 @@ export function CharitySelector({
           )}
 
           {selectedCharity.cryptoSupport === false && (
-            <div className="pt-1.5 border-t border-gray-200">
+            <div className={`pt-2 border-t ${isDark ? 'border-white/20' : 'border-gray-200'}`}>
               <a
                 href={selectedCharity.donationURL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-50 text-yellow-900 rounded text-xs font-medium hover:bg-yellow-100 transition-colors"
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                  isDark ? 'bg-amber-500/20 text-amber-200 hover:bg-amber-500/30' : 'bg-yellow-50 text-yellow-900 hover:bg-yellow-100'
+                }`}
               >
                 <span>ℹ️</span>
                 <span>Fiat Only</span>
@@ -128,14 +142,14 @@ export function CharitySelector({
             </div>
           )}
 
-          {/* Links - smaller */}
+          {/* Links */}
           <div className="flex flex-wrap gap-2 pt-1">
             {selectedCharity.websiteURL && (
               <a
                 href={selectedCharity.websiteURL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                className={`text-xs underline ${isDark ? 'text-purple-300 hover:text-purple-200' : 'text-blue-600 hover:text-blue-800'}`}
               >
                 Website
               </a>
@@ -145,7 +159,7 @@ export function CharitySelector({
                 href={selectedCharity.donationURL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                className={`text-xs underline ${isDark ? 'text-purple-300 hover:text-purple-200' : 'text-blue-600 hover:text-blue-800'}`}
               >
                 Donate
               </a>
