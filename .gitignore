@@ -30,8 +30,16 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
+!.env.example
+!.env.sample
+!.env.template
+
+# local config and editor state
+*.local
+.vscode/
+.idea/
 
 # vercel
 .vercel
@@ -40,8 +48,33 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Local Netlify folder
+# build caches and local platform output
 .netlify
+.turbo/
+.cache/
+
+# wallet, key, and secret material
+*.key
+*.p12
+*.pfx
+*.keystore
+*.wallet
+*.seed
+*.mnemonic
+keystore/
+wallets/
+
+# backups and generated mock/export output
+*.backup
+*.old
+*.orig
+*.rej
+*.bak
+*.tmp
+*.temp
+backups/
+mock-output/
+public/mock/
 
 # Cursor IDE development files
 .cursor/
