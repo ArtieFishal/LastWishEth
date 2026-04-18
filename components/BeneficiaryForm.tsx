@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Beneficiary } from '@/types'
 import { resolveBlockchainName, reverseResolveAddress } from '@/lib/name-resolvers'
+import { isSupportedWalletAddress, looksLikeBlockchainName, normalizeWalletAddress } from '@/lib/address-utils'
 
 interface BeneficiaryFormProps {
   beneficiaries: Beneficiary[]
@@ -19,7 +20,7 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
   const [state, setState] = useState('')
   const [zipCode, setZipCode] = useState('')
   const [notes, setNotes] = useState('')
-  const [resolvingEns, setResolvingEns] = useState(false)
+  const [resolvingName, setResolvingName] = useState(false)
   const [ensName, setEnsName] = useState<string | null>(null)
   const [resolvedAddress, setResolvedAddress] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -58,7 +59,7 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
       
       const input = walletAddress.trim()
       
-      setResolvingEns(true)
+      setResolvingName(true)
       try {
         // Try unified blockchain name resolver first
         const resolved = await resolveBlockchainName(input)
@@ -71,7 +72,7 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
         }
         
         // If not a name, try reverse lookup if it's an address
-        if (input.startsWith('0x') && input.length === 42) {
+        if (isSupportedWalletAddress(input)) {
           // Reverse lookup: address -> name across all systems
           const reverseResolved = await reverseResolveAddress(input)
           if (reverseResolved) {
@@ -83,9 +84,12 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
         }
         
         // Fallback: if it's an address, just use it
-        if (input.startsWith('0x') && input.length === 42) {
+        if (isSupportedWalletAddress(input)) {
             setEnsName(null)
-            setResolvedAddress(input.toLowerCase())
+            setResolvedAddress(normalizeWalletAddress(input))
+        } else if (looksLikeBlockchainName(input)) {
+          setEnsName(input)
+          setResolvedAddress(null)
         } else {
           // Not a valid name or address
           setEnsName(null)
@@ -93,10 +97,10 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
         }
       } catch (error) {
         console.error('Error resolving name:', error)
-        setEnsName(null)
+        setEnsName(looksLikeBlockchainName(input) ? input : null)
         setResolvedAddress(null)
       } finally {
-        setResolvingEns(false)
+        setResolvingName(false)
       }
     }
     
@@ -120,12 +124,13 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
     if (walletAddress.trim()) {
       const resolved = resolvedAddress || walletAddress.trim()
       
-      // Validate address format only if provided
-      if (resolved.startsWith('0x') && resolved.length === 42) {
-        finalAddress = resolved.toLowerCase()
-      } else {
-        alert('Invalid wallet address. Please enter a valid Ethereum address (0x...) or ENS name (.eth), or leave it blank')
+      if (isSupportedWalletAddress(resolved)) {
+        finalAddress = normalizeWalletAddress(resolved)
+      } else if (!looksLikeBlockchainName(walletAddress)) {
+        alert('Invalid wallet address. Please enter a valid wallet address or supported blockchain name, or leave it blank')
         return
+      } else {
+        finalAddress = undefined
       }
     }
 
@@ -187,11 +192,13 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
     if (walletAddress.trim()) {
       const resolved = resolvedAddress || walletAddress.trim()
       
-      if (resolved.startsWith('0x') && resolved.length === 42) {
-        finalAddress = resolved.toLowerCase()
-      } else {
-        alert('Invalid wallet address. Please enter a valid Ethereum address (0x...) or ENS name (.eth), or leave it blank')
+      if (isSupportedWalletAddress(resolved)) {
+        finalAddress = normalizeWalletAddress(resolved)
+      } else if (!looksLikeBlockchainName(walletAddress)) {
+        alert('Invalid wallet address. Please enter a valid wallet address or supported blockchain name, or leave it blank')
         return
+      } else {
+        finalAddress = undefined
       }
     }
 
@@ -257,8 +264,8 @@ export function BeneficiaryForm({ beneficiaries, onBeneficiariesChange }: Benefi
             className="w-full rounded-lg border border-gray-300 p-2 text-sm font-mono focus:border-blue-500 focus:outline-none"
             placeholder="0x... or name.eth"
           />
-          {resolvingEns && (
-            <p className="text-xs text-gray-500 mt-1">Resolving ENS...</p>
+          {resolvingName && (
+            <p className="text-xs text-gray-500 mt-1">Resolving blockchain name...</p>
           )}
           {ensName && resolvedAddress && (
             <div className="mt-1 text-sm text-green-600">

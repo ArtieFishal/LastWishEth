@@ -1,10 +1,11 @@
-import { createPublicClient, http, isAddress } from 'viem'
+import { createPublicClient, http } from 'viem'
 import { mainnet } from 'viem/chains'
+import { getAddressLookupKey, isEvmAddress, isSolanaAddress, isSupportedWalletAddress } from './address-utils'
 
 export interface ResolvedName {
   address: string
   name: string
-  resolver: 'ens' | 'sns' | 'unstoppable' | 'spaceid' | 'lens' | 'farcaster' | 'unknown'
+  resolver: 'ens' | 'sns' | 'bns' | 'unstoppable' | 'spaceid' | 'lens' | 'farcaster' | 'unknown'
 }
 
 /**
@@ -14,43 +15,48 @@ export interface ResolvedName {
 export async function resolveBlockchainName(name: string): Promise<ResolvedName | null> {
   if (!name || typeof name !== 'string') return null
   
-  const trimmed = name.trim().toLowerCase()
+  const trimmed = name.trim()
+  const normalizedName = trimmed.toLowerCase()
   
   // If it's already an address, return it
-  if (isAddress(trimmed)) {
+  if (isSupportedWalletAddress(trimmed)) {
     return {
-      address: trimmed,
+      address: getAddressLookupKey(trimmed),
       name: trimmed,
       resolver: 'unknown'
     }
   }
 
   // Detect naming system from TLD
-  if (trimmed.endsWith('.eth') || trimmed.endsWith('.base.eth') || trimmed.endsWith('.farcaster.eth')) {
-    return await resolveENS(trimmed)
+  if (normalizedName.endsWith('.eth') || normalizedName.endsWith('.base.eth') || normalizedName.endsWith('.farcaster.eth')) {
+    return await resolveENS(normalizedName)
   }
   
-  if (trimmed.endsWith('.sol')) {
-    return await resolveSNS(trimmed)
+  if (normalizedName.endsWith('.sol')) {
+    return await resolveSNS(normalizedName)
+  }
+
+  if (normalizedName.endsWith('.btc')) {
+    return await resolveBNS(normalizedName)
   }
   
-  if (trimmed.endsWith('.crypto') || trimmed.endsWith('.nft') || 
-      trimmed.endsWith('.wallet') || trimmed.endsWith('.x') || 
-      trimmed.endsWith('.dao') || trimmed.endsWith('.blockchain') || 
-      trimmed.endsWith('.bitcoin') || trimmed.endsWith('.zil')) {
-    return await resolveUnstoppable(trimmed)
+  if (normalizedName.endsWith('.crypto') || normalizedName.endsWith('.nft') || 
+      normalizedName.endsWith('.wallet') || normalizedName.endsWith('.x') || 
+      normalizedName.endsWith('.dao') || normalizedName.endsWith('.blockchain') || 
+      normalizedName.endsWith('.bitcoin') || normalizedName.endsWith('.zil')) {
+    return await resolveUnstoppable(normalizedName)
   }
   
-  if (trimmed.endsWith('.arb')) {
-    return await resolveSpaceID(trimmed, 'arbitrum')
+  if (normalizedName.endsWith('.arb')) {
+    return await resolveSpaceID(normalizedName, 'arbitrum')
   }
   
-  if (trimmed.endsWith('.bnb')) {
-    return await resolveSpaceID(trimmed, 'bsc')
+  if (normalizedName.endsWith('.bnb')) {
+    return await resolveSpaceID(normalizedName, 'bsc')
   }
   
-  if (trimmed.endsWith('.lens')) {
-    return await resolveLens(trimmed)
+  if (normalizedName.endsWith('.lens')) {
+    return await resolveLens(normalizedName)
   }
 
   return null
@@ -60,16 +66,23 @@ export async function resolveBlockchainName(name: string): Promise<ResolvedName 
  * Reverse lookup: Resolve address to name across all systems
  */
 export async function reverseResolveAddress(address: string): Promise<ResolvedName | null> {
-  if (!address || !isAddress(address)) {
-    // Check if it's a Solana address (base58, 32-44 chars)
-    if (address && address.length >= 32 && address.length <= 44 && !address.startsWith('0x')) {
-      const snsResult = await reverseResolveSNS(address)
-      if (snsResult) return snsResult
-    }
+  if (!address) {
+    return null
+  }
+
+  const normalizedAddress = getAddressLookupKey(address)
+
+  if (isSolanaAddress(address)) {
+    const snsResult = await reverseResolveSNS(normalizedAddress)
+    if (snsResult) return snsResult
+    return null
+  }
+
+  if (!isEvmAddress(address)) {
     return null
   }
   
-  const addrLower = address.toLowerCase()
+  const addrLower = normalizedAddress
   
   // Try ENS first (most common for EVM addresses)
   const ensResult = await reverseResolveENS(addrLower)
@@ -183,7 +196,7 @@ async function reverseResolveSNS(address: string): Promise<ResolvedName | null> 
       const data = await response.json()
       if (data.name) {
         return {
-          address: address.toLowerCase(),
+          address,
           name: `${data.name}.sol`,
           resolver: 'sns'
         }
@@ -191,6 +204,29 @@ async function reverseResolveSNS(address: string): Promise<ResolvedName | null> 
     }
   } catch (error) {
     // Silently fail - not all Solana addresses have SNS names
+  }
+  return null
+}
+
+// ========== Stacks BNS (.btc) Resolver ==========
+async function resolveBNS(name: string): Promise<ResolvedName | null> {
+  try {
+    const response = await fetch(`https://api.hiro.so/v1/names/${name}`, {
+      headers: { 'Accept': 'application/json' }
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data.address) {
+        return {
+          address: data.address,
+          name,
+          resolver: 'bns'
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Error resolving BNS "${name}":`, error)
   }
   return null
 }
@@ -389,4 +425,3 @@ async function resolveLens(name: string): Promise<ResolvedName | null> {
   }
   return null
 }
-

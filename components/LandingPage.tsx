@@ -73,6 +73,57 @@ export default function LandingPage() {
             </button>
           </div>
 
+          {/* Trust block */}
+          <div className="max-w-5xl mx-auto px-4 mb-8">
+            <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-4 sm:p-5 border-2 border-white/20 border-glow">
+              <div className="grid md:grid-cols-3 gap-3 text-left">
+                {[
+                  {
+                    title: 'What LastWish helps with',
+                    body: 'Clear wallet, asset, beneficiary, and executor instructions.'
+                  },
+                  {
+                    title: 'What we do not store',
+                    body: 'No seed phrases, no private keys, and no custody of funds.'
+                  },
+                  {
+                    title: 'What this is not',
+                    body: 'Not a custodian and not a replacement for legal advice.'
+                  }
+                ].map((item, index) => (
+                  <div key={index} className="rounded-xl bg-white/5 border border-white/10 p-4 hover:border-cyan-400/40 transition-all">
+                    <p className="text-sm font-semibold text-bright mb-1">{item.title}</p>
+                    <p className="text-xs sm:text-sm text-bright-soft leading-relaxed">{item.body}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3 text-sm text-bright-soft">
+                <span>This is a planning tool for families, executors, and serious crypto holders.</span>
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                  <Link
+                    href="/sample-document"
+                    className="inline-flex w-full sm:w-auto items-center justify-center rounded-lg px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold border border-purple-400/40 hover:from-purple-700 hover:to-blue-700 transition-all"
+                  >
+                    See sample document
+                  </Link>
+                  <button
+                    onClick={() => scrollToSection('faq')}
+                    className="hidden sm:inline-flex items-center justify-center rounded-lg px-4 py-2 bg-white/10 text-white font-semibold border border-white/20 hover:bg-white/20 hover:border-white/40 transition-all"
+                  >
+                    Read the common questions
+                  </button>
+                  <button
+                    onClick={() => scrollToSection('faq')}
+                    className="sm:hidden text-cyan-300 text-sm font-medium hover:text-cyan-200 transition-colors"
+                  >
+                    Read the common questions
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Trust badges */}
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-bright-soft">
             {[
@@ -321,7 +372,7 @@ export default function LandingPage() {
                 { step: 3, title: 'Select Assets', desc: 'Choose which assets to include in your inheritance document with smart filtering.', icon: '✅' },
                 { step: 4, title: 'Allocate Assets', desc: 'Add beneficiaries and allocate assets by percentage or amount with real-time validation.', icon: '👥' },
                 { step: 5, title: 'Enter Details', desc: 'Fill in owner and executor information with multi-chain name resolution support.', icon: '📝' },
-                { step: 6, title: 'Payment & Download', desc: 'Choose your plan, complete payment, and download your professional PDF document.', icon: '💳' }
+                { step: 6, title: 'Payment & View', desc: 'Choose your plan, complete payment, and open your professional PDF document.', icon: '💳' }
               ].map((item, index) => {
                 const isEven = index % 2 === 0
                 return (
@@ -608,6 +659,114 @@ export default function LandingPage() {
       {/* Section Divider */}
       <div className="section-divider max-w-7xl mx-auto"></div>
 
+      {/* Choose Your Path Section */}
+      <section className="relative py-12 sm:py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-section-title mb-4 sm:mb-6 bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent text-glow">
+              Choose Your Path
+            </h2>
+            <p className="text-section-subtitle text-bright-soft max-w-3xl mx-auto">
+              Whether you want a simple self-serve setup, a deeper walkthrough, or a professional workflow, start where you are.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {[
+              {
+                title: 'Start Free',
+                description: 'Best for trying the workflow, testing one wallet, and seeing how LastWish feels before you commit.',
+                href: '/app',
+                cta: 'Try the app →',
+                gradient: 'from-green-500/20 to-emerald-500/20'
+              },
+              {
+                title: 'Read the Guide',
+                description: 'Best for people who want to understand the process first, share it with family, or review the workflow calmly.',
+                href: '/guide',
+                cta: 'Open the guide →',
+                gradient: 'from-blue-500/20 to-cyan-500/20'
+              },
+              {
+                title: 'For Professionals',
+                description: 'Best for attorneys, advisors, and family offices who need a repeatable crypto-inheritance workflow.',
+                href: '/for-professionals',
+                cta: 'View professional use cases →',
+                gradient: 'from-purple-500/20 to-pink-500/20'
+              }
+            ].map((path, index) => (
+              <Link key={index} href={path.href} className={`relative block bg-gradient-to-br ${path.gradient} backdrop-blur-xl rounded-2xl p-6 sm:p-8 border-2 border-white/20 hover:border-purple-400/60 transition-all transform hover:scale-[1.02] sm:hover:scale-105 overflow-hidden group`}>
+                <div className={`absolute inset-0 bg-gradient-to-br ${path.gradient} opacity-0 group-hover:opacity-30 transition-opacity duration-500 animate-gradient-shift`}></div>
+                <div className="relative z-10 h-full flex flex-col">
+                  <h3 className="text-card-title text-bright mb-4 group-hover:text-white transition-colors">{path.title}</h3>
+                  <p className="text-card-body text-bright-soft mb-6 flex-1 group-hover:text-white transition-colors">{path.description}</p>
+                  <span className="hidden sm:inline-flex items-center justify-center rounded-lg px-4 py-3 bg-white/10 text-white font-semibold border-2 border-white/20 hover:bg-white/20 hover:border-white/40 transition-all">
+                    {path.cta}
+                  </span>
+                  <span className="sm:hidden text-cyan-300 font-semibold">Open →</span>
+                </div>
+                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Section Divider */}
+      <div className="section-divider max-w-7xl mx-auto"></div>
+
+      {/* FAQ Section */}
+      <section id="faq" className="relative py-12 sm:py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-section-title mb-4 sm:mb-6 bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent text-glow">
+              Common Questions
+            </h2>
+            <p className="text-section-subtitle text-bright-soft max-w-3xl mx-auto">
+              These are the questions serious buyers usually ask before they trust a crypto inheritance tool.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              {
+                question: 'Do you store seed phrases, private keys, or custody of funds?',
+                answer: 'No. LastWish is built around documenting instructions and asset context, not taking custody. The value here is clarity for families and executors, without storing the keys that control the assets.'
+              },
+              {
+                question: 'Is this a replacement for a lawyer or a formal will?',
+                answer: 'No. LastWish is best used as a practical companion to formal estate planning. It helps organize the crypto-specific details that traditional documents often miss.'
+              },
+              {
+                question: 'Who is this for?',
+                answer: 'It is useful for individual holders, families trying to prepare before a crisis, and professionals like attorneys or advisors who want a clearer crypto workflow.'
+              },
+              {
+                question: 'Why would someone pay for this instead of making a spreadsheet?',
+                answer: 'Because this problem is emotional, technical, and high stakes. A structured workflow, cleaner document, better asset visibility, and clearer handoff language can save families months of confusion or permanent loss.'
+              },
+              {
+                question: 'What should I do after generating my document?',
+                answer: 'Print it, store it safely, make sure the right people know it exists, and review it whenever your wallets, assets, or family situation change.'
+              }
+            ].map((item, index) => (
+              <details key={index} className="group bg-white/5 backdrop-blur-xl rounded-2xl border-2 border-white/20 hover:border-cyan-400/50 transition-all overflow-hidden">
+                <summary className="list-none cursor-pointer px-6 py-5 text-left flex items-center justify-between gap-4">
+                  <span className="text-card-title text-bright group-hover:text-white transition-colors">{item.question}</span>
+                  <span className="text-cyan-300 text-2xl leading-none group-open:rotate-45 transition-transform">+</span>
+                </summary>
+                <div className="px-6 pb-6 text-card-body text-bright-soft">
+                  {item.answer}
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Section Divider */}
+      <div className="section-divider max-w-7xl mx-auto"></div>
+
       {/* Final CTA Section */}
       <section className="relative py-12 sm:py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
@@ -625,12 +784,20 @@ export default function LandingPage() {
               >
                 Get Started Now →
               </Link>
-              <button
-                onClick={() => scrollToSection('pricing')}
-                className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-white/10 backdrop-blur-lg text-white font-semibold text-base sm:text-lg rounded-xl border-2 border-white/30 hover:bg-white/20 hover:border-white/50 transition-all"
+              <Link
+                href="/guide"
+                className="hidden sm:block w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-white/10 backdrop-blur-lg text-white font-semibold text-base sm:text-lg rounded-xl border-2 border-white/30 hover:bg-white/20 hover:border-white/50 transition-all text-center"
               >
-                View Pricing
-              </button>
+                Read the Guide
+              </Link>
+            </div>
+            <div className="sm:hidden mt-4">
+              <Link
+                href="/guide"
+                className="text-cyan-300 font-medium hover:text-cyan-200 transition-colors"
+              >
+                Read the guide first
+              </Link>
             </div>
           </div>
         </div>
@@ -654,4 +821,3 @@ export default function LandingPage() {
     </div>
   )
 }
-

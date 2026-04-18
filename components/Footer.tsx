@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 export default function Footer() {
   return (
     <footer className="relative py-8 px-4 sm:px-6 lg:px-8 border-t-2 border-white/20 bg-slate-900/50 backdrop-blur-xl mt-auto">
@@ -12,18 +14,19 @@ export default function Footer() {
             <span className="text-white font-bold text-xl">LastWish</span>
           </div>
           
-          <div className="flex items-center gap-6">
-            <a 
-              href="https://twitter.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-bright-soft hover:text-white transition-colors text-sm"
+          <div className="flex items-center gap-6 flex-wrap justify-center">
+            <Link
+              href="/guide"
+              className="text-bright-soft hover:text-white transition-colors text-sm"
             >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/>
-              </svg>
-              Twitter / X
-            </a>
+              Guide
+            </Link>
+            <Link
+              href="/for-professionals"
+              className="text-bright-soft hover:text-white transition-colors text-sm"
+            >
+              For Professionals
+            </Link>
             <div className="flex items-center gap-2 text-bright-soft text-xs">
               <span className="font-semibold">Donation:</span>
               <span className="font-mono">0x016ae25Ac494B123C40EDb2418d9b1FC2d62279b</span>
@@ -43,4 +46,3 @@ export default function Footer() {
     </footer>
   )
 }
-

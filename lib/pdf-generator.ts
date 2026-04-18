@@ -1,5 +1,7 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import { UserData, Asset, Beneficiary, Allocation } from '@/types'
+import { getAddressLookupKey, isSupportedWalletAddress } from '@/lib/address-utils'
+import { buildInventoryReference } from '@/lib/inventory-reference'
 
 // Enhanced helper function to fetch and embed image in PDF
 // Converts GIFs to static PNG for PDF (but keeps them animated on website)
@@ -360,7 +362,7 @@ export async function generatePDF(
   yPosition -= 50
 
   // Main Title - Large and Centered
-  yPosition = addCenteredText('UNIFORM DIGITAL ASSET INTENT PACKET', yPosition, 28, true, colors.title)
+  yPosition = addCenteredText('DIGITAL ASSET INSTRUCTION PACKET', yPosition, 28, true, colors.title)
   yPosition -= 30
   yPosition = addCenteredText('(LastWish Instructions)', yPosition, 18, false, rgb(0.3, 0.3, 0.3))
   yPosition -= 60
@@ -404,7 +406,7 @@ export async function generatePDF(
   detailY = addText(`${userData.beneficiaries.length}`, boxX + 20, detailY, 11, true, rgb(0.1, 0.1, 0.1))
   detailY -= lineHeight * 1.5
 
-  const totalWallets = userData.connectedWallets.evm.length + (userData.connectedWallets.btc ? 1 : 0)
+  const totalWallets = userData.connectedWallets.evm.length + (userData.connectedWallets.btc ? 1 : 0) + (userData.connectedWallets.solana?.length || 0)
   detailY = addText('Connected Wallets:', boxX + 20, detailY, 11, false, rgb(0.4, 0.4, 0.4))
   detailY = addText(`${totalWallets}`, boxX + 20, detailY, 11, true, rgb(0.1, 0.1, 0.1))
 
@@ -505,10 +507,10 @@ export async function generatePDF(
   yPosition -= lineHeight * 1.5
   
   // Uniform 50-State Notice
-  yPosition = addText('UNIFORM DIGITAL ASSET INTENT PACKET', margin, yPosition, 12, true, rgb(0.2, 0.3, 0.6))
+  yPosition = addText('DIGITAL ASSET INSTRUCTION PACKET', margin, yPosition, 12, true, rgb(0.2, 0.3, 0.6))
   yPosition -= lineHeight * 1.5
   yPosition = addText(
-    'This document is a Uniform Digital Asset Intent Packet designed to work in all 50 U.S. states. This document supplements, but does not replace, a formal will or estate plan.',
+    'This packet is designed to give family members, executors, and professionals a clear starting point for locating and understanding digital assets. It supplements, but does not replace, a formal will, trust, or estate plan.',
     margin,
     yPosition,
     10,
@@ -518,10 +520,10 @@ export async function generatePDF(
   yPosition -= lineHeight * 2
   
   // Executor Packet Framing
-  yPosition = addText('EXECUTOR PACKET FRAMING', margin, yPosition, 11, true, rgb(0.2, 0.3, 0.6))
+  yPosition = addText('HOW THIS PACKET SHOULD BE USED', margin, yPosition, 11, true, rgb(0.2, 0.3, 0.6))
   yPosition -= lineHeight * 1.5
   yPosition = addText(
-    'This document can be used in two ways:',
+    'This packet is most useful when paired with the owner’s broader estate plan and offline recovery instructions:',
     margin,
     yPosition,
     10,
@@ -530,7 +532,7 @@ export async function generatePDF(
   )
   yPosition -= lineHeight * 1.5
   yPosition = addText(
-    '1. As a Standalone Letter of Instruction: This document can serve as a complete Letter of Instruction for executors, providing all necessary information to locate and access digital assets. It is legally valid as an instruction document in all 50 U.S. states.',
+    '1. As a practical instruction packet: Use it to help an executor or trusted family member understand what wallets exist, what kinds of assets are involved, and where to look next.',
     margin,
     yPosition,
     10,
@@ -539,7 +541,7 @@ export async function generatePDF(
   )
   yPosition -= lineHeight * 2
   yPosition = addText(
-    '2. As Exhibit A to a Formal Will: This document can be explicitly referenced and attached as "Exhibit A" to a formal will. When used this way, reference this document in your will with language such as: "I direct my executor to follow the instructions contained in Exhibit A, my Digital Asset Intent Packet, dated [DATE]."',
+    '2. As a supporting exhibit to formal estate documents: Estate counsel may choose to reference a document like this from a will, trust, or memorandum so the operational details can be updated more easily.',
     margin,
     yPosition,
     10,
@@ -548,7 +550,7 @@ export async function generatePDF(
   )
   yPosition -= lineHeight * 2
   yPosition = addText(
-    'RECOMMENDATION: For maximum legal protection, we recommend using this document as Exhibit A attached to a formal will. However, this document is legally valid as a standalone Letter of Instruction if you do not yet have a formal will. Consult with an estate attorney to determine the best approach for your situation.',
+    'RECOMMENDATION: Treat this packet as an executor-facing guide, not as a substitute for legal advice. For formal estate planning, review it with a qualified attorney in the relevant state.',
     margin,
     yPosition,
     10,
@@ -592,7 +594,7 @@ export async function generatePDF(
   yPosition = addText(`Full Legal Name: ${userData.ownerFullName || userData.ownerName}`, margin, yPosition, 12)
   yPosition -= lineHeight
   if (userData.ownerEnsName) {
-    yPosition = addText(`ENS Address: ${userData.ownerEnsName}`, margin, yPosition, 12, false, colors.ens)
+    yPosition = addText(`Primary Blockchain Name: ${userData.ownerEnsName}`, margin, yPosition, 12, false, colors.ens)
     yPosition -= lineHeight
   }
   yPosition = addText(`Address: ${userData.ownerAddress}`, margin, yPosition, 12)
@@ -610,16 +612,16 @@ export async function generatePDF(
   
   // Show all EVM wallets with ENS names, addresses, and verification status
   // Deduplicate EVM addresses (case-insensitive)
-  const uniqueEVMAddresses = Array.from(new Set(userData.connectedWallets.evm.map(addr => addr.toLowerCase())))
+  const uniqueEVMAddresses = Array.from(new Set(userData.connectedWallets.evm.map(addr => getAddressLookupKey(addr))))
     .map(addr => {
       // Find the original case version
-      return userData.connectedWallets.evm.find(a => a.toLowerCase() === addr) || addr
+      return userData.connectedWallets.evm.find(a => getAddressLookupKey(a) === addr) || addr
     })
   
   if (uniqueEVMAddresses.length > 0) {
     uniqueEVMAddresses.forEach((addr, index) => {
       checkNewPage(60)
-      const ensName = userData.resolvedEnsNames?.[addr.toLowerCase()]
+      const ensName = userData.resolvedEnsNames?.[getAddressLookupKey(addr)]
       const walletName = userData.walletNames?.[addr] || ensName
       
       yPosition = addText(`Wallet ${index + 1} (EVM) - VERIFIED`, margin, yPosition, 13, true, rgb(0.1, 0.1, 0.1))
@@ -649,22 +651,37 @@ export async function generatePDF(
     yPosition = addText(`   Address: ${userData.connectedWallets.btc}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
     yPosition -= lineHeight
   }
+
+  if (userData.connectedWallets.solana?.length) {
+    userData.connectedWallets.solana.forEach((addr, index) => {
+      checkNewPage(40)
+      const resolvedName = userData.resolvedEnsNames?.[getAddressLookupKey(addr)]
+      yPosition = addText(`Solana Wallet ${index + 1}:`, margin, yPosition, 13, true, rgb(0.1, 0.1, 0.1))
+      yPosition -= lineHeight
+      yPosition = addText(`   Address: ${addr}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
+      yPosition -= lineHeight
+      if (resolvedName) {
+        yPosition = addText(`   Resolves to: ${resolvedName}`, margin + 20, yPosition, 10, true, colors.ens)
+        yPosition -= lineHeight
+      }
+    })
+  }
   yPosition -= sectionSpacing
   
   // Show all beneficiary wallets with ENS names
-  const beneficiaryWallets = userData.beneficiaries.filter(b => b.walletAddress && b.walletAddress.startsWith('0x'))
+  const beneficiaryWallets = userData.beneficiaries.filter(b => b.walletAddress && isSupportedWalletAddress(b.walletAddress))
   if (beneficiaryWallets.length > 0) {
-    checkNewPage(80)
-    yPosition = addText('BENEFICIARY WALLETS (ENS)', margin, yPosition, 14, true, rgb(0.1, 0.1, 0.1))
+    checkNewPage(110)
+    yPosition = addText('BENEFICIARY WALLETS', margin, yPosition, 14, true, rgb(0.1, 0.1, 0.1))
     yPosition -= lineHeight
-    yPosition = addText('All beneficiary Ethereum wallet addresses with ENS names:', margin, yPosition, 10, false, rgb(0.3, 0.3, 0.3))
+    yPosition = addText('All beneficiary wallet addresses and resolved blockchain names:', margin, yPosition, 10, false, rgb(0.3, 0.3, 0.3))
     yPosition -= lineHeight * 2
     beneficiaryWallets.forEach((ben) => {
-      checkNewPage(40)
+      checkNewPage(75)
       if (ben.ensName) {
         yPosition = addText(`${ben.name}:`, margin, yPosition, 12, true, rgb(0.1, 0.1, 0.1))
         yPosition -= lineHeight
-        yPosition = addText(`   ENS Name: ${ben.ensName}`, margin + 20, yPosition, 11, true, colors.ens)
+        yPosition = addText(`   Name Resolution: ${ben.ensName}`, margin + 20, yPosition, 11, true, colors.ens)
         yPosition -= lineHeight
         yPosition = addText(`   Wallet Address: ${ben.walletAddress || 'Not provided'}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
       } else {
@@ -701,9 +718,9 @@ export async function generatePDF(
   
   // Show executor wallet with ENS name if available (executorAddress is optional)
   if (userData.executorAddress) {
-    const executorEnsName = userData.resolvedEnsNames?.[userData.executorAddress.toLowerCase()]
+    const executorEnsName = userData.resolvedEnsNames?.[getAddressLookupKey(userData.executorAddress)]
     if (executorEnsName) {
-      yPosition = addText(`ENS Name: ${executorEnsName}`, margin, yPosition, 12, true, colors.ens)
+      yPosition = addText(`Name Resolution: ${executorEnsName}`, margin, yPosition, 12, true, colors.ens)
       yPosition -= lineHeight
       yPosition = addText(`Wallet Address: ${userData.executorAddress}`, margin, yPosition, 12, false, rgb(0.3, 0.3, 0.5))
     } else {
@@ -740,7 +757,7 @@ export async function generatePDF(
     
     // Show ENS name prominently if available
     if (ben.ensName) {
-      yPosition = addText(`   ENS Name: ${ben.ensName}`, margin + 20, yPosition, 11, true, colors.ens)
+      yPosition = addText(`   Name Resolution: ${ben.ensName}`, margin + 20, yPosition, 11, true, colors.ens)
       yPosition -= lineHeight
       yPosition = addText(`   Wallet Address: ${ben.walletAddress || 'Not provided'}`, margin + 20, yPosition, 10, false, rgb(0.2, 0.2, 0.2))
     } else {
@@ -844,9 +861,9 @@ export async function generatePDF(
   for (const [walletAddr, chainGroups] of sortedWalletEntries) {
     const walletIndex = sortedWalletEntries.findIndex(([addr]) => addr === walletAddr)
     const walletColor = colors.walletColors[walletIndex % colors.walletColors.length]
-    const walletEnsName = userData.resolvedEnsNames?.[walletAddr.toLowerCase()] || userData.walletNames?.[walletAddr]
+    const walletEnsName = userData.resolvedEnsNames?.[getAddressLookupKey(walletAddr)] || userData.walletNames?.[walletAddr]
     const walletProvider = chainGroups[0]?.provider || 'Unknown Wallet'
-    const walletGroup = userData.walletGroups?.[walletAddr.toLowerCase()] || 'unassigned'
+    const walletGroup = userData.walletGroups?.[getAddressLookupKey(walletAddr)] || 'unassigned'
     const groupLabels: Record<string, string> = {
       'long-term': 'Long-term',
       'active-trading': 'Active trading',
@@ -1000,7 +1017,7 @@ export async function generatePDF(
           // For Bitcoin, show SATs
           if (asset.type === 'btc' && asset.metadata?.satsFormatted) {
             yPosition = addText(
-              `    Balance: ${asset.balanceFormatted} BTC (${asset.metadata.satsFormatted} SATs)`,
+              `    Balance: ${asset.balanceFormatted} (${asset.metadata.satsFormatted})`,
               margin + 30,
               yPosition,
               10,
@@ -1033,7 +1050,7 @@ export async function generatePDF(
             let amountText = ''
             if (asset.type === 'btc') {
               // For Bitcoin, calculate SATs
-              const satsAmount = Math.floor((parseFloat(asset.balance) * percentage) / 100)
+              const satsAmount = Math.floor((parseFloat(asset.balance) * 100000000 * percentage) / 100)
               amountText = `(${satsAmount.toLocaleString('en-US')} SATs)`
             } else {
               const calculatedAmount = (parseFloat(asset.balance) * percentage / 100).toFixed(6)
@@ -1093,7 +1110,7 @@ export async function generatePDF(
       
       // Show wallet address for this asset
       const walletAddr = asset.walletAddress || asset.contractAddress || 'Unknown'
-      const walletEnsName = userData.resolvedEnsNames?.[walletAddr.toLowerCase()] || userData.walletNames?.[walletAddr]
+      const walletEnsName = userData.resolvedEnsNames?.[getAddressLookupKey(walletAddr)] || userData.walletNames?.[walletAddr]
       const walletLabel = walletEnsName && walletEnsName !== walletAddr ? `${walletEnsName} (${walletAddr})` : walletAddr
       
       const assetTypeLabel = isNFT ? ' [NFT - NON-FUNGIBLE]' : ''
@@ -1119,7 +1136,7 @@ export async function generatePDF(
       // For Bitcoin, show SATs
       if (asset.type === 'btc' && asset.metadata?.satsFormatted) {
         yPosition = addText(
-          `Balance: ${asset.balanceFormatted} BTC (${asset.metadata.satsFormatted} SATs)`,
+          `Balance: ${asset.balanceFormatted} (${asset.metadata.satsFormatted})`,
           margin + 20,
           yPosition,
           10,
@@ -1148,7 +1165,7 @@ export async function generatePDF(
         } else if (alloc.type === 'percentage') {
           const percentage = alloc.percentage || 0
           if (asset.type === 'btc') {
-            const satsAmount = Math.floor((parseFloat(asset.balance) * percentage) / 100)
+            const satsAmount = Math.floor((parseFloat(asset.balance) * 100000000 * percentage) / 100)
             allocationText = `  -> ${beneficiary?.name}: ${percentage}% (${satsAmount.toLocaleString('en-US')} SATs)`
           } else {
             allocationText = `  -> ${beneficiary?.name}: ${percentage}%`
@@ -1173,6 +1190,70 @@ export async function generatePDF(
       yPosition -= 5
     }
     yPosition -= sectionSpacing
+  }
+
+  // ============================================
+  // GROUPED WALLET INVENTORY REFERENCE
+  // ============================================
+  const inventoryReference = buildInventoryReference(assets, {
+    selectedAssetIds: userData.allocations.map(allocation => allocation.assetId),
+    walletNames: userData.walletNames,
+    resolvedEnsNames: userData.resolvedEnsNames,
+  })
+
+  checkNewPage(80)
+  yPosition = addText('GROUPED WALLET INVENTORY REFERENCE', margin, yPosition, 15, true, rgb(0.1, 0.1, 0.1))
+  yPosition -= lineHeight
+  yPosition = addText(
+    'Appendix view of holdings grouped by wallet, chain, and asset class for quick executor reference.',
+    margin,
+    yPosition,
+    10,
+    false,
+    rgb(0.35, 0.35, 0.35)
+  )
+  yPosition -= lineHeight * 1.5
+
+  for (const wallet of inventoryReference.wallets) {
+    checkNewPage(70)
+    yPosition = addText(wallet.walletLabel, margin, yPosition, 13, true, rgb(0.1, 0.1, 0.1))
+    if (wallet.walletLabel !== wallet.walletShort) {
+      yPosition -= lineHeight * 0.75
+      yPosition = addText(wallet.walletShort, margin + 20, yPosition, 9, false, rgb(0.45, 0.45, 0.45))
+    }
+    yPosition -= lineHeight
+
+    for (const chainGroup of wallet.chains) {
+      checkNewPage(35)
+      yPosition = addText(`Chain: ${chainGroup.chain.toUpperCase()}`, margin + 20, yPosition, 11, true, rgb(0.2, 0.2, 0.2))
+      yPosition -= lineHeight * 0.75
+
+      for (const category of chainGroup.categories) {
+        checkNewPage(28)
+        yPosition = addText(category.name, margin + 35, yPosition, 10, true, rgb(0.25, 0.25, 0.25))
+        yPosition -= lineHeight * 0.75
+
+        for (const entry of category.entries) {
+          checkNewPage(22)
+          const allocatedSuffix = entry.selectedCount > 0 ? ` | Allocated: ${entry.selectedCount}` : ''
+          yPosition = addText(
+            `- ${entry.label}: ${entry.countLabel}${allocatedSuffix}`,
+            margin + 50,
+            yPosition,
+            9,
+            false,
+            rgb(0.2, 0.2, 0.2)
+          )
+          if (entry.detail) {
+            yPosition -= lineHeight * 0.5
+            yPosition = addText(entry.detail, margin + 65, yPosition, 8, false, rgb(0.45, 0.45, 0.45))
+          }
+        }
+        yPosition -= lineHeight * 0.5
+      }
+      yPosition -= lineHeight * 0.25
+    }
+    yPosition -= sectionSpacing * 0.75
   }
 
   // ============================================

@@ -1,18 +1,28 @@
 'use client'
 
+import Header from '@/components/Header'
+import Footer from '@/components/Footer'
+
 export default function GuidePage() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 py-12">
-        <header className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">LastWishCrypto</h1>
-          <h2 className="text-3xl font-semibold text-gray-700 mb-2">Complete User Guide & Impact Analysis</h2>
-          <p className="text-gray-600">Everything you need to know about protecting your crypto legacy</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden flex flex-col">
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900 animate-gradient-shift"></div>
+      <div className="fixed top-0 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-float"></div>
+      <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-float-delayed"></div>
+
+      <Header />
+
+      <main className="relative z-10 flex-1 px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+      <div className="max-w-5xl mx-auto">
+        <header className="text-center mb-12 max-w-3xl mx-auto">
+          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent">LastWishCrypto</h1>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-white/90 mb-3">Complete User Guide & Impact Analysis</h2>
+          <p className="text-slate-300 text-lg">Everything you need to know about protecting your crypto legacy</p>
         </header>
 
-        <div className="bg-white rounded-xl shadow-lg p-8 md:p-12 space-y-12">
+        <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl shadow-black/20 p-8 md:p-12 space-y-12 [&_h2]:text-white [&_h3]:text-white [&_h4]:text-white [&_h5]:text-white [&_p]:text-slate-300 [&_li]:text-slate-300 [&_td]:text-slate-300 [&_th]:text-white [&_strong]:text-white [&_em]:text-slate-300 [&_a]:text-cyan-300">
           {/* Table of Contents */}
-          <section className="border-b-2 border-gray-200 pb-8">
+          <section className="border-b border-white/10 pb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">📋 Table of Contents</h2>
             <ul className="space-y-2 text-gray-700">
               <li><a href="#navigation-guide" className="text-blue-600 hover:underline">1. Step-by-Step Navigation Guide</a></li>
@@ -23,18 +33,18 @@ export default function GuidePage() {
           </section>
 
           {/* Step-by-Step Guide */}
-          <section id="navigation-guide" className="border-b-2 border-gray-200 pb-8">
+          <section id="navigation-guide" className="border-b border-white/10 pb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">📖 Step-by-Step Navigation Guide</h2>
             
             <div className="space-y-8">
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded">
+              <div className="bg-blue-500/10 border border-blue-400/30 p-6 rounded-2xl">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Overview</h3>
                 <p className="text-gray-700 mb-3">
                   LastWishCrypto is a <strong>client-side application</strong> that helps you create a professional, printable PDF document 
                   containing all your crypto inheritance instructions. No accounts, no seed phrases stored, no persistent data—just you, 
                   your wallets, and a secure document.
                 </p>
-                <div className="bg-white p-4 rounded border-2 border-blue-300 mt-3">
+                <div className="bg-white/5 p-4 rounded-2xl border border-blue-400/25 mt-3">
                   <h4 className="font-bold text-gray-900 mb-2">💰 Pricing Tiers:</h4>
                   <div className="space-y-3 mb-4">
                     <div className="border-l-4 border-green-500 pl-3">
@@ -46,7 +56,7 @@ export default function GuidePage() {
                       </ul>
                     </div>
                     <div className="border-l-4 border-blue-500 pl-3">
-                      <h5 className="font-bold text-gray-900">Standard: <span className="text-green-600">🎉 $20.26</span> <span className="line-through text-gray-400">$42.00</span> <span className="text-green-600 text-sm">✨ 2026 Special ✨</span></h5>
+                      <h5 className="font-bold text-gray-900">Standard: <span className="text-blue-600">$42.00</span></h5>
                       <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4 text-sm">
                         <li>20 wallets</li>
                         <li>10 beneficiaries</li>
@@ -75,7 +85,7 @@ export default function GuidePage() {
               </div>
 
               {/* Step 1 */}
-              <div className="bg-gray-50 rounded-lg p-6">
+              <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Step 1: Connect Wallets</h3>
                 <div className="space-y-4">
                   <div>
@@ -102,7 +112,7 @@ export default function GuidePage() {
                       </li>
                     </ol>
                   </div>
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                  <div className="bg-amber-500/10 border border-amber-400/25 p-4 rounded-2xl">
                     <h4 className="font-semibold text-gray-900 mb-2">💡 Tips:</h4>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
                       <li>You can connect <strong>multiple wallets</strong> (up to 20 total including queued)</li>
@@ -136,7 +146,7 @@ export default function GuidePage() {
               </div>
 
               {/* Step 2 */}
-              <div className="bg-gray-50 rounded-lg p-6">
+              <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Step 2: Load Assets</h3>
                 <div className="space-y-4">
                   <div>
@@ -177,7 +187,7 @@ export default function GuidePage() {
                       <li>Click <strong>"Continue to Allocation"</strong> when ready</li>
                     </ol>
                   </div>
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                  <div className="bg-amber-500/10 border border-amber-400/25 p-4 rounded-2xl">
                     <h4 className="font-semibold text-gray-900 mb-2">💡 Tips:</h4>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
                       <li>You can connect more wallets and add their assets incrementally</li>
@@ -194,7 +204,7 @@ export default function GuidePage() {
               </div>
 
               {/* Step 3 */}
-              <div className="bg-gray-50 rounded-lg p-6">
+              <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Step 3: Allocate Assets</h3>
                 <div className="space-y-4">
                   <div>
@@ -259,7 +269,7 @@ export default function GuidePage() {
                       <li>Disconnect and connect another wallet if needed, then repeat</li>
                     </ol>
                   </div>
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                  <div className="bg-amber-500/10 border border-amber-400/25 p-4 rounded-2xl">
                     <h4 className="font-semibold text-gray-900 mb-2">💡 Tips & Tricks:</h4>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
                       <li><strong>Over-allocation Prevention:</strong> System automatically prevents allocating more than 100% or exceeding asset balance</li>
@@ -280,7 +290,7 @@ export default function GuidePage() {
               </div>
 
               {/* Step 4 */}
-              <div className="bg-gray-50 rounded-lg p-6">
+              <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Step 4: Enter Details</h3>
                 <div className="space-y-4">
                   <div>
@@ -315,7 +325,7 @@ export default function GuidePage() {
                       <li>Click <strong>"Continue to Payment"</strong> when ready</li>
                     </ol>
                   </div>
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                  <div className="bg-amber-500/10 border border-amber-400/25 p-4 rounded-2xl">
                     <h4 className="font-semibold text-gray-900 mb-2">💡 Tips:</h4>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
                       <li>The executor should know where to find this document</li>
@@ -330,7 +340,7 @@ export default function GuidePage() {
               </div>
 
               {/* Step 5 */}
-              <div className="bg-gray-50 rounded-lg p-6">
+              <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Step 5: Payment</h3>
                 <div className="space-y-4">
                   <div>
@@ -339,7 +349,7 @@ export default function GuidePage() {
                       <li><strong>Select Your Plan:</strong>
                         <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
                           <li><strong>Free:</strong> 1 wallet, 2 beneficiaries - $0</li>
-                          <li><strong>Standard:</strong> 20 wallets, 10 beneficiaries - <span className="text-green-600 font-bold">🎉 $20.26</span> <span className="line-through text-gray-400">$42.00</span> <span className="text-green-600">✨ New Year 2026 Special! ✨</span></li>
+                          <li><strong>Standard:</strong> 20 wallets, 10 beneficiaries - <span className="text-blue-600 font-bold">$42.00</span></li>
                           <li><strong>Premium:</strong> Unlimited wallets & beneficiaries, priority support, 2-year updates - $99</li>
                           <li>The system will show warnings if your current setup exceeds tier limits</li>
                         </ul>
@@ -360,13 +370,13 @@ export default function GuidePage() {
                       <li>Wait for payment verification (automatic after transaction confirms, or instant for Free tier)</li>
                     </ol>
                   </div>
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                  <div className="bg-amber-500/10 border border-amber-400/25 p-4 rounded-2xl">
                     <h4 className="font-semibold text-gray-900 mb-2">💡 Tips:</h4>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
                       <li><strong>Tier Selection:</strong> Choose the plan that fits your needs. Free tier is perfect for simple setups, Standard for most users, Premium for complex estates.</li>
                       <li>Payment is verified on-chain automatically (Free tier skips payment)</li>
                       <li>You can proceed manually if verification is delayed</li>
-                      <li><strong>Payment State Reset:</strong> After downloading PDF, payment state resets - you'll need to pay again for additional downloads</li>
+                      <li><strong>Payment State Reset:</strong> After opening the PDF, payment state resets, so you'll need to pay again for another generated copy</li>
                       <li>This ensures each PDF generation requires payment verification (except Free tier)</li>
                     </ul>
                   </div>
@@ -374,13 +384,13 @@ export default function GuidePage() {
               </div>
 
               {/* Step 6 */}
-              <div className="bg-gray-50 rounded-lg p-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">Step 6: Download PDF</h3>
+              <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Step 6: View & Print PDF</h3>
                 <div className="space-y-4">
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-2">What to do:</h4>
                     <ol className="list-decimal list-inside space-y-2 text-gray-700 ml-4">
-                      <li>Click <strong>"Generate & Download PDF"</strong></li>
+                      <li>Click <strong>"Open PDF"</strong></li>
                       <li>Wait for generation (a few seconds)</li>
                       <li>The PDF opens in a new window/tab</li>
                       <li>Print immediately OR save to your device</li>
@@ -402,7 +412,7 @@ export default function GuidePage() {
                       <li>Notarization section</li>
                     </ul>
                   </div>
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                  <div className="bg-amber-500/10 border border-amber-400/25 p-4 rounded-2xl">
                     <h4 className="font-semibold text-gray-900 mb-2">💡 Tips:</h4>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
                       <li>Store the PDF in a secure location (safe, safety deposit box, with attorney)</li>
@@ -416,53 +426,53 @@ export default function GuidePage() {
           </section>
 
           {/* Benefits Section */}
-          <section id="crisis-benefits" className="border-b-2 border-gray-200 pb-8">
+          <section id="crisis-benefits" className="border-b border-white/10 pb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">🛡️ Benefits in Times of Crisis</h2>
             
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded">
+              <div className="bg-emerald-500/10 border border-emerald-400/25 p-6 rounded-2xl">
                 <h3 className="text-xl font-bold text-gray-900 mb-3">1. Immediate Access to Critical Information</h3>
                 <p className="text-gray-700 mb-2"><strong>Problem:</strong> Family members may not know you own crypto or where it's stored.</p>
                 <p className="text-gray-700 mb-2"><strong>Solution:</strong> The PDF provides a complete inventory of wallets, assets, and access instructions.</p>
                 <p className="text-gray-700"><strong>Impact:</strong> Prevents assets from being lost or forgotten forever.</p>
               </div>
 
-              <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded">
+              <div className="bg-emerald-500/10 border border-emerald-400/25 p-6 rounded-2xl">
                 <h3 className="text-xl font-bold text-gray-900 mb-3">2. Reduces Family Conflict</h3>
                 <p className="text-gray-700 mb-2"><strong>Problem:</strong> Ambiguity about asset distribution causes disputes.</p>
                 <p className="text-gray-700 mb-2"><strong>Solution:</strong> Clear, documented allocations eliminate confusion and legal battles.</p>
                 <p className="text-gray-700"><strong>Impact:</strong> Preserves family relationships during a difficult time.</p>
               </div>
 
-              <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded">
+              <div className="bg-emerald-500/10 border border-emerald-400/25 p-6 rounded-2xl">
                 <h3 className="text-xl font-bold text-gray-900 mb-3">3. Speeds Up Asset Recovery</h3>
                 <p className="text-gray-700 mb-2"><strong>Problem:</strong> Without instructions, recovery can take months or years.</p>
                 <p className="text-gray-700 mb-2"><strong>Solution:</strong> Step-by-step instructions enable faster access.</p>
                 <p className="text-gray-700"><strong>Impact:</strong> Beneficiaries can access assets within days instead of months.</p>
               </div>
 
-              <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded">
+              <div className="bg-emerald-500/10 border border-emerald-400/25 p-6 rounded-2xl">
                 <h3 className="text-xl font-bold text-gray-900 mb-3">4. Prevents Permanent Loss</h3>
                 <p className="text-gray-700 mb-2"><strong>Problem:</strong> Crypto left in forgotten wallets is often lost forever.</p>
                 <p className="text-gray-700 mb-2"><strong>Solution:</strong> Documented wallet addresses and instructions prevent loss.</p>
                 <p className="text-gray-700"><strong>Impact:</strong> Assets remain accessible to your heirs.</p>
               </div>
 
-              <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded">
+              <div className="bg-emerald-500/10 border border-emerald-400/25 p-6 rounded-2xl">
                 <h3 className="text-xl font-bold text-gray-900 mb-3">5. Legal Protection</h3>
                 <p className="text-gray-700 mb-2"><strong>Problem:</strong> Without documentation, assets may not be legally transferable.</p>
                 <p className="text-gray-700 mb-2"><strong>Solution:</strong> A notarizable document provides legal standing.</p>
                 <p className="text-gray-700"><strong>Impact:</strong> Smooth probate and asset transfer process.</p>
               </div>
 
-              <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded">
+              <div className="bg-emerald-500/10 border border-emerald-400/25 p-6 rounded-2xl">
                 <h3 className="text-xl font-bold text-gray-900 mb-3">6. Multi-Wallet Support</h3>
                 <p className="text-gray-700 mb-2"><strong>Problem:</strong> Many people use multiple wallets across different chains.</p>
                 <p className="text-gray-700 mb-2"><strong>Solution:</strong> LastWishCrypto supports up to 20 wallets across multiple blockchains.</p>
                 <p className="text-gray-700"><strong>Impact:</strong> Complete coverage of your crypto holdings.</p>
               </div>
 
-              <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded md:col-span-2">
+              <div className="bg-emerald-500/10 border border-emerald-400/25 p-6 rounded-2xl md:col-span-2">
                 <h3 className="text-xl font-bold text-gray-900 mb-3">7. No Technical Knowledge Required for Beneficiaries</h3>
                 <p className="text-gray-700 mb-2"><strong>Problem:</strong> Executors may not understand crypto technology.</p>
                 <p className="text-gray-700 mb-2"><strong>Solution:</strong> Clear instructions guide non-technical users through the process.</p>
@@ -472,10 +482,10 @@ export default function GuidePage() {
           </section>
 
           {/* Lost Crypto Statistics */}
-          <section id="lost-crypto-stats" className="border-b-2 border-gray-200 pb-8">
+          <section id="lost-crypto-stats" className="border-b border-white/10 pb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">📊 The Cost of Inaction: Lost Crypto Statistics</h2>
             
-            <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded mb-6">
+            <div className="bg-rose-500/10 border border-rose-400/25 p-6 rounded-2xl mb-6">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">The Scale of the Problem</h3>
               
               <div className="space-y-4">
@@ -575,47 +585,47 @@ export default function GuidePage() {
               <div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Unique Advantages</h3>
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                  <div className="bg-blue-500/10 border border-blue-400/25 p-4 rounded-2xl">
                     <h4 className="font-bold text-gray-900 mb-2">1. Client-Side & Secure</h4>
                     <p className="text-gray-700">No accounts, no stored private keys, everything is client-side, PDF generated locally</p>
                   </div>
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                  <div className="bg-blue-500/10 border border-blue-400/25 p-4 rounded-2xl">
                     <h4 className="font-bold text-gray-900 mb-2">2. Multi-Chain Support</h4>
                     <p className="text-gray-700">Ethereum, Base, Arbitrum, Polygon, Bitcoin - handles NFTs, tokens, <strong>ethscriptions</strong>, and native coins</p>
                   </div>
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                  <div className="bg-blue-500/10 border border-blue-400/25 p-4 rounded-2xl">
                     <h4 className="font-bold text-gray-900 mb-2">3. Professional Documentation</h4>
                     <p className="text-gray-700">Notarizable PDF format, clear structure, legal disclaimer included</p>
                   </div>
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                  <div className="bg-blue-500/10 border border-blue-400/25 p-4 rounded-2xl">
                     <h4 className="font-bold text-gray-900 mb-2">4. Affordable</h4>
-                    <p className="text-gray-700">One-time fee: <span className="text-green-600 font-bold text-xl">🎉 $20.26</span> <span className="line-through text-gray-400 text-lg">$42.00</span> <span className="text-green-600 font-bold">✨ New Year 2026 Special - Limited Time! ✨</span> Regular price $42.00 after February 1st</p>
+                    <p className="text-gray-700">One-time fee: <span className="text-blue-600 font-bold text-xl">$42.00</span></p>
                   </div>
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                  <div className="bg-blue-500/10 border border-blue-400/25 p-4 rounded-2xl">
                     <h4 className="font-bold text-gray-900 mb-2">5. Smart Filtering</h4>
                     <p className="text-gray-700">Automatic spam/dust token filtering keeps your asset list clean and manageable</p>
                   </div>
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                  <div className="bg-blue-500/10 border border-blue-400/25 p-4 rounded-2xl">
                     <h4 className="font-bold text-gray-900 mb-2">6. Advanced Allocation System</h4>
                     <p className="text-gray-700">Prevent over-allocation, edit from anywhere, auto-reallocate when beneficiaries change</p>
                   </div>
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                  <div className="bg-blue-500/10 border border-blue-400/25 p-4 rounded-2xl">
                     <h4 className="font-bold text-gray-900 mb-2">7. Multi-Chain Name Resolution</h4>
                     <p className="text-gray-700">Automatically resolves wallet names from ENS, Solana Name Service, Unstoppable Domains, Space ID, Lens Protocol, and Farcaster. Manual naming also supported.</p>
                   </div>
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                  <div className="bg-blue-500/10 border border-blue-400/25 p-4 rounded-2xl">
                     <h4 className="font-bold text-gray-900 mb-2">8. Wallet Naming & Organization</h4>
                     <p className="text-gray-700">Name your wallets for easy identification. Names are preserved in queued sessions and used for sorting assets.</p>
                   </div>
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                  <div className="bg-blue-500/10 border border-blue-400/25 p-4 rounded-2xl">
                     <h4 className="font-bold text-gray-900 mb-2">9. Enhanced NFT & Ethscription Support</h4>
                     <p className="text-gray-700">Improved metadata loading with multiple IPFS gateway fallbacks. Full support for ethscriptions (digital artifacts on Ethereum).</p>
                   </div>
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                  <div className="bg-blue-500/10 border border-blue-400/25 p-4 rounded-2xl">
                     <h4 className="font-bold text-gray-900 mb-2">10. Modern Button-Style UI</h4>
                     <p className="text-gray-700">Intuitive colored button filters and sorts replace dropdown menus throughout the application for better user experience.</p>
                   </div>
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded md:col-span-2">
+                  <div className="bg-blue-500/10 border border-blue-400/25 p-4 rounded-2xl md:col-span-2">
                     <h4 className="font-bold text-gray-900 mb-2">11. User-Friendly</h4>
                     <p className="text-gray-700">No technical knowledge required, step-by-step guidance, real-time validation, enhanced UI with larger containers, detailed asset information, and intuitive button-style controls</p>
                   </div>
@@ -625,8 +635,8 @@ export default function GuidePage() {
               <div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Comparison to Alternatives</h3>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white border border-gray-300 rounded-lg">
-                    <thead className="bg-gray-100">
+                  <table className="min-w-full bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                    <thead className="bg-white/10">
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-b">Feature</th>
                         <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-b">LastWishCrypto</th>
@@ -635,15 +645,15 @@ export default function GuidePage() {
                         <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-b">DIY Documentation</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-white/10">
                       <tr>
                         <td className="px-4 py-3 text-sm text-gray-700 font-semibold">Cost</td>
-                        <td className="px-4 py-3 text-sm text-gray-700"><span className="text-green-600 font-bold text-base">🎉 $20.26</span> <span className="line-through text-gray-400">$42.00</span> <span className="text-green-600">✨ 2026 Special ✨</span> / $42.00 (Regular)</td>
+                        <td className="px-4 py-3 text-sm text-gray-700"><span className="text-blue-600 font-bold text-base">$42.00</span></td>
                         <td className="px-4 py-3 text-sm text-gray-700">$500-$5,000</td>
                         <td className="px-4 py-3 text-sm text-gray-700">$100-$1,000/year</td>
                         <td className="px-4 py-3 text-sm text-gray-700">Free but risky</td>
                       </tr>
-                      <tr className="bg-gray-50">
+                      <tr className="bg-white/5">
                         <td className="px-4 py-3 text-sm text-gray-700 font-semibold">Setup Time</td>
                         <td className="px-4 py-3 text-sm text-gray-700">30-60 minutes</td>
                         <td className="px-4 py-3 text-sm text-gray-700">Weeks</td>
@@ -657,7 +667,7 @@ export default function GuidePage() {
                         <td className="px-4 py-3 text-sm text-gray-700">⚠️ Keys held by third party</td>
                         <td className="px-4 py-3 text-sm text-gray-700">⚠️ Varies</td>
                       </tr>
-                      <tr className="bg-gray-50">
+                      <tr className="bg-white/5">
                         <td className="px-4 py-3 text-sm text-gray-700 font-semibold">Multi-chain</td>
                         <td className="px-4 py-3 text-sm text-gray-700">✅ Yes</td>
                         <td className="px-4 py-3 text-sm text-gray-700">❌ No</td>
@@ -671,7 +681,7 @@ export default function GuidePage() {
                         <td className="px-4 py-3 text-sm text-gray-700">⚠️ Limited</td>
                         <td className="px-4 py-3 text-sm text-gray-700">⚠️ Manual</td>
                       </tr>
-                      <tr className="bg-gray-50">
+                      <tr className="bg-white/5">
                         <td className="px-4 py-3 text-sm text-gray-700 font-semibold">Ethscriptions</td>
                         <td className="px-4 py-3 text-sm text-gray-700">✅ Yes</td>
                         <td className="px-4 py-3 text-sm text-gray-700">❌ No</td>
@@ -685,7 +695,7 @@ export default function GuidePage() {
                         <td className="px-4 py-3 text-sm text-gray-700">⚠️ Limited</td>
                         <td className="px-4 py-3 text-sm text-gray-700">⚠️ Manual</td>
                       </tr>
-                      <tr className="bg-gray-50">
+                      <tr className="bg-white/5">
                         <td className="px-4 py-3 text-sm text-gray-700 font-semibold">Updates</td>
                         <td className="px-4 py-3 text-sm text-gray-700">✅ Easy</td>
                         <td className="px-4 py-3 text-sm text-gray-700">❌ Difficult</td>
@@ -707,13 +717,13 @@ export default function GuidePage() {
           </section>
 
           {/* Conclusion */}
-          <section className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg p-8 mt-8">
+          <section className="bg-white/5 border border-white/10 text-white rounded-2xl p-8 mt-8 backdrop-blur-xl">
             <h2 className="text-3xl font-bold mb-4">Conclusion</h2>
             <p className="text-lg mb-4">
               LastWishCrypto helps prevent the loss of billions in crypto assets by providing a simple, secure way to document your crypto inheritance. 
               With proper documentation, your family can access your assets quickly and avoid the stress and cost of recovery.
             </p>
-            <div className="bg-white/20 rounded-lg p-6 mt-6">
+            <div className="bg-white/10 rounded-2xl border border-white/10 p-6 mt-6">
               <h3 className="text-2xl font-bold mb-4">The Choice is Clear:</h3>
               <ul className="space-y-2 text-lg">
                 <li>✅ Spend <strong>30-60 minutes now</strong> to protect your crypto legacy</li>
@@ -723,7 +733,7 @@ export default function GuidePage() {
             <div className="mt-6 text-center">
               <a 
                 href="/"
-                className="inline-block bg-white text-blue-600 font-bold px-8 py-4 rounded-lg hover:bg-gray-100 transition-colors text-lg"
+                className="inline-block bg-white/10 text-white font-bold px-8 py-4 rounded-xl border border-white/20 hover:bg-white/20 transition-colors text-lg"
               >
                 Get Started Now →
               </a>
@@ -731,7 +741,7 @@ export default function GuidePage() {
           </section>
 
           {/* Footer Note */}
-          <div className="mt-8 pt-8 border-t border-gray-300 text-center text-sm text-gray-500">
+          <div className="mt-8 pt-8 border-t border-white/10 text-center text-sm text-slate-400">
             <p>
               <em>This document was generated by an AI assistant analyzing the LastWishCrypto codebase and industry statistics. 
               For the most current information, visit the LastWishCrypto application.</em>
@@ -743,7 +753,9 @@ export default function GuidePage() {
           </div>
         </div>
       </div>
+      </main>
+
+      <Footer />
     </div>
   )
 }
-

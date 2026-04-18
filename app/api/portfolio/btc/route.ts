@@ -1,412 +1,300 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimiter'
+import { dedupeAssets, fetchJsonWithRetry, firstDefinedString } from '@/lib/portfolio-utils'
+import { isBitcoinAddress } from '@/lib/address-utils'
+import type { Asset } from '@/types'
+
+interface OrdinalApiConfig {
+  name: string
+  buildUrl: (address: string, page: number) => string
+  extract: (data: any) => any[]
+  hasMore?: (data: any, items: any[], page: number) => boolean
+}
+
+async function safeFetchJson(url: string) {
+  return fetchJsonWithRetry<any>(url, {
+    retries: 2,
+    timeoutMs: 12000,
+    headers: {
+      'User-Agent': 'LastWish/1.0',
+    },
+  })
+}
+
+async function fetchBlockstreamAddress(address: string) {
+  return safeFetchJson(`https://blockstream.info/api/address/${address}`)
+}
+
+async function fetchBlockstreamUtxos(address: string) {
+  try {
+    const data = await safeFetchJson(`https://blockstream.info/api/address/${address}/utxo`)
+    return Array.isArray(data) ? data : []
+  } catch {
+    return []
+  }
+}
+
+async function fetchPaginatedInscriptions(address: string, config: OrdinalApiConfig, maxPages = 10): Promise<any[]> {
+  const items: any[] = []
+  const seen = new Set<string>()
+
+  for (let page = 1; page <= maxPages; page++) {
+    try {
+      const data = await safeFetchJson(config.buildUrl(address, page))
+      const pageItems = config.extract(data)
+      if (pageItems.length === 0) break
+
+      for (const item of pageItems) {
+        const id = String(
+          item?.id ||
+          item?.inscription_id ||
+          item?.inscriptionId ||
+          item?.number ||
+          `${item?.txid || item?.tx_id || 'unknown'}-${item?.vout || item?.output || 0}`
+        )
+
+        if (!seen.has(id)) {
+          seen.add(id)
+          items.push(item)
+        }
+      }
+
+      const shouldContinue = config.hasMore ? config.hasMore(data, pageItems, page) : pageItems.length > 0
+      if (!shouldContinue) break
+    } catch (error: any) {
+      console.warn(`[BTC API] ${config.name} inscription fetch failed on page ${page}:`, error?.message || error)
+      break
+    }
+  }
+
+  return items
+}
+
+async function fetchInscriptionsByUtxo(utxos: any[]): Promise<any[]> {
+  const items: any[] = []
+  const seen = new Set<string>()
+
+  for (const utxo of utxos.slice(0, 50)) {
+    const outpoint = `${utxo.txid}:${utxo.vout}`
+    const urls = [
+      `https://api.hiro.so/ordinals/v1/inscriptions?output=${outpoint}`,
+      `https://api.ordinalsbot.com/api/inscriptions?output=${outpoint}`,
+    ]
+
+    for (const url of urls) {
+      try {
+        const data = await safeFetchJson(url)
+        const inscriptions = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.results)
+            ? data.results
+            : Array.isArray(data?.inscriptions)
+              ? data.inscriptions
+              : []
+
+        for (const item of inscriptions) {
+          const id = String(item?.id || item?.inscription_id || item?.inscriptionId || '')
+          if (id && !seen.has(id)) {
+            seen.add(id)
+            items.push(item)
+          }
+        }
+      } catch {
+        continue
+      }
+    }
+  }
+
+  return items
+}
+
+function normalizeOrdinalAsset(address: string, inscription: any, index: number): Asset {
+  const inscriptionId = String(
+    inscription?.id ||
+    inscription?.inscription_id ||
+    inscription?.inscriptionId ||
+    inscription?.number ||
+    `ordinal-${index}`
+  )
+
+  const name = firstDefinedString(
+    inscription?.name,
+    inscription?.title,
+    inscription?.meta?.name,
+    `Ordinal #${inscriptionId}`
+  ) || `Ordinal #${inscriptionId}`
+
+  const contentType = firstDefinedString(
+    inscription?.content_type,
+    inscription?.mime_type,
+    inscription?.mime,
+    inscription?.meta?.mime,
+    'unknown'
+  ) || 'unknown'
+
+  const contentUrl = firstDefinedString(
+    inscription?.content_url,
+    inscription?.media_url,
+    inscription?.preview_url,
+    inscription?.image,
+    inscription?.content,
+    inscription?.meta?.image,
+    `https://ord.io/content/${inscriptionId}`
+  )
+
+  return {
+    id: `ordinal-${inscriptionId}-${address}`,
+    chain: 'bitcoin',
+    type: 'ordinal',
+    symbol: 'ORD',
+    name,
+    balance: '1',
+    balanceFormatted: '1',
+    decimals: 0,
+    contractAddress: address,
+    walletAddress: address,
+    tokenId: inscriptionId,
+    imageUrl: `/api/ordinal-image?id=${encodeURIComponent(inscriptionId)}`,
+    contentUri: contentUrl,
+    metadata: {
+      inscriptionId,
+      contentType,
+      contentUrl,
+      assetType: 'ordinal',
+      number: inscription?.number || inscription?.inscription_number || null,
+      txid: inscription?.txid || inscription?.tx_id || null,
+      vout: inscription?.vout || null,
+      output: inscription?.output || null,
+      ...inscription,
+    },
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting: 30 requests per minute per IP
-    const ip = request.headers.get('x-forwarded-for') || 
-               request.headers.get('x-real-ip') || 
-               'unknown'
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
     const rateLimitKey = `btc-portfolio:${ip}`
     const rateLimit = checkRateLimit(rateLimitKey, {
-      windowMs: 60 * 1000, // 1 minute
+      windowMs: 60 * 1000,
       maxRequests: 30,
     })
-    
+
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { 
+        {
           error: 'Too many requests. Please wait a moment before trying again.',
           retryAfter: rateLimit.retryAfter,
         },
-        { 
+        {
           status: 429,
           headers: getRateLimitHeaders(rateLimit),
         }
       )
     }
-    
+
     const { address } = await request.json()
+    const normalizedAddress = String(address || '').trim()
 
-    if (!address) {
-      return NextResponse.json(
-        { error: 'Bitcoin address required' },
-        { status: 400 }
-      )
+    if (!normalizedAddress) {
+      return NextResponse.json({ error: 'Bitcoin address required' }, { status: 400 })
     }
 
-    // Using blockstream.info API (public, no key required)
-    // In production, you might want to use a more reliable service
-    try {
-      const response = await fetch(
-        `https://blockstream.info/api/address/${address}`
-      )
-
-      if (!response.ok) {
-        return NextResponse.json(
-          { error: 'Failed to fetch Bitcoin balance' },
-          { status: 500 }
-        )
-      }
-
-      const data = await response.json()
-
-      if (!data || typeof data !== 'object') {
-        return NextResponse.json({ assets: [] })
-      }
-
-      const balance = data.chain_stats?.funded_txo_sum || 0
-      const spent = data.chain_stats?.spent_txo_sum || 0
-      const netBalance = balance - spent
-
-      if (netBalance === 0) {
-        return NextResponse.json({ assets: [] })
-      }
-
-      // Convert satoshis to BTC
-      const btcBalance = (netBalance / 100000000).toFixed(8)
-      
-      // Format SATs with commas for readability
-      const satsFormatted = netBalance.toLocaleString('en-US')
-
-      const assets: any[] = []
-      let ordinalsFound = 0 // Track if we find ordinals
-      let ordinalsAddress: string | null = null // Track ordinals address if different
-
-      // Fetch ordinals/inscriptions FIRST to know if we should show the warning
-      // Note: Ordinals are typically stored in Taproot addresses (bc1p...), but can also be in other address types
-      // Xverse uses separate addresses for ordinals vs payment
-      try {
-        console.log(`[BTC API] Fetching ordinals for address: ${address}`)
-        
-        // Get UTXOs first to check for inscriptions
-        let utxos: any[] = []
-        try {
-          const utxoResponse = await fetch(`https://blockstream.info/api/address/${address}/utxo`, {
-            headers: { 'Accept': 'application/json' }
-          })
-          if (utxoResponse.ok) {
-            utxos = await utxoResponse.json()
-            console.log(`[BTC API] Found ${utxos.length} UTXOs for address`)
-          }
-        } catch (utxoError) {
-          console.log(`[BTC API] Failed to fetch UTXOs:`, utxoError)
-        }
-
-        // Try multiple ordinal APIs with different formats
-        const ordinalApis = [
-          // Hiro API - most reliable (limit is 60)
-          {
-            url: `https://api.hiro.so/ordinals/v1/inscriptions?address=${address}&limit=60`,
-            name: 'Hiro',
-            extract: (data: any) => {
-              if (Array.isArray(data)) return data
-              if (data?.results && Array.isArray(data.results)) return data.results
-              if (data?.data && Array.isArray(data.data)) return data.data
-              return []
-            }
-          },
-          // Ordinals.com explorer API
-          {
-            url: `https://ordinals.com/api/address/${address}/inscriptions`,
-            name: 'Ordinals.com (address)',
-            extract: (data: any) => {
-              if (Array.isArray(data)) return data
-              if (data?.inscriptions && Array.isArray(data.inscriptions)) return data.inscriptions
-              if (data?.results && Array.isArray(data.results)) return data.results
-              return []
-            }
-          },
-          // Ordinals.com API
-          {
-            url: `https://ordinals.com/api/inscriptions?address=${address}`,
-            name: 'Ordinals.com',
-            extract: (data: any) => {
-              if (Array.isArray(data)) return data
-              if (data?.inscriptions && Array.isArray(data.inscriptions)) return data.inscriptions
-              if (data?.results && Array.isArray(data.results)) return data.results
-              return []
-            }
-          },
-          // Ord.io API
-          {
-            url: `https://api.ord.io/inscriptions?address=${address}`,
-            name: 'Ord.io',
-            extract: (data: any) => {
-              if (Array.isArray(data)) return data
-              if (data?.inscriptions && Array.isArray(data.inscriptions)) return data.inscriptions
-              if (data?.results && Array.isArray(data.results)) return data.results
-              return []
-            }
-          },
-          // Gamma API
-          {
-            url: `https://api.gamma.io/ordinals/v1/inscriptions?address=${address}`,
-            name: 'Gamma',
-            extract: (data: any) => {
-              if (Array.isArray(data)) return data
-              if (data?.results && Array.isArray(data.results)) return data.results
-              return []
-            }
-          },
-        ]
-
-        let allInscriptions: any[] = []
-        const seenIds = new Set<string>()
-
-        // Try each API
-        for (const api of ordinalApis) {
-          try {
-            console.log(`[BTC API] Trying ${api.name} API...`)
-            const ordinalResponse = await fetch(api.url, {
-              headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0',
-              },
-              // Add timeout
-              signal: AbortSignal.timeout(10000), // 10 second timeout
-            })
-
-            if (ordinalResponse.ok) {
-              const ordinalData = await ordinalResponse.json()
-              const inscriptions = api.extract(ordinalData)
-              
-              console.log(`[BTC API] ${api.name} returned ${inscriptions.length} inscriptions`)
-              
-              // Add unique inscriptions
-              inscriptions.forEach((inscription: any) => {
-                const inscriptionId = inscription.id || 
-                                     inscription.inscription_id || 
-                                     inscription.inscriptionId ||
-                                     inscription.number ||
-                                     `${inscription.txid}-${inscription.vout || 0}`
-                
-                if (!seenIds.has(inscriptionId)) {
-                  seenIds.add(inscriptionId)
-                  allInscriptions.push(inscription)
-                }
-              })
-
-              // If we got results, log success
-              if (inscriptions.length > 0) {
-                console.log(`[BTC API] ✅ Successfully fetched ${inscriptions.length} ordinals from ${api.name}`)
-              }
-            } else {
-              console.log(`[BTC API] ${api.name} API returned status ${ordinalResponse.status}`)
-            }
-          } catch (apiError: any) {
-            if (apiError.name === 'AbortError') {
-              console.log(`[BTC API] ${api.name} API timeout`)
-            } else {
-              console.log(`[BTC API] ${api.name} API failed:`, apiError.message)
-            }
-            // Continue to next API
-          }
-        }
-
-        // Also check UTXOs for inscriptions (some APIs require UTXO-based queries)
-        // Check ALL UTXOs, not just when no inscriptions found - ordinals might be in UTXOs
-        if (utxos.length > 0) {
-          console.log(`[BTC API] Checking ${utxos.length} UTXOs for inscriptions...`)
-          // Check more UTXOs (up to 50) to find ordinals
-          for (const utxo of utxos.slice(0, 50)) {
-            try {
-              const utxoId = `${utxo.txid}:${utxo.vout}`
-              // Try Hiro API with UTXO
-              const utxoResponse = await fetch(`https://api.hiro.so/ordinals/v1/inscriptions?output=${utxoId}`, {
-                headers: { 'Accept': 'application/json' },
-                signal: AbortSignal.timeout(5000),
-              })
-              if (utxoResponse.ok) {
-                const utxoData = await utxoResponse.json()
-                const utxoInscriptions = Array.isArray(utxoData) ? utxoData : 
-                                        (utxoData?.results || utxoData?.inscriptions || [])
-                utxoInscriptions.forEach((inscription: any) => {
-                  const inscriptionId = inscription.id || inscription.inscription_id || inscription.inscriptionId
-                  if (inscriptionId && !seenIds.has(inscriptionId)) {
-                    seenIds.add(inscriptionId)
-                    allInscriptions.push(inscription)
-                    console.log(`[BTC API] Found ordinal in UTXO ${utxoId}: ${inscriptionId}`)
-                  }
-                })
-              }
-              // Also try OrdinalsBot with UTXO
-              try {
-                const ordinalsBotResponse = await fetch(`https://api.ordinalsbot.com/api/inscriptions?output=${utxoId}`, {
-                  headers: { 'Accept': 'application/json' },
-                  signal: AbortSignal.timeout(5000),
-                })
-                if (ordinalsBotResponse.ok) {
-                  const botData = await ordinalsBotResponse.json()
-                  const botInscriptions = Array.isArray(botData) ? botData : 
-                                         (botData?.inscriptions || botData?.results || [])
-                  botInscriptions.forEach((inscription: any) => {
-                    const inscriptionId = inscription.id || inscription.inscription_id || inscription.inscriptionId
-                    if (inscriptionId && !seenIds.has(inscriptionId)) {
-                      seenIds.add(inscriptionId)
-                      allInscriptions.push(inscription)
-                      console.log(`[BTC API] Found ordinal via OrdinalsBot in UTXO ${utxoId}: ${inscriptionId}`)
-                    }
-                  })
-                }
-              } catch (botError) {
-                // Silent fail
-              }
-            } catch (utxoError) {
-              // Silent fail for UTXO checks
-            }
-          }
-        }
-
-        console.log(`[BTC API] Total unique inscriptions found: ${allInscriptions.length}`)
-        ordinalsFound = allInscriptions.length
-        
-        // Log if no ordinals found for debugging
-        if (allInscriptions.length === 0) {
-          console.log(`[BTC API] ⚠️ No ordinals found for address ${address}`)
-          console.log(`[BTC API] This could mean:`)
-          console.log(`[BTC API] 1. Ordinals are in a different address (check ordinals address if using Xverse)`)
-          console.log(`[BTC API] 2. Ordinals are not indexed yet by the APIs`)
-          console.log(`[BTC API] 3. Address format may not be supported by ordinal APIs`)
-        }
-
-        // Add each ordinal as a separate asset
-        allInscriptions.forEach((inscription: any, index: number) => {
-          const inscriptionId = inscription.id || 
-                               inscription.inscription_id || 
-                               inscription.inscriptionId ||
-                               inscription.number ||
-                               `ordinal-${index}`
-          
-          const name = inscription.name || 
-                      inscription.title || 
-                      inscription.meta?.name ||
-                      `Ordinal #${inscriptionId}`
-          
-          // Extract image/content URL - try multiple sources
-          let imageUrl = inscription.image || 
-                        inscription.content_url || 
-                        inscription.media_url || 
-                        inscription.preview_url ||
-                        inscription.content ||
-                        inscription.thumbnail ||
-                        (inscription.meta?.image || inscription.meta?.preview)
-          
-          // Always use our proxy API for ordinals to avoid CORS issues
-          // Convert any ord.io or external URLs to use our proxy
-          if (inscriptionId) {
-            const inscriptionIdStr = inscriptionId.toString()
-            
-            // Use our proxy API to avoid CORS issues
-            imageUrl = `/api/ordinal-image?id=${encodeURIComponent(inscriptionIdStr)}`
-            
-            // Log the constructed URL
-            console.log(`[BTC API] Using proxy for ordinal ${inscriptionIdStr}: ${imageUrl}`)
-          }
-          
-          // Extract content type
-          const contentType = inscription.content_type || 
-                             inscription.mime_type || 
-                             inscription.mime ||
-                             inscription.meta?.mime ||
-                             'unknown'
-          
-          // Construct content URL for fetching full content if needed
-          // Prefer actual content URLs from API, fallback to constructed URLs
-          const contentUrl = inscription.content_url || 
-                            inscription.media_url || 
-                            (inscriptionId ? `https://ord.io/content/${inscriptionId.toString()}` : null) ||
-                            imageUrl // Use imageUrl as fallback for contentUrl
-          
-          // If we still don't have an imageUrl, use contentUrl
-          if (!imageUrl && contentUrl) {
-            imageUrl = contentUrl
-          }
-          
-          // Log image URL for debugging
-          console.log(`[BTC API] Ordinal ${inscriptionId}: imageUrl=${imageUrl}, contentUrl=${contentUrl}, contentType=${contentType}`)
-          
-          assets.push({
-            id: `ordinal-${inscriptionId}-${address}`,
-            chain: 'bitcoin',
-            type: 'ordinal',
-            symbol: 'ORD',
-            name: name,
-            balance: '1', // Ordinals are non-fungible (1 unit)
-            balanceFormatted: '1',
-            decimals: 0,
-            contractAddress: address,
-            walletAddress: address,
-            tokenId: inscriptionId.toString(),
-            imageUrl: imageUrl,
-            contentUri: contentUrl, // Add contentUri for NFTImage component
-            metadata: {
-              inscriptionId: inscriptionId.toString(),
-              contentType: contentType,
-              contentUrl: contentUrl,
-              assetType: 'ordinal',
-              number: inscription.number || inscription.inscription_number,
-              txid: inscription.txid || inscription.tx_id,
-              vout: inscription.vout,
-              ...inscription,
-            },
-          })
-        })
-
-        if (allInscriptions.length > 0) {
-          console.log(`[BTC API] ✅ Added ${allInscriptions.length} ordinals to assets`)
-        } else {
-          console.log(`[BTC API] ⚠️ No ordinals found for address ${address}`)
-          console.log(`[BTC API] Note: Ordinals are typically stored in Taproot addresses (bc1p...).`)
-          console.log(`[BTC API] If using Xverse, ordinals may be in a separate ordinals address.`)
-        }
-      } catch (ordinalError) {
-        console.error('[BTC API] Error fetching ordinals:', ordinalError)
-        // Don't fail the whole request if ordinals fail
-      }
-
-      // Add regular Bitcoin asset AFTER fetching ordinals (so we know if ordinals were found)
-      if (netBalance > 0) {
-        // Only show warning if no ordinals were detected
-        // If ordinals are found, they're shown as separate assets, so update the message
-        const note = ordinalsFound === 0 
-          ? 'This balance includes all satoshis. Ordinals and rare SATs are detected and shown separately above. When allocating, consider that rare SATs should be preserved separately from regular Bitcoin.'
-          : `This address contains ${ordinalsFound} ordinal(s) and rare SATs. The BTC balance cannot be selected or split - only individual ordinals can be allocated to preserve rare SATs.`
-        
-        assets.push({
-          id: `btc-${address}`,
-          chain: 'bitcoin',
-          type: 'btc',
-          symbol: 'BTC',
-          name: 'Bitcoin',
-          balance: netBalance.toString(), // Balance in satoshis
-          balanceFormatted: btcBalance, // Balance in BTC
-          decimals: 8, // Bitcoin uses 8 decimals (satoshis)
-          contractAddress: address,
-          walletAddress: address, // Track which wallet this asset belongs to
-          metadata: {
-            sats: netBalance.toString(),
-            satsFormatted: satsFormatted,
-            assetType: 'regular', // regular, ordinal, rare_sat
-            note: note,
-          },
-        })
-      }
-
-      return NextResponse.json({ assets })
-    } catch (error) {
-      console.error('Error fetching Bitcoin balance:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch Bitcoin balance' },
-        { status: 500 }
-      )
+    if (!isBitcoinAddress(normalizedAddress)) {
+      return NextResponse.json({ error: 'Invalid Bitcoin address' }, { status: 400 })
     }
+
+    const [addressData, utxos] = await Promise.all([
+      fetchBlockstreamAddress(normalizedAddress),
+      fetchBlockstreamUtxos(normalizedAddress),
+    ])
+
+    if (!addressData || typeof addressData !== 'object') {
+      return NextResponse.json({ assets: [] })
+    }
+
+    const funded = Number(addressData.chain_stats?.funded_txo_sum || 0)
+    const spent = Number(addressData.chain_stats?.spent_txo_sum || 0)
+    const netBalance = Math.max(0, funded - spent)
+    const btcBalance = (netBalance / 100000000).toFixed(8)
+    const satsFormatted = netBalance.toLocaleString('en-US')
+
+    const ordinalApis: OrdinalApiConfig[] = [
+      {
+        name: 'Hiro',
+        buildUrl: (addr, page) => `https://api.hiro.so/ordinals/v1/inscriptions?address=${addr}&limit=60&offset=${(page - 1) * 60}`,
+        extract: data => Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [],
+        hasMore: (data, items, page) => {
+          const total = Number(data?.total || 0)
+          return items.length === 60 && (!total || page * 60 < total)
+        },
+      },
+      {
+        name: 'Ordinals.com address',
+        buildUrl: (addr) => `https://ordinals.com/api/address/${addr}/inscriptions`,
+        extract: data => Array.isArray(data?.inscriptions) ? data.inscriptions : Array.isArray(data) ? data : [],
+        hasMore: () => false,
+      },
+      {
+        name: 'Ord.io',
+        buildUrl: (addr) => `https://api.ord.io/inscriptions?address=${addr}`,
+        extract: data => Array.isArray(data?.inscriptions) ? data.inscriptions : Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [],
+        hasMore: () => false,
+      },
+    ]
+
+    const inscriptions: any[] = []
+    const inscriptionIds = new Set<string>()
+
+    for (const api of ordinalApis) {
+      const apiItems = await fetchPaginatedInscriptions(normalizedAddress, api)
+      for (const item of apiItems) {
+        const id = String(item?.id || item?.inscription_id || item?.inscriptionId || '')
+        if (id && !inscriptionIds.has(id)) {
+          inscriptionIds.add(id)
+          inscriptions.push(item)
+        }
+      }
+    }
+
+    const utxoInscriptions = await fetchInscriptionsByUtxo(utxos)
+    for (const item of utxoInscriptions) {
+      const id = String(item?.id || item?.inscription_id || item?.inscriptionId || '')
+      if (id && !inscriptionIds.has(id)) {
+        inscriptionIds.add(id)
+        inscriptions.push(item)
+      }
+    }
+
+    const assets: Asset[] = inscriptions.map((inscription, index) => normalizeOrdinalAsset(normalizedAddress, inscription, index))
+
+    if (netBalance > 0) {
+      assets.push({
+        id: `btc-${normalizedAddress}`,
+        chain: 'bitcoin',
+        type: 'btc',
+        symbol: 'BTC',
+        name: 'Bitcoin',
+        balance: netBalance.toString(),
+        balanceFormatted: btcBalance,
+        decimals: 8,
+        contractAddress: normalizedAddress,
+        walletAddress: normalizedAddress,
+        metadata: {
+          sats: netBalance.toString(),
+          satsFormatted,
+          assetType: 'regular',
+          hasOrdinals: assets.some(asset => asset.type === 'ordinal'),
+          ordinalsCount: assets.filter(asset => asset.type === 'ordinal').length,
+          note: assets.some(asset => asset.type === 'ordinal')
+            ? `This address contains ${assets.filter(asset => asset.type === 'ordinal').length} ordinal(s). Allocate the ordinals separately if you need to preserve rare sats or inscriptions.`
+            : 'No ordinals were detected for this address by the current indexers.',
+        },
+      })
+    }
+
+    return NextResponse.json({ assets: dedupeAssets(assets) })
   } catch (error) {
     console.error('Error in BTC portfolio API:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch portfolio' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch portfolio' }, { status: 500 })
   }
 }
-

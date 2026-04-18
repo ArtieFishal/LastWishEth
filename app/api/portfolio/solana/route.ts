@@ -1,306 +1,347 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Connection, PublicKey } from '@solana/web3.js'
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimiter'
+import { dedupeAssets, fetchJsonWithRetry, firstDefinedString, formatUnitsSafe } from '@/lib/portfolio-utils'
+import type { Asset } from '@/types'
 
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY
 const SOLANA_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com'
+const HELIUS_RPC_URL = HELIUS_API_KEY ? `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}` : null
+
+function parsePositiveNumber(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value || '0'))
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+}
+
+function formatTokenBalance(amount: unknown, decimals = 0): string {
+  const normalized = String(amount ?? '0').trim()
+  if (/^-?\d+$/.test(normalized)) {
+    return formatUnitsSafe(normalized, decimals, Math.min(Math.max(decimals, 0), 9))
+  }
+
+  const numeric = parsePositiveNumber(normalized)
+  if (!numeric) return '0'
+  return numeric.toFixed(Math.min(Math.max(decimals, 0), 9)).replace(/0+$/, '').replace(/\.$/, '')
+}
+
+async function heliusRpc<T = any>(method: string, params: Record<string, any>): Promise<T> {
+  if (!HELIUS_RPC_URL) {
+    throw new Error('Helius RPC not configured')
+  }
+
+  const response = await fetchJsonWithRetry<any>(HELIUS_RPC_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: method,
+      method,
+      params,
+    }),
+    retries: 2,
+    timeoutMs: 20000,
+  })
+
+  if (response?.error) {
+    throw new Error(response.error.message || `Helius RPC error for ${method}`)
+  }
+
+  return response?.result as T
+}
+
+function isCollectibleInterface(value: unknown): boolean {
+  const normalized = String(value || '').toUpperCase()
+  return normalized.includes('NFT') || normalized.includes('COLLECTIBLE') || normalized.includes('MPL_CORE')
+}
+
+function extractSolanaImage(item: any): string | undefined {
+  return firstDefinedString(
+    item?.content?.links?.image,
+    item?.content?.files?.[0]?.uri,
+    item?.content?.metadata?.image,
+    item?.metadata?.image,
+  )
+}
+
+function extractSolanaCollection(item: any): string | undefined {
+  return firstDefinedString(
+    item?.grouping?.find?.((group: any) => group?.group_key === 'collection')?.group_value,
+    item?.content?.metadata?.collection?.name,
+    item?.content?.metadata?.collection,
+    item?.grouping?.[0]?.group_value,
+  )
+}
+
+function normalizeDasNft(address: string, item: any): Asset | null {
+  if (!item?.id) return null
+
+  const name = firstDefinedString(item?.content?.metadata?.name, item?.metadata?.name, `NFT #${String(item.id).slice(0, 8)}`) || 'NFT'
+  const symbol = firstDefinedString(item?.content?.metadata?.symbol, item?.metadata?.symbol, 'NFT') || 'NFT'
+  const image = extractSolanaImage(item)
+
+  return {
+    id: `${address}-nft-${item.id}`,
+    name,
+    symbol,
+    type: 'nft',
+    balance: '1',
+    balanceFormatted: '1',
+    usdValue: 0,
+    contractAddress: String(item.id),
+    tokenId: String(item.id),
+    image,
+    decimals: 0,
+    chain: 'solana',
+    walletAddress: address,
+    metadata: {
+      collection: extractSolanaCollection(item),
+      description: firstDefinedString(item?.content?.metadata?.description, item?.description),
+      compressed: Boolean(item?.compression?.compressed),
+      interface: item?.interface || undefined,
+      ownershipModel: item?.ownership?.ownership_model || undefined,
+      jsonUri: item?.content?.json_uri || undefined,
+      links: item?.content?.links || undefined,
+    },
+  }
+}
+
+async function fetchSolanaCollectibles(address: string): Promise<Asset[]> {
+  if (!HELIUS_RPC_URL) return []
+
+  const assets: Asset[] = []
+  let page = 1
+  const limit = 100
+
+  while (page <= 20) {
+    const result = await heliusRpc<any>('getAssetsByOwner', {
+      ownerAddress: address,
+      page,
+      limit,
+      displayOptions: {
+        showCollectionMetadata: true,
+        showFungible: false,
+      },
+    })
+
+    const items = Array.isArray(result?.items) ? result.items : []
+    if (items.length === 0) break
+
+    for (const item of items) {
+      if (!isCollectibleInterface(item?.interface) && !item?.compression?.compressed && !extractSolanaCollection(item)) {
+        continue
+      }
+
+      const normalized = normalizeDasNft(address, item)
+      if (normalized) {
+        assets.push(normalized)
+      }
+    }
+
+    const total = Number(result?.total || 0)
+    if (items.length < limit || (total > 0 && page * limit >= total)) {
+      break
+    }
+
+    page += 1
+  }
+
+  return assets
+}
+
+async function fetchHeliusBalances(address: string): Promise<any | null> {
+  if (!HELIUS_API_KEY) return null
+
+  try {
+    return await fetchJsonWithRetry<any>(`https://api.helius.xyz/v0/addresses/${address}/balances?api-key=${HELIUS_API_KEY}`, {
+      retries: 2,
+      timeoutMs: 15000,
+    })
+  } catch (error: any) {
+    console.warn('[Solana API] Helius balances fetch failed:', error?.message || error)
+    return null
+  }
+}
+
+function normalizeHeliusFungibles(address: string, balancesData: any, nftIds: Set<string>): Asset[] {
+  const tokens = Array.isArray(balancesData?.tokens) ? balancesData.tokens : []
+  const assets: Asset[] = []
+
+  for (const token of tokens) {
+    const mint = String(token?.mint || token?.address || '').trim()
+    if (!mint) continue
+    if (nftIds.has(mint.toLowerCase())) continue
+
+    const decimals = Number.isFinite(Number(token?.decimals)) ? Number(token.decimals) : 0
+    const rawAmount = token?.amount ?? token?.balance ?? '0'
+    const balanceFormatted = formatTokenBalance(rawAmount, decimals)
+    const numericBalance = parsePositiveNumber(balanceFormatted)
+
+    if (!numericBalance) continue
+
+    const looksLikeNft = decimals === 0 && String(rawAmount) === '1' && !!firstDefinedString(token?.image, token?.collection?.name, token?.description, token?.uri)
+    if (looksLikeNft) continue
+
+    assets.push({
+      id: `${address}-spl-${mint}`,
+      name: token?.name || 'Unknown Token',
+      symbol: token?.symbol || 'UNKNOWN',
+      type: 'spl-token',
+      balance: String(rawAmount),
+      balanceFormatted,
+      usdValue: parsePositiveNumber(token?.price_usd) * numericBalance || 0,
+      contractAddress: mint,
+      image: typeof token?.image === 'string' ? token.image : undefined,
+      decimals,
+      chain: 'solana',
+      walletAddress: address,
+      metadata: {
+        collection: firstDefinedString(token?.collection?.name, token?.collection),
+        description: firstDefinedString(token?.description),
+        uri: token?.uri || undefined,
+      },
+    })
+  }
+
+  return assets
+}
+
+async function fetchRpcTokenAssets(connection: Connection, publicKey: PublicKey, address: string): Promise<Asset[]> {
+  const assets: Asset[] = []
+
+  try {
+    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
+      programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+    })
+
+    for (const account of tokenAccounts.value) {
+      const parsedInfo = account.account.data.parsed?.info
+      if (!parsedInfo?.mint || !parsedInfo?.tokenAmount) continue
+
+      const mint = String(parsedInfo.mint)
+      const decimals = Number(parsedInfo.tokenAmount.decimals || 0)
+      const rawAmount = String(parsedInfo.tokenAmount.amount || '0')
+      if (rawAmount === '0') continue
+
+      const isLikelyNft = decimals === 0 && rawAmount === '1'
+      assets.push({
+        id: `${address}-${isLikelyNft ? 'nft' : 'spl'}-${mint}`,
+        name: isLikelyNft ? `NFT #${mint.slice(0, 8)}` : 'SPL Token',
+        symbol: isLikelyNft ? 'NFT' : 'SPL',
+        type: isLikelyNft ? 'nft' : 'spl-token',
+        balance: rawAmount,
+        balanceFormatted: formatUnitsSafe(rawAmount, decimals, Math.min(decimals, 9)),
+        usdValue: 0,
+        contractAddress: mint,
+        tokenId: isLikelyNft ? mint : undefined,
+        decimals,
+        chain: 'solana',
+        walletAddress: address,
+      })
+    }
+  } catch (error: any) {
+    console.warn('[Solana API] RPC token fallback failed:', error?.message || error)
+  }
+
+  return assets
+}
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting
-    const ip = request.headers.get('x-forwarded-for') || 
-               request.headers.get('x-real-ip') || 
-               'unknown'
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
     const rateLimitKey = `solana-portfolio:${ip}`
     const rateLimit = checkRateLimit(rateLimitKey, {
       windowMs: 60 * 1000,
       maxRequests: 30,
     })
-    
+
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { 
+        {
           error: 'Too many requests. Please wait a moment before trying again.',
           retryAfter: rateLimit.retryAfter,
         },
-        { 
+        {
           status: 429,
           headers: getRateLimitHeaders(rateLimit),
         }
       )
     }
-    
+
     const { address } = await request.json()
 
     if (!address) {
-      return NextResponse.json(
-        { error: 'Address required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Address required' }, { status: 400 })
     }
 
-    // Validate Solana address format
+    let publicKey: PublicKey
     try {
-      new PublicKey(address)
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid Solana address format' },
-        { status: 400 }
-      )
+      publicKey = new PublicKey(address)
+    } catch {
+      return NextResponse.json({ error: 'Invalid Solana address format' }, { status: 400 })
     }
 
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed')
-    const publicKey = new PublicKey(address)
-    const assets = []
+    const normalizedAddress = publicKey.toBase58()
+    const assets: Asset[] = []
 
     try {
-      // Get SOL balance
-      const balance = await connection.getBalance(publicKey)
-      const solBalance = balance / 1e9 // Convert lamports to SOL
-
-      if (solBalance > 0) {
-        // Get approximate SOL price (can be improved with real price API)
-        const solPriceUSD = 150 // Approximate, should use real price API
+      const lamports = await connection.getBalance(publicKey)
+      if (lamports > 0) {
+        const solBalance = lamports / 1e9
         assets.push({
-          id: `${address}-sol-native`,
+          id: `${normalizedAddress}-sol-native`,
           name: 'Solana',
           symbol: 'SOL',
           type: 'native',
-          balance: solBalance.toString(),
+          balance: lamports.toString(),
           balanceFormatted: solBalance.toFixed(9),
-          usdValue: solBalance * solPriceUSD,
-          contractAddress: null,
-          tokenId: null,
-          image: null,
+          usdValue: 0,
           decimals: 9,
           chain: 'solana',
+          walletAddress: normalizedAddress,
         })
       }
 
-      // Get SPL tokens and NFTs using Helius API (if available) or direct RPC
-      let tokensData: any = null
-      if (HELIUS_API_KEY) {
+      let collectibleAssets: Asset[] = []
+      if (HELIUS_RPC_URL) {
         try {
-          const tokensResponse = await fetch(
-            `https://api.helius.xyz/v0/addresses/${address}/balances?api-key=${HELIUS_API_KEY}`,
-            { 
-              headers: { 'Accept': 'application/json' },
-              signal: AbortSignal.timeout(15000), // 15 second timeout for better reliability
-            }
-          )
-
-          if (tokensResponse.ok) {
-            tokensData = await tokensResponse.json()
-            
-            // Process SPL tokens
-            if (tokensData.tokens && Array.isArray(tokensData.tokens)) {
-              for (const token of tokensData.tokens) {
-                const balance = parseFloat(token.amount) / Math.pow(10, token.decimals || 9)
-                
-                // Skip zero balances
-                if (balance <= 0) continue
-                
-                // Check if this is actually an NFT
-                // NFTs typically have: balance of 1, decimals 0, and often have metadata/image
-                // But be more aggressive - if balance is exactly 1 and decimals is 0, it's likely an NFT
-                const decimals = token.decimals || 0
-                const isLikelyNFT = balance === 1 && decimals === 0
-                
-                // Also check for NFT indicators in the token data
-                const hasNFTIndicators = token.image || 
-                                        token.collection || 
-                                        token.description ||
-                                        (token.name && !token.symbol) || // NFTs often have names but no symbol
-                                        token.uri || // NFT metadata URI
-                                        token.metadata // NFT metadata object
-                
-                if (isLikelyNFT || (balance === 1 && hasNFTIndicators)) {
-                  // Treat as NFT
-                  assets.push({
-                    id: `${address}-nft-${token.mint}`,
-                    name: token.name || `NFT #${token.mint.slice(0, 8)}`,
-                    symbol: token.symbol || 'NFT',
-                    type: 'nft',
-                    balance: '1',
-                    balanceFormatted: '1',
-                    usdValue: 0,
-                    contractAddress: token.mint,
-                    tokenId: token.mint,
-                    image: token.image || null,
-                    decimals: 0,
-                    chain: 'solana',
-                    metadata: {
-                      collection: token.collection?.name || token.collection || null,
-                      description: token.description || null,
-                      uri: token.uri || null,
-                    },
-                  })
-                } else {
-                  // Regular SPL token
-                  assets.push({
-                    id: `${address}-spl-${token.mint}`,
-                    name: token.name || 'Unknown Token',
-                    symbol: token.symbol || 'UNKNOWN',
-                    type: 'spl-token',
-                    balance: balance.toString(),
-                    balanceFormatted: balance.toFixed(token.decimals || 9),
-                    usdValue: 0, // Would need price API for accurate USD value
-                    contractAddress: token.mint,
-                    tokenId: null,
-                    image: token.image || null,
-                    decimals: token.decimals || 9,
-                    chain: 'solana',
-                  })
-                }
-              }
-            }
-
-            // Process NFTs from nfts array
-            if (tokensData.nfts && Array.isArray(tokensData.nfts)) {
-              for (const nft of tokensData.nfts) {
-                // Skip if already added as NFT from tokens array
-                if (!assets.some(a => a.contractAddress === nft.mint && a.type === 'nft')) {
-                  assets.push({
-                    id: `${address}-nft-${nft.mint}`,
-                    name: nft.name || `NFT #${nft.mint.slice(0, 8)}`,
-                    symbol: 'NFT',
-                    type: 'nft',
-                    balance: '1',
-                    balanceFormatted: '1',
-                    usdValue: 0,
-                    contractAddress: nft.mint,
-                    tokenId: nft.mint,
-                    image: nft.image || null,
-                    decimals: 0,
-                    chain: 'solana',
-                    metadata: {
-                      collection: nft.collection?.name || null,
-                      description: nft.description || null,
-                    },
-                  })
-                }
-              }
-            }
-          }
-        } catch (heliusError: any) {
-          console.error('[Solana API] Helius error:', heliusError)
-          // Fallback to basic RPC calls
+          collectibleAssets = await fetchSolanaCollectibles(normalizedAddress)
+        } catch (error: any) {
+          console.warn('[Solana API] DAS collectible discovery failed:', error?.message || error)
         }
       }
 
-      // Also check for NFTs in the nativeBalances or other fields if Helius returns them differently
-      // Some Helius responses might have NFTs in different fields
-      if (tokensData) {
-        // Check for NFTs in any array field that might contain them
-        const allNFTs: any[] = []
-        if (tokensData.nativeBalances) {
-          // Sometimes NFTs are in nativeBalances
-          for (const item of Array.isArray(tokensData.nativeBalances) ? tokensData.nativeBalances : []) {
-            if (item.mint && (item.image || item.name)) {
-              allNFTs.push(item)
-            }
-          }
-        }
-        // Add any other potential NFT fields from Helius response
-        for (const [key, value] of Object.entries(tokensData)) {
-          if (key !== 'tokens' && key !== 'nfts' && Array.isArray(value)) {
-            for (const item of value) {
-              if (item && item.mint && (item.image || item.name) && !assets.some(a => a.contractAddress === item.mint)) {
-                // Check if it's likely an NFT
-                const balance = parseFloat(item.amount || item.balance || '0')
-                const decimals = item.decimals || 0
-                if (balance === 1 && decimals === 0) {
-                  allNFTs.push(item)
-                }
-              }
-            }
-          }
-        }
-        
-        // Process any additional NFTs found
-        for (const nft of allNFTs) {
-          if (!assets.some(a => a.contractAddress === nft.mint)) {
-            assets.push({
-              id: `${address}-nft-${nft.mint}`,
-              name: nft.name || `NFT #${nft.mint.slice(0, 8)}`,
-              symbol: 'NFT',
-              type: 'nft',
-              balance: '1',
-              balanceFormatted: '1',
-              usdValue: 0,
-              contractAddress: nft.mint,
-              tokenId: nft.mint,
-              image: nft.image || null,
-              decimals: 0,
-              chain: 'solana',
-              metadata: {
-                collection: nft.collection?.name || null,
-                description: nft.description || null,
-              },
-            })
-          }
-        }
+      const nftIds = new Set(
+        collectibleAssets
+          .map(asset => asset.contractAddress?.toLowerCase())
+          .filter((value): value is string => Boolean(value))
+      )
+
+      const heliusBalances = await fetchHeliusBalances(normalizedAddress)
+      if (heliusBalances) {
+        assets.push(...normalizeHeliusFungibles(normalizedAddress, heliusBalances, nftIds))
       }
 
-      // Fallback: Get token accounts via RPC if Helius not available
-      if (!HELIUS_API_KEY || assets.length === 0) {
-        try {
-          const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
-            programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
-          })
+      assets.push(...collectibleAssets)
 
-          for (const account of tokenAccounts.value) {
-            const parsedInfo = account.account.data.parsed?.info
-            if (parsedInfo) {
-              const balance = parseFloat(parsedInfo.tokenAmount?.uiAmountString || '0')
-              if (balance > 0) {
-                // Check if we already added this token (from Helius)
-                const mint = parsedInfo.mint
-                if (!assets.some(a => a.contractAddress === mint)) {
-                  assets.push({
-                    id: `${address}-spl-${mint}`,
-                    name: 'SPL Token',
-                    symbol: 'SPL',
-                    type: 'spl-token',
-                    balance: balance.toString(),
-                    balanceFormatted: balance.toString(),
-                    usdValue: 0,
-                    contractAddress: mint,
-                    tokenId: null,
-                    image: null,
-                    decimals: parsedInfo.tokenAmount?.decimals || 9,
-                    chain: 'solana',
-                  })
-                }
-              }
-            }
-          }
-        } catch (rpcError: any) {
-          console.error('[Solana API] RPC token accounts error:', rpcError)
-          // Continue with what we have (SOL balance)
-        }
+      if (!HELIUS_API_KEY || assets.length <= (lamports > 0 ? 1 : 0)) {
+        const fallbackAssets = await fetchRpcTokenAssets(connection, publicKey, normalizedAddress)
+        assets.push(...fallbackAssets)
       }
 
       return NextResponse.json({
-        assets,
-        address,
+        assets: dedupeAssets(assets),
+        address: normalizedAddress,
         chain: 'solana',
       })
-
     } catch (error: any) {
       console.error('[Solana API] Error:', error)
-      return NextResponse.json(
-        { error: error.message || 'Failed to fetch Solana assets' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: error.message || 'Failed to fetch Solana assets' }, { status: 500 })
     }
-
   } catch (error: any) {
     console.error('[Solana API] Error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
   }
 }
-

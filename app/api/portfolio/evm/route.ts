@@ -1,273 +1,234 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimiter'
+import { dedupeAssets, fetchJsonWithRetry, firstDefinedString, formatUnitsSafe, parseJsonIfString } from '@/lib/portfolio-utils'
+import { isEvmAddress } from '@/lib/address-utils'
+import type { Asset } from '@/types'
 
 const MORALIS_API_KEY = process.env.MORALIS_API_KEY
+const MORALIS_BASE_URL = 'https://deep-index.moralis.io/api/v2'
+const CHAINS = ['eth', 'base', 'arbitrum', 'polygon', 'apechain'] as const
+
+const NATIVE_TOKEN_META: Record<string, { symbol: string; name: string; decimals: number }> = {
+  eth: { symbol: 'ETH', name: 'Ethereum', decimals: 18 },
+  base: { symbol: 'ETH', name: 'Base Ethereum', decimals: 18 },
+  arbitrum: { symbol: 'ETH', name: 'Arbitrum Ethereum', decimals: 18 },
+  polygon: { symbol: 'MATIC', name: 'Polygon', decimals: 18 },
+  apechain: { symbol: 'APE', name: 'ApeCoin', decimals: 18 },
+}
+
+async function moralisFetch<T = any>(url: string): Promise<T> {
+  return fetchJsonWithRetry<T>(url, {
+    headers: {
+      'X-API-Key': MORALIS_API_KEY || '',
+    },
+    retries: 2,
+    timeoutMs: 15000,
+  })
+}
+
+async function fetchNativeAsset(address: string, chain: string): Promise<Asset[]> {
+  try {
+    const data = await moralisFetch<any>(`${MORALIS_BASE_URL}/${address}/balance?chain=${chain}`)
+    const rawBalance = String(data?.balance || '0')
+
+    if (rawBalance === '0') return []
+
+    const token = NATIVE_TOKEN_META[chain] || { symbol: 'ETH', name: chain.toUpperCase(), decimals: 18 }
+
+    return [{
+      id: `${chain}-${address}-native`,
+      chain,
+      type: 'native',
+      symbol: token.symbol,
+      name: token.name,
+      balance: rawBalance,
+      balanceFormatted: formatUnitsSafe(rawBalance, token.decimals),
+      decimals: token.decimals,
+      walletAddress: address,
+    }]
+  } catch (error: any) {
+    console.warn(`[EVM Portfolio API] Failed native balance for ${chain} ${address}:`, error?.message || error)
+    return []
+  }
+}
+
+async function fetchErc20Assets(address: string, chain: string): Promise<Asset[]> {
+  try {
+    const data = await moralisFetch<any>(`${MORALIS_BASE_URL}/${address}/erc20?chain=${chain}`)
+    const tokens = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.result)
+        ? data.result
+        : Array.isArray(data?.data)
+          ? data.data
+          : []
+
+    return tokens
+      .filter((token: any) => token?.token_address && token?.balance && token.balance !== '0')
+      .map((token: any) => {
+        const decimals = Number.parseInt(String(token.decimals || '18'), 10)
+        const safeDecimals = Number.isFinite(decimals) ? decimals : 18
+        return {
+          id: `${chain}-${address}-${token.token_address}`,
+          chain,
+          type: 'erc20',
+          symbol: token.symbol || 'UNKNOWN',
+          name: token.name || 'Unknown Token',
+          balance: String(token.balance),
+          balanceFormatted: formatUnitsSafe(String(token.balance), safeDecimals),
+          contractAddress: token.token_address,
+          decimals: safeDecimals,
+          walletAddress: address,
+          metadata: {
+            logo: token.logo,
+            thumbnail: token.thumbnail,
+            verifiedContract: token.verified_contract,
+            possibleSpam: token.possible_spam,
+          },
+        } satisfies Asset
+      })
+  } catch (error: any) {
+    console.warn(`[EVM Portfolio API] Failed ERC-20 discovery for ${chain} ${address}:`, error?.message || error)
+    return []
+  }
+}
+
+async function fetchNftAssets(address: string, chain: string): Promise<Asset[]> {
+  const assets: Asset[] = []
+  let cursor: string | undefined
+  let page = 0
+
+  while (page < 10) {
+    try {
+      const query = new URLSearchParams({
+        chain,
+        format: 'decimal',
+        limit: '100',
+      })
+      if (cursor) query.set('cursor', cursor)
+
+      const data = await moralisFetch<any>(`${MORALIS_BASE_URL}/${address}/nft?${query.toString()}`)
+      const nfts = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.result)
+          ? data.result
+          : Array.isArray(data?.data)
+            ? data.data
+            : []
+
+      for (const nft of nfts) {
+        if (!nft?.token_address || !nft?.token_id) continue
+
+        const normalizedMetadata = parseJsonIfString<Record<string, any>>(nft.normalized_metadata)
+        const rawMetadata = parseJsonIfString<Record<string, any>>(nft.metadata)
+        const mergedMetadata = {
+          ...(rawMetadata || {}),
+          ...(normalizedMetadata || {}),
+        }
+        const imageUrl = firstDefinedString(
+          mergedMetadata.image,
+          mergedMetadata.image_url,
+          mergedMetadata.imageUrl,
+          mergedMetadata.animation_url,
+          mergedMetadata.animationUrl,
+        )
+
+        assets.push({
+          id: `${chain}-${address}-${nft.token_address}-${nft.token_id}`,
+          chain,
+          type: nft.contract_type === 'ERC1155' ? 'erc1155' : 'erc721',
+          symbol: nft.symbol || 'NFT',
+          name: nft.name || mergedMetadata.name || 'Unnamed NFT',
+          balance: '1',
+          balanceFormatted: '1',
+          contractAddress: nft.token_address,
+          tokenId: String(nft.token_id),
+          collectionName: nft.name || mergedMetadata.collection_name || mergedMetadata.collectionName,
+          walletAddress: address,
+          imageUrl,
+          metadata: {
+            ...mergedMetadata,
+            token_uri: nft.token_uri,
+            contract_type: nft.contract_type,
+            amount: nft.amount,
+            possibleSpam: nft.possible_spam,
+          },
+        })
+      }
+
+      const nextCursor = typeof data?.cursor === 'string' && data.cursor ? data.cursor : undefined
+      if (!nextCursor || nextCursor === cursor || nfts.length === 0) {
+        break
+      }
+
+      cursor = nextCursor
+      page += 1
+    } catch (error: any) {
+      console.warn(`[EVM Portfolio API] Failed NFT discovery for ${chain} ${address}:`, error?.message || error)
+      break
+    }
+  }
+
+  return assets
+}
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting: 30 requests per minute per IP
-    const ip = request.headers.get('x-forwarded-for') || 
-               request.headers.get('x-real-ip') || 
-               'unknown'
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
     const rateLimitKey = `evm-portfolio:${ip}`
     const rateLimit = checkRateLimit(rateLimitKey, {
-      windowMs: 60 * 1000, // 1 minute
+      windowMs: 60 * 1000,
       maxRequests: 30,
     })
-    
+
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { 
+        {
           error: 'Too many requests. Please wait a moment before trying again.',
           retryAfter: rateLimit.retryAfter,
         },
-        { 
+        {
           status: 429,
           headers: getRateLimitHeaders(rateLimit),
         }
       )
     }
-    
+
     const { addresses } = await request.json()
 
     if (!addresses || !Array.isArray(addresses) || addresses.length === 0) {
-      return NextResponse.json(
-        { error: 'Addresses array required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Addresses array required' }, { status: 400 })
     }
 
     if (!MORALIS_API_KEY) {
-      return NextResponse.json(
-        { error: 'Moralis API key not configured' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Moralis API key not configured' }, { status: 500 })
     }
 
-    // Fetch tokens for all addresses across supported chains
-    // Note: Moralis may not support all chains - check their documentation for supported chain identifiers
-    // ApeChain might need a different identifier or might not be supported yet
-    const chains = ['eth', 'base', 'arbitrum', 'polygon', 'apechain']
-    const allAssets = []
-    
-    // Map chain names to Moralis chain identifiers (in case they differ)
-    const chainIdMap: Record<string, string> = {
-      'eth': 'eth',
-      'base': 'base',
-      'arbitrum': 'arbitrum',
-      'polygon': 'polygon',
-      'apechain': 'apechain', // Try 'apechain', might need 'ape-chain' or not be supported
+    const validAddresses = addresses
+      .map((address: unknown) => String(address || '').trim().toLowerCase())
+      .filter(address => isEvmAddress(address))
+
+    if (validAddresses.length === 0) {
+      return NextResponse.json({ error: 'No valid EVM addresses provided' }, { status: 400 })
     }
 
-    for (const address of addresses) {
-      for (const chain of chains) {
-        try {
-          const moralisChainId = chainIdMap[chain] || chain
-          console.log(`[EVM Portfolio API] Fetching ${chain} data for ${address} (Moralis ID: ${moralisChainId})`)
-          
-          // Get native balance
-          const nativeResponse = await fetch(
-            `https://deep-index.moralis.io/api/v2/${address}/balance?chain=${moralisChainId}`,
-            {
-              headers: {
-                'X-API-Key': MORALIS_API_KEY,
-              },
-            }
-          )
-          
-          console.log(`[EVM Portfolio API] ${chain} native balance response status:`, nativeResponse.status)
-          
-          // Log error response for debugging
-          if (!nativeResponse.ok) {
-            const errorText = await nativeResponse.text().catch(() => 'Unknown error')
-            console.warn(`[EVM Portfolio API] ${chain} native balance failed (${nativeResponse.status}):`, errorText.substring(0, 200))
-          }
+    const allAssets: Asset[] = []
 
-          if (nativeResponse.ok) {
-            try {
-              const nativeData = await nativeResponse.json()
-              if (nativeData && typeof nativeData === 'object' && nativeData.balance && nativeData.balance !== '0') {
-                const balance = nativeData.balance.toString()
-                // Determine native token symbol and name based on chain
-                let symbol = 'ETH'
-                let name = 'Ethereum'
-                if (chain === 'eth') {
-                  symbol = 'ETH'
-                  name = 'Ethereum'
-                } else if (chain === 'base') {
-                  symbol = 'ETH'
-                  name = 'Base Ethereum'
-                } else if (chain === 'arbitrum') {
-                  symbol = 'ETH'
-                  name = 'Arbitrum Ethereum'
-                } else if (chain === 'polygon') {
-                  symbol = 'MATIC'
-                  name = 'Polygon'
-                } else if (chain === 'apechain') {
-                  symbol = 'APE'
-                  name = 'ApeCoin'
-                }
-                
-                allAssets.push({
-                  id: `${chain}-${address}-native`,
-                  chain,
-                  type: 'native',
-                  symbol,
-                  name,
-                  balance: balance,
-                  balanceFormatted: (parseInt(balance) / 1e18).toFixed(6),
-                  contractAddress: undefined,
-                  decimals: 18,
-                  walletAddress: address, // Track which wallet this asset belongs to
-                })
-              }
-            } catch (error) {
-              console.error(`Error parsing native balance for ${chain}:`, error)
-            }
-          }
+    for (const address of validAddresses) {
+      for (const chain of CHAINS) {
+        const [nativeAssets, erc20Assets, nftAssets] = await Promise.all([
+          fetchNativeAsset(address, chain),
+          fetchErc20Assets(address, chain),
+          fetchNftAssets(address, chain),
+        ])
 
-          // Get ERC-20 tokens
-          const tokensResponse = await fetch(
-            `https://deep-index.moralis.io/api/v2/${address}/erc20?chain=${moralisChainId}`,
-            {
-              headers: {
-                'X-API-Key': MORALIS_API_KEY,
-              },
-            }
-          )
-
-          // Log error response for ERC-20 tokens
-          if (!tokensResponse.ok) {
-            const errorText = await tokensResponse.text().catch(() => 'Unknown error')
-            console.warn(`[EVM Portfolio API] ${chain} ERC-20 tokens failed (${tokensResponse.status}):`, errorText.substring(0, 200))
-          }
-          
-          if (tokensResponse.ok) {
-            try {
-              const tokensData = await tokensResponse.json()
-              // Moralis returns an array directly, but handle cases where it might be wrapped
-              const tokens = Array.isArray(tokensData) 
-                ? tokensData 
-                : (tokensData && typeof tokensData === 'object' 
-                  ? (tokensData.result || tokensData.data || [])
-                  : [])
-              if (Array.isArray(tokens)) {
-                for (const token of tokens) {
-                  if (token && typeof token === 'object' && token.balance && token.balance !== '0') {
-                    const decimals = parseInt(token.decimals) || 18
-                    const balanceFormatted = (parseInt(token.balance) / Math.pow(10, decimals)).toFixed(6)
-                    allAssets.push({
-                      id: `${chain}-${address}-${token.token_address}`,
-                      chain,
-                      type: 'erc20',
-                      symbol: token.symbol || 'UNKNOWN',
-                      name: token.name || 'Unknown Token',
-                      balance: token.balance,
-                      balanceFormatted,
-                      contractAddress: token.token_address,
-                      decimals,
-                      walletAddress: address, // Track which wallet this asset belongs to
-                    })
-                  }
-                }
-              }
-            } catch (error) {
-              console.error(`Error parsing ERC-20 tokens for ${chain}:`, error)
-            }
-          }
-
-          // Get NFTs (ERC-721 and ERC-1155)
-          const nftsResponse = await fetch(
-            `https://deep-index.moralis.io/api/v2/${address}/nft?chain=${moralisChainId}&format=decimal`,
-            {
-              headers: {
-                'X-API-Key': MORALIS_API_KEY,
-              },
-            }
-          )
-
-          console.log(`[EVM Portfolio API] ${chain} NFTs response status:`, nftsResponse.status)
-          
-          if (nftsResponse.ok) {
-            try {
-              const nftsData = await nftsResponse.json()
-              // Moralis returns { result: [...] } for NFTs
-              const nfts = Array.isArray(nftsData) 
-                ? nftsData 
-                : (nftsData && typeof nftsData === 'object' 
-                  ? (nftsData.result || nftsData.data || [])
-                  : [])
-              if (Array.isArray(nfts)) {
-                for (const nft of nfts) {
-                  if (nft && typeof nft === 'object' && nft.token_address && nft.token_id) {
-                    // Extract image URL from metadata
-                    let imageUrl: string | undefined
-                    let metadata: any = undefined
-                    
-                    // Try to get image from normalized_metadata first (Moralis format)
-                    if (nft.normalized_metadata && typeof nft.normalized_metadata === 'object') {
-                      metadata = nft.normalized_metadata
-                      imageUrl = nft.normalized_metadata.image || 
-                                nft.normalized_metadata.image_url || 
-                                nft.normalized_metadata.imageUrl
-                    }
-                    // Fallback to metadata field
-                    if (!imageUrl && nft.metadata && typeof nft.metadata === 'object') {
-                      metadata = nft.metadata
-                      imageUrl = nft.metadata.image || 
-                                nft.metadata.image_url || 
-                                nft.metadata.imageUrl
-                    }
-                    // Store token_uri in metadata for client-side fetching if image not available
-                    if (!metadata) {
-                      metadata = {}
-                    }
-                    if (nft.token_uri) {
-                      metadata.token_uri = nft.token_uri
-                    }
-                    
-                    allAssets.push({
-                      id: `${chain}-${address}-${nft.token_address}-${nft.token_id}`,
-                      chain,
-                      type: nft.contract_type === 'ERC1155' ? 'erc1155' : 'erc721',
-                      symbol: nft.symbol || 'NFT',
-                      name: nft.name || 'Unnamed NFT',
-                      balance: '1',
-                      balanceFormatted: '1',
-                      contractAddress: nft.token_address,
-                      tokenId: nft.token_id,
-                      collectionName: nft.name,
-                      walletAddress: address, // Track which wallet this asset belongs to
-                      imageUrl, // NFT image URL (may be undefined, will be fetched client-side)
-                      metadata: {
-                        ...metadata,
-                        token_uri: nft.token_uri, // Include token_uri for client-side metadata fetching
-                        ...nft, // Include all NFT data for reference
-                      },
-                    })
-                  }
-                }
-              }
-            } catch (error) {
-              console.error(`[EVM Portfolio API] Error parsing NFTs for ${chain}:`, error)
-            }
-          } else {
-            const errorText = await nftsResponse.text().catch(() => 'Unknown error')
-            console.warn(`[EVM Portfolio API] ${chain} NFTs request failed (${nftsResponse.status}):`, errorText)
-          }
-        } catch (error: any) {
-          console.error(`[EVM Portfolio API] Error fetching ${chain} data for ${address}:`, error.message || error)
-        }
+        allAssets.push(...nativeAssets, ...erc20Assets, ...nftAssets)
       }
     }
 
-    return NextResponse.json({ assets: allAssets })
+    return NextResponse.json({ assets: dedupeAssets(allAssets) })
   } catch (error) {
     console.error('Error in EVM portfolio API:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch portfolio' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch portfolio' }, { status: 500 })
   }
 }
-

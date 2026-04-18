@@ -7,11 +7,12 @@ export const dynamicParams = true
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount, useDisconnect, useSignMessage, useSendTransaction, useWaitForTransactionReceipt, useConnect } from 'wagmi'
-import { createPublicClient, http, parseEther, formatEther, isAddress } from 'viem'
+import { createPublicClient, http, parseEther, formatEther } from 'viem'
 import { mainnet } from 'viem/chains'
 import { WalletConnect } from '@/components/WalletConnect'
 import { AssetList } from '@/components/AssetList'
 import { AssetSelector } from '@/components/AssetSelector'
+import { GroupedInventoryReference } from '@/components/GroupedInventoryReference'
 import { BeneficiaryForm } from '@/components/BeneficiaryForm'
 import { AllocationPanel } from '@/components/AllocationPanel'
 import { WalletNameEditor } from '@/components/WalletNameEditor'
@@ -23,6 +24,7 @@ import { getCurrentPricing, getPaymentAmountETH, getFormattedPrice, getTierPrici
 import { getUserFriendlyError } from '@/lib/errorMessages'
 import { fetchWithCache, getCached, setCached } from '@/lib/requestCache'
 import { clearWalletConnectionsOnLoad, clearWagmiIndexedDB } from '@/lib/wallet-cleanup'
+import { getAddressLookupKey, isSupportedWalletAddress, looksLikeBlockchainName, normalizeWalletAddress } from '@/lib/address-utils'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 
@@ -34,7 +36,7 @@ const steps: Array<{ id: Step; label: string; number: number }> = [
  { id: 'allocate', label: 'Allocate', number: 3 },
  { id: 'details', label: 'Details', number: 4 },
  { id: 'payment', label: 'Payment', number: 5 },
- { id: 'download', label: 'Download', number: 6 },
+ { id: 'download', label: 'View', number: 6 },
 ]
 
 export default function Home() {
@@ -102,7 +104,7 @@ export default function Home() {
  const [verifyingPayment, setVerifyingPayment] = useState(false)
  const [generatingPDF, setGeneratingPDF] = useState(false)
  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([])
- const [hideSpamTokens, setHideSpamTokens] = useState(true) // Default: hide spam tokens
+ const [hideSpamTokens, setHideSpamTokens] = useState(false) // Default to complete discovery, let the user opt into hiding suspected spam
  const [discountCode, setDiscountCode] = useState('')
  const [discountApplied, setDiscountApplied] = useState(false)
  const [paymentWalletAddress, setPaymentWalletAddress] = useState<string | null>(null) // First verified wallet for payment
@@ -341,9 +343,6 @@ const walletNamesRef = useRef<Record<string, string>>({}) // Ref to access lates
 // Use debounce to prevent excessive calls when verifiedAddresses changes
 const resolveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
  useEffect(() => {
-// #region agent log
-fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:325',message:'Wallet name resolution useEffect running',data:{evmAddress,connectedEVMAddressesSize:connectedEVMAddresses.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-// #endregion
 // Only run once per address change - use ref to track what we've processed
 
 let cancelled = false
@@ -495,57 +494,35 @@ hasAutoSelectedRef.current = false
  setExecutorResolvedAddress(null)
 
  try {
- const publicClient = createPublicClient({
- chain: mainnet,
- transport: http(),
- })
+ const resolved = await resolveBlockchainName(input)
 
- // Check if input is an ENS name (ends with .eth, .base.eth, etc.)
- // Support: .eth, .base.eth, and other ENS-compatible TLDs
- const isENSName = /\.(eth|base\.eth)$/i.test(input) || input.includes('.')
- 
- if (isENSName) {
- // Forward lookup: ENS name -> address
- // Note: .sol and .btc are not ENS-compatible and would need different resolvers
- // For now, we'll try ENS resolution for .eth and .base.eth
- const address = await publicClient.getEnsAddress({ name: input })
- if (address) {
- setExecutorResolvedAddress(address)
- setExecutorEnsName(input) // Keep the ENS name
- // Store in resolvedEnsNames for PDF generation
- setResolvedEnsNames(prev => ({ ...prev, [address.toLowerCase()]: input }))
- console.log(`Resolved executor ENS "${input}" to address: ${address}`)
- } else {
- // If resolution fails, still keep the name but no address
- setExecutorEnsName(input)
- setExecutorResolvedAddress(null)
- console.warn(`Could not resolve ENS name "${input}"`)
- }
- } 
- // Check if input is an Ethereum address (starts with 0x and is 42 chars)
- else if (input.startsWith('0x') && input.length === 42) {
- // Reverse lookup: address -> ENS name
- const resolved = await publicClient.getEnsName({ address: input as `0x${string}` })
  if (resolved) {
- setExecutorEnsName(resolved)
- setExecutorResolvedAddress(input.toLowerCase())
- // Store in resolvedEnsNames for PDF generation
- setResolvedEnsNames(prev => ({ ...prev, [input.toLowerCase()]: resolved }))
- console.log(`Resolved executor address "${input}" to ENS: ${resolved}`)
+ setExecutorResolvedAddress(resolved.address)
+ setExecutorEnsName(resolved.name)
+ setResolvedEnsNames(prev => ({ ...prev, [getAddressLookupKey(resolved.address)]: resolved.name }))
+ console.log(`Resolved executor ${resolved.resolver} name "${resolved.name}" to address: ${resolved.address}`)
+ return
+ }
+
+ if (isSupportedWalletAddress(input)) {
+ const reverseResolved = await reverseResolveAddress(input)
+ const normalizedInput = normalizeWalletAddress(input)
+ if (reverseResolved) {
+ setExecutorEnsName(reverseResolved.name)
+ setExecutorResolvedAddress(reverseResolved.address)
+ setResolvedEnsNames(prev => ({ ...prev, [getAddressLookupKey(reverseResolved.address)]: reverseResolved.name }))
+ console.log(`Resolved executor address "${input}" to ${reverseResolved.resolver} name: ${reverseResolved.name}`)
  } else {
  setExecutorEnsName(null)
- setExecutorResolvedAddress(input.toLowerCase())
+ setExecutorResolvedAddress(normalizedInput)
  }
  } else {
- // Not a valid ENS name or address - could be .sol, .btc, or other
- // Keep the input as-is but don't try to resolve
- setExecutorEnsName(input.includes('.') ? input : null)
+ setExecutorEnsName(looksLikeBlockchainName(input) ? input : null)
  setExecutorResolvedAddress(null)
  }
  } catch (error) {
  console.error('Error resolving executor ENS:', error)
- // On error, keep the input as-is if it looks like a name
- if (executorAddress && typeof executorAddress === 'string' && executorAddress.includes('.')) {
+ if (looksLikeBlockchainName(executorAddress)) {
  setExecutorEnsName(executorAddress.trim())
  }
  setExecutorResolvedAddress(null)
@@ -578,34 +555,32 @@ hasAutoSelectedRef.current = false
  setOwnerResolvedAddress(resolved.address)
  setOwnerEnsResolvedName(resolved.name) // Keep the resolved name
  // Store in resolvedEnsNames for PDF generation
- setResolvedEnsNames(prev => ({ ...prev, [resolved.address.toLowerCase()]: resolved.name }))
+ setResolvedEnsNames(prev => ({ ...prev, [getAddressLookupKey(resolved.address)]: resolved.name }))
  console.log(`Resolved owner ${resolved.resolver} name "${resolved.name}" to address: ${resolved.address}`)
  return
  }
  
- // If not a name, check if input is an Ethereum address (starts with 0x and is 42 chars)
- if (input.startsWith('0x') && input.length === 42) {
- // Reverse lookup: address -> name across all systems
+ if (isSupportedWalletAddress(input)) {
  const reverseResolved = await reverseResolveAddress(input)
  if (reverseResolved) {
  setOwnerEnsResolvedName(reverseResolved.name)
  setOwnerResolvedAddress(reverseResolved.address)
  // Store in resolvedEnsNames for PDF generation
- setResolvedEnsNames(prev => ({ ...prev, [reverseResolved.address.toLowerCase()]: reverseResolved.name }))
+ setResolvedEnsNames(prev => ({ ...prev, [getAddressLookupKey(reverseResolved.address)]: reverseResolved.name }))
  console.log(`Resolved owner address "${input}" to ${reverseResolved.resolver} name: ${reverseResolved.name}`)
  } else {
  setOwnerEnsResolvedName(null)
- setOwnerResolvedAddress(input.toLowerCase())
+ setOwnerResolvedAddress(normalizeWalletAddress(input))
  }
  } else {
  // Not a valid name or address
- setOwnerEnsResolvedName(input.includes('.') ? input : null)
+ setOwnerEnsResolvedName(looksLikeBlockchainName(input) ? input : null)
  setOwnerResolvedAddress(null)
  }
  } catch (error) {
  console.error('Error resolving owner name:', error)
  // On error, keep the input as-is if it looks like a name
- if (ownerEnsName && typeof ownerEnsName === 'string' && ownerEnsName.includes('.')) {
+ if (looksLikeBlockchainName(ownerEnsName)) {
  setOwnerEnsResolvedName(ownerEnsName.trim())
  }
  setOwnerResolvedAddress(null)
@@ -763,102 +738,40 @@ hasAutoSelectedRef.current = false
  }
  }, [isPaymentSent, sendTxHash, evmAddress, invoiceId])
 
- // Filter spam tokens (dust, suspicious names, etc.)
+ // Optional spam filter. Keep it conservative so discovery stays complete by default.
  const filterSpamTokens = (assets: Asset[]): Asset[] => {
    if (!hideSpamTokens) return assets
-   
-  return assets.filter(asset => {
-    // Always show native tokens (ETH, BTC, MATIC, APE) regardless of balance
-    if (asset.type === 'native') return true
-    
-    // Always show Bitcoin (BTC) - it uses type 'btc' not 'native'
-    if (asset.type === 'btc') {
-      console.log(`[Spam Filter] Keeping BTC asset: ${asset.symbol} (${asset.name}) - balance: ${asset.balanceFormatted}`)
-      return true
-    }
-    
-    // Always show NFTs (EVM and Solana)
-    if (asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'nft') return true
-   
-   // Always show ethscriptions
-    if (asset.type === 'ethscription') return true
-    
-    // Always show ordinals
-    if (asset.type === 'ordinal') return true
-     
-     // For ERC-20 tokens only, check balance threshold and spam indicators
-     if (asset.type === 'erc20') {
-       const balance = parseFloat(asset.balance) / Math.pow(10, asset.decimals || 18)
-       
-       // Filter out tokens with balance below threshold (0.000001)
-       if (balance < 0.000001) {
-         console.log(`[Spam Filter] Filtered ${asset.symbol} (${asset.name}): balance too low (${balance})`)
-         return false
-       }
-       
-       // Additional spam detection: filter tokens with suspicious names
-       const suspiciousPatterns = [
-         /^test/i,
-         /^fake/i,
-         /^scam/i,
-         /^spam/i,
-         /^airdrop/i,
-         /^claim/i,
-         /^free/i,
-         /unknown/i,
-         /unnamed/i,
-         /^token$/i,
-         /^coin$/i,
-         /^new/i, // Often spam tokens start with "new"
-         /^moon/i, // "Moon" tokens are often spam
-         /^pump/i, // "Pump" tokens
-         /^safe/i, // Many "safe" tokens are scams
-         /^baby/i, // "Baby" tokens are often spam
-         /^mini/i, // "Mini" tokens
-         /^mini/i, // "Mini" tokens
-         /^meme/i, // Many meme tokens are spam
-         /^doge/i, // Many doge variants are spam
-         /^shib/i, // Many shib variants are spam
-         /^floki/i, // Many floki variants are spam
-         /^pepe/i, // Many pepe variants are spam
-         /^elon/i, // Many elon tokens are spam
-         /^trump/i, // Many trump tokens are spam
-         /^biden/i, // Many biden tokens are spam
-         /^christ/i, // Religious tokens are often spam
-         /^jesus/i, // Religious tokens
-         /^god/i, // Religious tokens
-         /jack/i, // "Jack" tokens are often spam
-         /^gmeow/i, // Specific spam pattern
-         /^ada$/i, // ADA is a legitimate coin, but many spam tokens use this name
-       ]
-       
-       const name = (asset.name || '').toLowerCase()
-       const symbol = (asset.symbol || '').toLowerCase()
-       
-       // If name or symbol matches suspicious patterns, filter out
-       if (suspiciousPatterns.some(pattern => pattern.test(name) || pattern.test(symbol))) {
-         console.log(`[Spam Filter] Filtered ${asset.symbol} (${asset.name}): matches suspicious pattern`)
-         return false
-       }
-       
-       // Filter tokens with very generic or single-word names that aren't well-known
-       // This is more aggressive - only keep if it's a known token or has a proper name
-       const wellKnownTokens = ['usdc', 'usdt', 'dai', 'weth', 'wbtc', 'link', 'uni', 'aave', 'mkr', 'comp', 'snx', 'crv', 'yfi', '1inch', 'sushi', 'bal', 'ren', 'knc', 'zrx', 'bat', 'mana', 'sand', 'enj', 'grt', 'matic', 'ftm', 'avax', 'atom', 'dot', 'sol', 'ada', 'xrp', 'ltc', 'bch', 'etc', 'xlm', 'eos', 'trx', 'xmr', 'zec', 'dash', 'bch', 'xem', 'neo', 'vet', 'icp', 'theta', 'fil', 'hbar', 'algo', 'xtz', 'egld', 'axs', 'spl', 'chz', 'mkr', 'enj', 'mana', 'sand', 'gala', 'ape', 'imx', 'flow', 'rndr', 'grt', 'lrc', 'skl', 'audius', 'api3', 'band', 'comp', 'crv', 'enj', 'knc', 'link', 'mana', 'mkr', 'ren', 'snx', 'uma', 'yfi', 'zrx']
-       
-       // If it's a single word and not in well-known list, might be spam
-       // But be less aggressive - only filter if it's clearly suspicious
-       const isSingleWord = name.split(/\s+/).length === 1 && symbol.split(/\s+/).length === 1
-       const isWellKnown = wellKnownTokens.includes(symbol.toLowerCase()) || wellKnownTokens.includes(name.toLowerCase())
-       
-       // Filter if single word, not well-known, and balance is very small (likely dust)
-       if (isSingleWord && !isWellKnown && balance < 0.01) {
-         console.log(`[Spam Filter] Filtered ${asset.symbol} (${asset.name}): single word, not well-known, small balance (${balance})`)
-         return false
-       }
-       
-       return true
+
+   return assets.filter(asset => {
+     if (asset.type === 'native' || asset.type === 'btc') return true
+     if (asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'nft') return true
+     if (asset.type === 'ethscription' || asset.type === 'ordinal') return true
+     if (asset.type !== 'erc20') return true
+
+     const decimals = asset.decimals || 18
+     const balance = parseFloat(asset.balanceFormatted || '0')
+     const possibleSpam = Boolean(asset.metadata?.possibleSpam)
+     const name = (asset.name || '').toLowerCase()
+     const symbol = (asset.symbol || '').toLowerCase()
+     const obviouslySuspicious = [
+       /^test$/i,
+       /^fake$/i,
+       /^scam$/i,
+       /^spam$/i,
+       /^airdrop$/i,
+       /^claim$/i,
+       /^free$/i,
+       /^unknown$/i,
+       /^unnamed$/i,
+     ].some(pattern => pattern.test(name) || pattern.test(symbol))
+
+     const isDust = balance > 0 && balance < (decimals >= 18 ? 0.000001 : 0.0001)
+
+     if ((possibleSpam && isDust) || obviouslySuspicious) {
+       console.log(`[Spam Filter] Filtered ${asset.symbol} (${asset.name})`)
+       return false
      }
-     
+
      return true
    })
  }
@@ -1455,7 +1368,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
 
  const handleDownloadPDF = async () => {
  if (!paymentVerified && !discountApplied) {
- setError('Payment must be verified or discount applied before downloading PDF')
+ setError('Payment must be verified or discount applied before opening your PDF')
  return
  }
 
@@ -1485,9 +1398,13 @@ setError('Failed to load Bitcoin assets. Please try again.')
  
  // Collect all unique EVM addresses from queued sessions
  const allEVMAddresses = new Set<string>()
+ const allSolanaAddresses = new Set<string>()
  allQueuedAssets.forEach(asset => {
  if (asset.chain !== 'bitcoin' && asset.walletAddress && asset.walletAddress.startsWith('0x')) {
  allEVMAddresses.add(asset.walletAddress)
+ }
+ if (asset.chain === 'solana' && asset.walletAddress) {
+ allSolanaAddresses.add(asset.walletAddress)
  }
  })
  
@@ -1495,6 +1412,9 @@ setError('Failed to load Bitcoin assets. Please try again.')
  queuedSessions.forEach(session => {
  if (session.walletType === 'evm') {
  allEVMAddresses.add(session.walletAddress)
+ }
+ if (session.walletType === 'solana') {
+ allSolanaAddresses.add(session.walletAddress)
  }
  })
 
@@ -1519,7 +1439,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  const walletGroupsMap: Record<string, WalletGroup> = {}
  queuedSessions.forEach(session => {
    if (session.walletGroup) {
-     walletGroupsMap[session.walletAddress.toLowerCase()] = session.walletGroup
+     walletGroupsMap[getAddressLookupKey(session.walletAddress)] = session.walletGroup
    }
  })
  // Merge with current walletGroups state
@@ -1546,6 +1466,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
  connectedWallets: {
  evm: Array.from(allEVMAddresses),
  btc: btcAddressFromQueue || undefined,
+ solana: Array.from(allSolanaAddresses),
  },
  walletNames,
  resolvedEnsNames,
@@ -1749,7 +1670,8 @@ setError('Failed to load Bitcoin assets. Please try again.')
  }
 
  // Check if this wallet is already queued
- const isAlreadyQueued = queuedSessions.some(s => s.walletAddress.toLowerCase() === walletAddress.toLowerCase())
+ const currentWalletKey = getAddressLookupKey(walletAddress)
+ const isAlreadyQueued = queuedSessions.some(s => getAddressLookupKey(s.walletAddress) === currentWalletKey)
  console.log('[Save to Queue] Checking if wallet already queued:', isAlreadyQueued)
  if (isAlreadyQueued) {
    console.log('[Save to Queue] ❌ Wallet already in queue')
@@ -1762,7 +1684,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
 
  // Get wallet name - check all possible addresses
  const addressToUse = walletAddress || evmAddress || btcAddress || solanaAddress
- const normalizedAddress = addressToUse?.toLowerCase()
+ const normalizedAddress = getAddressLookupKey(addressToUse)
  
  // Determine wallet type
  const walletType: 'evm' | 'btc' | 'solana' = evmAddress ? 'evm' : (btcAddress ? 'btc' : (solanaAddress ? 'solana' : 'evm'))
@@ -1792,19 +1714,19 @@ setError('Failed to load Bitcoin assets. Please try again.')
  })
 
  // Get wallet group (from state or default to unassigned)
- const normalizedWalletAddr = walletAddress.toLowerCase()
+ const normalizedWalletAddr = getAddressLookupKey(walletAddress)
  const walletGroup = walletGroups[normalizedWalletAddr] || 'unassigned'
 
  // Create session
  const session: QueuedWalletSession = {
- id: `${walletAddress.toLowerCase()}-${Date.now()}`,
- walletAddress: walletAddress.toLowerCase(),
+ id: `${normalizedWalletAddr}-${Date.now()}`,
+ walletAddress: normalizedWalletAddr,
  walletType: walletType,
  walletProvider: evmAddress ? (walletProviders[evmAddress] || 'Unknown') : 
                  btcAddress ? (walletProviders[btcAddress] || 'Xverse') :
                  solanaAddress ? (walletProviders[solanaAddress] || 'Solana Wallet') : 'Unknown',
- ensName: evmAddress ? (resolvedEnsNames[evmAddress.toLowerCase()] || undefined) : 
-          solanaAddress ? (resolvedEnsNames[solanaAddress.toLowerCase()] || undefined) : undefined,
+ ensName: evmAddress ? (resolvedEnsNames[getAddressLookupKey(evmAddress)] || undefined) : 
+          solanaAddress ? (resolvedEnsNames[getAddressLookupKey(solanaAddress)] || undefined) : undefined,
  walletName: walletName || undefined, // Store custom wallet name
  walletGroup: walletGroup, // Store wallet group label
  assets: sessionAssets,
@@ -1942,16 +1864,10 @@ setError('Failed to load Bitcoin assets. Please try again.')
 
  // Memoize onEvmConnect callback to prevent infinite loops
  const onEvmConnectCallback = useCallback(async (addr: string, provider?: string) => {
-   // #region agent log
-   fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1703',message:'onEvmConnect called',data:{addr,provider,connectedEVMAddressesSize:connectedEVMAddresses.size,isProcessing:resolvingInOnEvmConnectRef.current.has(addr?.toLowerCase()||'')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-   // #endregion
    if (!addr) return
 
    // CRITICAL: Check if we're already processing this address to prevent infinite loops
    if (resolvingInOnEvmConnectRef.current.has(addr.toLowerCase())) {
-     // #region agent log
-     fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1708',message:'onEvmConnect duplicate call blocked',data:{addr},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-     // #endregion
      console.log(`[onEvmConnect] Already processing ${addr}, skipping duplicate call`)
      return
    }
@@ -1979,13 +1895,7 @@ setError('Failed to load Bitcoin assets. Please try again.')
        }
      }
 
-     // #region agent log
-     fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1733',message:'About to setConnectedEVMAddresses',data:{addr,currentSize:connectedEVMAddresses.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-     // #endregion
      setConnectedEVMAddresses(prev => {
-       // #region agent log
-       fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1735',message:'setConnectedEVMAddresses callback executing',data:{addr,prevSize:prev.size,newSize:new Set([...prev, addr]).size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-       // #endregion
        return new Set([...prev, addr])
      })
      // Track wallet provider
@@ -2007,15 +1917,9 @@ setError('Failed to load Bitcoin assets. Please try again.')
            const resolved = await reverseResolveAddress(address)
            if (resolved) {
              resolvedAddressesRef.current.add(address.toLowerCase())
-             // #region agent log
-             fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1755',message:'About to update resolvedEnsNames and walletNames',data:{address,resolvedName:resolved.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-             // #endregion
              setResolvedEnsNames(prev => {
                const key = address.toLowerCase()
                if (prev[key] === resolved.name) return prev // Prevent unnecessary updates
-               // #region agent log
-               fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1759',message:'setResolvedEnsNames updating state',data:{key,resolvedName:resolved.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-               // #endregion
                const updated = { ...prev, [key]: resolved.name }
                resolvedEnsNamesRef.current = updated // Keep ref in sync
                return updated
@@ -2023,9 +1927,6 @@ setError('Failed to load Bitcoin assets. Please try again.')
              // If no manual name is set, use resolved name as the wallet name
              setWalletNames(prev => {
                if (prev[address]) return prev // Don't overwrite manual names
-               // #region agent log
-               fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1766',message:'setWalletNames updating state',data:{address,resolvedName:resolved.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-               // #endregion
                const updated = { ...prev, [address]: resolved.name }
                walletNamesRef.current = updated // Keep ref in sync
                return updated
@@ -2122,12 +2023,6 @@ setError('Failed to load Bitcoin assets. Please try again.')
    }
  }, [connectedSolanaAddresses, connectedEVMAddresses.size, queuedSessions.length, selectedWalletForLoading, setConnectedSolanaAddresses, setWalletProviders, setVerifiedAddresses, setError, setSelectedWalletForLoading])
 
- // #region agent log
- // Track when onEvmConnect callback dependencies change
- useEffect(() => {
-   fetch('http://127.0.0.1:7242/ingest/1f875b6a-05a0-43a5-a8e7-2ae799a836c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:1797',message:'onEvmConnect callback dependencies changed',data:{connectedEVMAddressesSize:connectedEVMAddresses.size,queuedSessionsLength:queuedSessions.length,isConnected,evmAddress,resolvedEnsNamesKeys:Object.keys(resolvedEnsNames).length,walletNamesKeys:Object.keys(walletNames).length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
- }, [connectedEVMAddresses, queuedSessions.length, isConnected, evmAddress]);
- // #endregion
 
  return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden flex flex-col">
@@ -2389,7 +2284,7 @@ Clear All
  const totalAssets = session.assets.length
  const totalAllocations = session.allocations.length
  // Get wallet name (stored walletName > manual name > resolved ENS > ENS from session > address)
- const sessionAddrLower = session.walletAddress.toLowerCase()
+ const sessionAddrLower = getAddressLookupKey(session.walletAddress)
  const walletName = session.walletName || 
                     walletNames[session.walletAddress] || 
                     walletNames[sessionAddrLower] ||
@@ -2454,7 +2349,7 @@ session.verified ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-ye
     // Also update walletGroups state for consistency
     setWalletGroups(prev => ({
       ...prev,
-      [session.walletAddress.toLowerCase()]: newGroup
+      [getAddressLookupKey(session.walletAddress)]: newGroup
     }))
   }}
   className="text-xs rounded-lg border border-white/20 bg-white/5 backdrop-blur-xl p-1.5 text-bright focus:border-purple-500 focus:outline-none transition-colors"
@@ -2576,7 +2471,7 @@ Disconnect All
 </div>
 </div>
  {Array.from(connectedEVMAddresses).map((addr) => {
- const ensName = resolvedEnsNames[addr.toLowerCase()] || walletNames[addr]
+ const ensName = resolvedEnsNames[getAddressLookupKey(addr)] || walletNames[addr]
  const walletAssets = assets.filter(a => a.walletAddress === addr)
  const walletAssetCount = walletAssets.length
  const isSelected = selectedWalletForLoading === addr
@@ -2609,7 +2504,7 @@ Disconnect All
            <WalletNameEditor
              address={addr}
              currentName={ensName || walletNames[addr] || ''}
-             isENS={!!resolvedEnsNames[addr.toLowerCase()]}
+             isENS={!!resolvedEnsNames[getAddressLookupKey(addr)]}
              onNameChange={(newName) => {
                setWalletNames(prev => ({ ...prev, [addr]: newName }))
              }}
@@ -2707,7 +2602,7 @@ Disconnect All
  {btcAddress && (() => {
  const btcAssets = assets.filter(a => a.chain === 'bitcoin')
  const btcAssetCount = btcAssets.length
- const btcWalletName = walletNames[btcAddress] || resolvedEnsNames[btcAddress.toLowerCase()] || ''
+ const btcWalletName = walletNames[btcAddress] || resolvedEnsNames[getAddressLookupKey(btcAddress)] || ''
   return (
 <div className="bg-gradient-to-br from-orange-500/20 to-yellow-500/20 backdrop-blur-xl border-2 border-orange-500/30 rounded-lg p-4 shadow-sm border-glow hover:shadow-2xl hover:shadow-orange-500/20 transition-all transform hover:scale-[1.02] group">
 <div className="flex items-start justify-between">
@@ -2716,7 +2611,7 @@ Disconnect All
 <WalletNameEditor
   address={btcAddress}
   currentName={btcWalletName}
-  isENS={!!resolvedEnsNames[btcAddress.toLowerCase()]}
+  isENS={!!resolvedEnsNames[getAddressLookupKey(btcAddress)]}
   onNameChange={(newName) => {
     setWalletNames(prev => ({ ...prev, [btcAddress]: newName }))
   }}
@@ -2782,7 +2677,7 @@ Bitcoin Address
  {Array.from(connectedSolanaAddresses).map((addr) => {
    const solanaAssets = assets.filter(a => a.walletAddress === addr)
    const solanaAssetCount = solanaAssets.length
-   const solanaWalletName = walletNames[addr] || resolvedEnsNames[addr.toLowerCase()] || ''
+   const solanaWalletName = walletNames[addr] || resolvedEnsNames[getAddressLookupKey(addr)] || ''
    const isSelected = selectedWalletForLoading === addr
    const isVerified = verifiedAddresses.has(addr)
    const walletProvider = walletProviders[addr] || 'Solana Wallet'
@@ -2804,7 +2699,7 @@ Bitcoin Address
              <WalletNameEditor
                address={addr}
                currentName={solanaWalletName}
-               isENS={!!resolvedEnsNames[addr.toLowerCase()]}
+               isENS={!!resolvedEnsNames[getAddressLookupKey(addr)]}
                onNameChange={(newName) => {
                  setWalletNames(prev => ({ ...prev, [addr]: newName }))
                }}
@@ -3050,7 +2945,7 @@ Verify Wallet Ownership (Sign Message)
      {selectedWalletForLoading && (
        <div>
          <p className="text-sm font-bold text-blue-900 mb-1">
-           {walletNames[selectedWalletForLoading] || resolvedEnsNames[selectedWalletForLoading.toLowerCase()] || selectedWalletForLoading.slice(0, 10) + '...' + selectedWalletForLoading.slice(-8)}
+           {walletNames[selectedWalletForLoading] || resolvedEnsNames[getAddressLookupKey(selectedWalletForLoading)] || selectedWalletForLoading.slice(0, 10) + '...' + selectedWalletForLoading.slice(-8)}
          </p>
        <p className="text-xs text-blue-300 font-mono break-all">
            {selectedWalletForLoading}
@@ -3063,7 +2958,7 @@ Verify Wallet Ownership (Sign Message)
      {btcAddress && (
        <div>
          <p className="text-sm font-bold text-blue-900 mb-1">
-           {walletNames[btcAddress] || resolvedEnsNames[btcAddress.toLowerCase()] || btcAddress.slice(0, 10) + '...' + btcAddress.slice(-8)}
+           {walletNames[btcAddress] || resolvedEnsNames[getAddressLookupKey(btcAddress)] || btcAddress.slice(0, 10) + '...' + btcAddress.slice(-8)}
          </p>
          <p className="text-xs text-blue-300 font-mono break-all">
            {btcAddress}
@@ -3087,130 +2982,148 @@ Verify Wallet Ownership (Sign Message)
       onChange={(e) => setHideSpamTokens(e.target.checked)}
       className="w-4 h-4 text-blue-600 border-white/10 rounded focus:ring-blue-500"
     />
-    <span className="text-sm text-gray-300 font-semibold">Hide Spam/Dust Tokens</span>
+    <span className="text-sm text-gray-300 font-semibold">Hide suspected spam/dust tokens</span>
   </label>
 </div>
-<AssetSelector
-      walletNames={walletNames}
-      resolvedEnsNames={resolvedEnsNames}
-assets={(() => {
-  // If no current assets but we have queued sessions, show queued assets
-  let assetsToShow = assets.length > 0 ? assets : queuedSessions.flatMap(s => s.assets)
-  
-  const ethscriptionCountBefore = assetsToShow.filter(a => a.type === 'ethscription').length
-  console.log(`[Assets Step] Assets to show: ${assetsToShow.length} total, ${ethscriptionCountBefore} ethscriptions`)
-  
-  let filtered = assetsToShow
-  if (selectedWalletForLoading) {
-    const selectedWalletLower = selectedWalletForLoading.toLowerCase()
-    
-    // Also check resolved ENS names
-    let selectedWalletResolved: string | null = null
-    if (selectedWalletForLoading.endsWith('.eth')) {
-      // Try to find the resolved address for this ENS name
-      const resolved = Object.entries(resolvedEnsNames).find(
-        ([addr, ens]) => ens?.toLowerCase() === selectedWalletLower
-      )?.[0]
-      if (resolved) {
-        selectedWalletResolved = resolved.toLowerCase()
-        console.log(`[Assets Step] Resolved ENS ${selectedWalletForLoading} to ${selectedWalletResolved}`)
-      }
-    }
-    
-    filtered = assetsToShow.filter(a => {
-      if (a.type === 'ethscription') {
-        // For ethscriptions, be more lenient - check walletAddress, creator, and currentOwner
-        const assetWalletLower = a.walletAddress?.toLowerCase()
-        const creator = a.metadata?.creator?.toLowerCase()
-        const currentOwner = a.metadata?.currentOwner?.toLowerCase()
-        
-        const matches = assetWalletLower === selectedWalletLower ||
-                       assetWalletLower === selectedWalletResolved ||
-                       creator === selectedWalletLower ||
-                       creator === selectedWalletResolved ||
-                       currentOwner === selectedWalletLower ||
-                       currentOwner === selectedWalletResolved
-        
-        if (!matches) {
-          console.log(`[Assets Step] Ethscription filtered out:`, {
-            id: a.id,
-            walletAddress: a.walletAddress,
-            creator,
-            currentOwner,
-            selectedWallet: selectedWalletForLoading,
-            selectedWalletResolved
-          })
+{(() => {
+  const assetsForReference = (() => {
+    // If no current assets but we have queued sessions, show queued assets
+    let assetsToShow = assets.length > 0 ? assets : queuedSessions.flatMap(s => s.assets)
+
+    const ethscriptionCountBefore = assetsToShow.filter(a => a.type === 'ethscription').length
+    console.log(`[Assets Step] Assets to show: ${assetsToShow.length} total, ${ethscriptionCountBefore} ethscriptions`)
+
+    let filtered = assetsToShow
+    if (selectedWalletForLoading) {
+      const selectedWalletLower = selectedWalletForLoading.toLowerCase()
+
+      // Also check resolved ENS names
+      let selectedWalletResolved: string | null = null
+      if (selectedWalletForLoading.endsWith('.eth')) {
+        const resolved = Object.entries(resolvedEnsNames).find(
+          ([addr, ens]) => ens?.toLowerCase() === selectedWalletLower
+        )?.[0]
+        if (resolved) {
+          selectedWalletResolved = resolved.toLowerCase()
+          console.log(`[Assets Step] Resolved ENS ${selectedWalletForLoading} to ${selectedWalletResolved}`)
         }
-        return matches
-      } else {
-        // For other assets, use normal matching
+      }
+
+      filtered = assetsToShow.filter(a => {
+        if (a.type === 'ethscription') {
+          const assetWalletLower = a.walletAddress?.toLowerCase()
+          const creator = a.metadata?.creator?.toLowerCase()
+          const currentOwner = a.metadata?.currentOwner?.toLowerCase()
+
+          const matches = assetWalletLower === selectedWalletLower ||
+            assetWalletLower === selectedWalletResolved ||
+            creator === selectedWalletLower ||
+            creator === selectedWalletResolved ||
+            currentOwner === selectedWalletLower ||
+            currentOwner === selectedWalletResolved
+
+          if (!matches) {
+            console.log(`[Assets Step] Ethscription filtered out:`, {
+              id: a.id,
+              walletAddress: a.walletAddress,
+              creator,
+              currentOwner,
+              selectedWallet: selectedWalletForLoading,
+              selectedWalletResolved
+            })
+          }
+          return matches
+        }
+
         const assetWalletLower = a.walletAddress?.toLowerCase()
-        return assetWalletLower === selectedWalletLower || 
-               assetWalletLower === selectedWalletResolved
-      }
-    })
-    const ethscriptionCountAfter = filtered.filter(a => a.type === 'ethscription').length
-    console.log(`[Assets Step] After wallet filter (${selectedWalletForLoading}): ${filtered.length} total, ${ethscriptionCountAfter} ethscriptions`)
-    if (ethscriptionCountBefore > 0 && ethscriptionCountAfter === 0) {
-      console.warn(`[Assets Step] ⚠️ All ${ethscriptionCountBefore} ethscriptions were filtered out by wallet filter!`)
-      const sampleEthscription = assetsToShow.find(a => a.type === 'ethscription')
-      console.log(`[Assets Step] Sample ethscription:`, {
-        walletAddress: sampleEthscription?.walletAddress,
-        creator: sampleEthscription?.metadata?.creator,
-        currentOwner: sampleEthscription?.metadata?.currentOwner
+        return assetWalletLower === selectedWalletLower || assetWalletLower === selectedWalletResolved
       })
-      console.log(`[Assets Step] Selected wallet: ${selectedWalletForLoading}, Resolved: ${selectedWalletResolved}`)
-    }
-  } else if (btcAddress) {
-    // Filter Bitcoin assets - include ordinals from ordinals address too
-    filtered = assetsToShow.filter(a => {
-      if (a.chain !== 'bitcoin') return false
-      // For ordinals, check both payment address and ordinals address
-      if (a.type === 'ordinal') {
-        // Ordinals can be in either the payment address or ordinals address
-        return a.walletAddress === btcAddress || 
-               a.contractAddress === btcAddress ||
-               (btcOrdinalsAddress && (a.walletAddress === btcOrdinalsAddress || a.contractAddress === btcOrdinalsAddress))
+
+      const ethscriptionCountAfter = filtered.filter(a => a.type === 'ethscription').length
+      console.log(`[Assets Step] After wallet filter (${selectedWalletForLoading}): ${filtered.length} total, ${ethscriptionCountAfter} ethscriptions`)
+      if (ethscriptionCountBefore > 0 && ethscriptionCountAfter === 0) {
+        console.warn(`[Assets Step] ⚠️ All ${ethscriptionCountBefore} ethscriptions were filtered out by wallet filter!`)
+        const sampleEthscription = assetsToShow.find(a => a.type === 'ethscription')
+        console.log(`[Assets Step] Sample ethscription:`, {
+          walletAddress: sampleEthscription?.walletAddress,
+          creator: sampleEthscription?.metadata?.creator,
+          currentOwner: sampleEthscription?.metadata?.currentOwner
+        })
+        console.log(`[Assets Step] Selected wallet: ${selectedWalletForLoading}, Resolved: ${selectedWalletResolved}`)
       }
-      // For other Bitcoin assets, check payment address
-      return a.walletAddress === btcAddress || a.contractAddress === btcAddress
-    })
-    const ordinalsInAll = assetsToShow.filter(a => a.type === 'ordinal').length
-    const ordinalsInFiltered = filtered.filter(a => a.type === 'ordinal').length
-    console.log('[Assets Step] Filtering Bitcoin assets:', {
-      btcAddress,
-      btcOrdinalsAddress,
-      allAssets: assetsToShow.length,
-      bitcoinAssets: assetsToShow.filter(a => a.chain === 'bitcoin').length,
-      ordinalsInAll: ordinalsInAll,
-      filtered: filtered.length,
-      ordinalsInFiltered: ordinalsInFiltered,
-      filteredAssets: filtered.map(a => ({ id: a.id, type: a.type, name: a.name, walletAddress: a.walletAddress }))
-    })
-    if (ordinalsInAll > 0 && ordinalsInFiltered === 0) {
-      console.warn('[Assets Step] ⚠️ All ordinals were filtered out!')
-      const sampleOrdinal = assetsToShow.find(a => a.type === 'ordinal')
-      console.log('[Assets Step] Sample ordinal:', {
-        walletAddress: sampleOrdinal?.walletAddress,
-        contractAddress: sampleOrdinal?.contractAddress,
-        btcAddress: btcAddress,
-        btcOrdinalsAddress: btcOrdinalsAddress
+    } else if (btcAddress) {
+      filtered = assetsToShow.filter(a => {
+        if (a.chain !== 'bitcoin') return false
+        if (a.type === 'ordinal') {
+          return a.walletAddress === btcAddress ||
+            a.contractAddress === btcAddress ||
+            (btcOrdinalsAddress && (a.walletAddress === btcOrdinalsAddress || a.contractAddress === btcOrdinalsAddress))
+        }
+        return a.walletAddress === btcAddress || a.contractAddress === btcAddress
       })
+
+      const ordinalsInAll = assetsToShow.filter(a => a.type === 'ordinal').length
+      const ordinalsInFiltered = filtered.filter(a => a.type === 'ordinal').length
+      console.log('[Assets Step] Filtering Bitcoin assets:', {
+        btcAddress,
+        btcOrdinalsAddress,
+        allAssets: assetsToShow.length,
+        bitcoinAssets: assetsToShow.filter(a => a.chain === 'bitcoin').length,
+        ordinalsInAll,
+        filtered: filtered.length,
+        ordinalsInFiltered,
+        filteredAssets: filtered.map(a => ({ id: a.id, type: a.type, name: a.name, walletAddress: a.walletAddress }))
+      })
+      if (ordinalsInAll > 0 && ordinalsInFiltered === 0) {
+        console.warn('[Assets Step] ⚠️ All ordinals were filtered out!')
+        const sampleOrdinal = assetsToShow.find(a => a.type === 'ordinal')
+        console.log('[Assets Step] Sample ordinal:', {
+          walletAddress: sampleOrdinal?.walletAddress,
+          contractAddress: sampleOrdinal?.contractAddress,
+          btcAddress,
+          btcOrdinalsAddress
+        })
+      }
     }
-  }
-  // Apply spam filtering if enabled
-  if (hideSpamTokens) {
-    const beforeSpamFilter = filtered.length
-    filtered = filterSpamTokens(filtered)
-    const afterSpamFilter = filtered.length
-    const ethscriptionCountAfterSpam = filtered.filter(a => a.type === 'ethscription').length
-    console.log(`[Assets Step] After spam filter: ${beforeSpamFilter} -> ${afterSpamFilter} assets, ${ethscriptionCountAfterSpam} ethscriptions`)
-  }
-  return filtered
+
+    if (hideSpamTokens) {
+      const beforeSpamFilter = filtered.length
+      filtered = filterSpamTokens(filtered)
+      const afterSpamFilter = filtered.length
+      const ethscriptionCountAfterSpam = filtered.filter(a => a.type === 'ethscription').length
+      console.log(`[Assets Step] After spam filter: ${beforeSpamFilter} -> ${afterSpamFilter} assets, ${ethscriptionCountAfterSpam} ethscriptions`)
+    }
+
+    return filtered
+  })()
+
+  return (
+    <>
+      <GroupedInventoryReference
+        assets={assetsForReference}
+        selectedAssetIds={selectedAssetIds}
+        walletNames={walletNames}
+        resolvedEnsNames={resolvedEnsNames}
+        onToggleGroupSelection={(assetIds) => {
+          setSelectedAssetIds(current => {
+            const allSelected = assetIds.every(id => current.includes(id))
+            if (allSelected) {
+              return current.filter(id => !assetIds.includes(id))
+            }
+            return [...new Set([...current, ...assetIds])]
+          })
+        }}
+      />
+      <AssetSelector
+        walletNames={walletNames}
+        resolvedEnsNames={resolvedEnsNames}
+        assets={assetsForReference}
+        selectedAssetIds={selectedAssetIds}
+        onSelectionChange={setSelectedAssetIds}
+      />
+    </>
+  )
 })()}
-selectedAssetIds={selectedAssetIds}
-onSelectionChange={setSelectedAssetIds}
-/>
  <div className="mt-6 p-4 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 backdrop-blur-xl border-2 border-blue-500/30 rounded-lg border-glow">
  <div className="flex items-start justify-between">
    <div className="flex-1">
@@ -3489,7 +3402,7 @@ onSelectionChange={setSelectedAssetIds}
  {/* Wallet Group Selection */}
  {(() => {
    const currentWalletAddr = evmAddress || btcAddress || (connectedSolanaAddresses.size > 0 ? Array.from(connectedSolanaAddresses)[0] : null)
-   const currentGroup = currentWalletAddr ? (walletGroups[currentWalletAddr.toLowerCase()] || 'unassigned') : 'unassigned'
+   const currentGroup = currentWalletAddr ? (walletGroups[getAddressLookupKey(currentWalletAddr)] || 'unassigned') : 'unassigned'
    return currentWalletAddr ? (
      <div className="mt-6 p-4 bg-gradient-to-br from-purple-500/20 to-blue-500/20 backdrop-blur-xl border-2 border-purple-500/30 rounded-lg border-glow">
        <label className="block text-sm font-semibold text-bright mb-2">
@@ -3504,7 +3417,7 @@ onSelectionChange={setSelectedAssetIds}
            const newGroup = e.target.value as WalletGroup
            setWalletGroups(prev => ({
              ...prev,
-             [currentWalletAddr.toLowerCase()]: newGroup
+             [getAddressLookupKey(currentWalletAddr)]: newGroup
            }))
          }}
          className="w-full rounded-lg border-2 border-white/20 bg-white/5 backdrop-blur-xl p-3 text-bright focus:border-purple-500 focus:outline-none transition-colors"
@@ -3900,7 +3813,7 @@ Apply
 {discountApplied && (
 <div className="mt-2">
 <p className="text-sm text-green-400 font-semibold mb-1">✓ Discount applied! 100% off - Tier limits bypassed</p>
-<p className="text-xs text-green-300">Redirecting to download...</p>
+<p className="text-xs text-green-300">Preparing your document...</p>
 </div>
 )}
 </div>
@@ -4262,7 +4175,7 @@ className="flex-1 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-w
  <div className="max-w-2xl mx-auto text-center">
  <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Document Ready!</h2>
  <p className="text-gray-300 mb-8">
- Your crypto inheritance instructions document is ready to download
+ Your crypto inheritance instructions document is ready to view and print
  </p>
  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-8 border-2 border-green-200">
  <div className="mb-6">
@@ -4275,7 +4188,7 @@ className="flex-1 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-w
  {discountApplied ? 'Discount Applied - FREE' : 'Payment Verified'}
  </p>
  <p className="text-sm text-gray-300">
- Your document has been generated and is ready to download
+ Your document has been generated and is ready to open
  </p>
  </div>
  <button
@@ -4289,7 +4202,7 @@ className="flex-1 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-w
  <span>Generating PDF...</span>
  </>
  ) : (
- 'Download PDF'
+ 'Open PDF'
  )}
  </button>
  {generatingPDF && (
@@ -4310,7 +4223,7 @@ className="flex-1 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-w
  <div className="bg-yellow-500/10 backdrop-blur-xl border border-yellow-500/30 rounded-lg p-8">
  <h2 className="text-2xl font-bold text-yellow-900 mb-4">Payment Required</h2>
  <p className="text-yellow-300 mb-4">
- Please complete payment or apply a discount code to download your document.
+ Please complete payment or apply a discount code to view your document.
  </p>
  <button
  onClick={() => setStep('payment')}

@@ -267,7 +267,7 @@ export default function LandingPage() {
                 { step: 3, title: 'Select Assets', desc: 'Choose which assets to include in your inheritance document with smart filtering.', icon: '✅' },
                 { step: 4, title: 'Allocate Assets', desc: 'Add beneficiaries and allocate assets by percentage or amount with real-time validation.', icon: '👥' },
                 { step: 5, title: 'Enter Details', desc: 'Fill in owner and executor information with multi-chain name resolution support.', icon: '📝' },
-                { step: 6, title: 'Payment & Download', desc: 'Choose your plan, complete payment, and download your professional PDF document.', icon: '💳' }
+                { step: 6, title: 'Payment & View', desc: 'Choose your plan, complete payment, and open your professional PDF document.', icon: '💳' }
               ].map((item, index) => (
                 <div key={index} className="relative">
                   {/* Timeline connector dot - only show on desktop */}
@@ -586,4 +586,3 @@ export default function LandingPage() {
     </div>
   )
 }
-
