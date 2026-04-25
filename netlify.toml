@@ -7,6 +7,10 @@
   # Note: If build fails with auth errors, add NETLIFY_AUTH_TOKEN to environment variables
   # or retry the deploy (may be transient network issue)
 
+[[edge_functions]]
+  function = "security-headers"
+  path = "/*"
+
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
