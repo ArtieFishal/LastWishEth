@@ -1,51 +1,26 @@
 /**
- * Netlify Edge Function: add baseline security headers.
+ * DEPRECATED: This Netlify Edge Function is no longer the source of truth for
+ * security headers.
  *
- * Notes:
- * - CSP is intentionally permissive enough for Next.js (allows inline/eval).
- * - Tighten once you audit all scripts/connect/img/font needs.
+ * Security headers (CSP, X-Frame-Options, X-Content-Type-Options,
+ * Referrer-Policy, Permissions-Policy) are now defined in ONE place:
+ *
+ *   next.config.ts -> `headers()`
+ *
+ * They are propagated to the production response by `@netlify/plugin-nextjs`.
+ *
+ * This file is kept (rather than deleted) so that the rationale survives in
+ * the codebase and so that an accidental re-registration in `netlify.toml`
+ * is a no-op rather than a duplicate-header source.
+ *
+ * The registration block was removed from `netlify.toml`. To re-introduce
+ * edge-level security headers in the future, first remove the corresponding
+ * `headers()` entry from `next.config.ts` to keep a single source of truth.
  */
 
-const CSP = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "frame-ancestors 'none'",
-  "object-src 'none'",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
-  "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-  "connect-src 'self' https: wss:",
-  "upgrade-insecure-requests",
-].join('; ');
-
-export default async (request: Request, context: any) => {
-  const response = await context.next();
-
-  // Clone headers so we can safely modify them.
-  const headers = new Headers(response.headers);
-
-  headers.set('X-Frame-Options', 'DENY');
-  headers.set('X-Content-Type-Options', 'nosniff');
-  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-
-  // Only set CSP if the origin didn't already set it.
-  // (If you later move CSP to Next/Netlify config, this avoids double headers.)
-  if (!headers.has('Content-Security-Policy')) {
-    headers.set('Content-Security-Policy', CSP);
-  }
-
-  // COOP/COEP can break things; skipping for now.
-  // headers.set('Cross-Origin-Opener-Policy', 'same-origin');
-
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
+export default async (_request: Request, context: any) => {
+  return context.next();
 };
 
-export const config = {
-  path: '/*',
-};
+// Intentionally NOT exporting `config = { path: '/*' }` so this function
+// stays inert even if it accidentally gets included in a build.
