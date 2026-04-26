@@ -76,5 +76,9 @@ backups/
 mock-output/
 public/mock/
 
+# Playwright/Vitest output
+playwright-report/
+test-results/
+
 # Cursor IDE development files
 .cursor/
