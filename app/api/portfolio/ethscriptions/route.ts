@@ -78,7 +78,7 @@ function validateImageUrl(contentUri: string): string | undefined {
   // Handle IPFS URLs
   if (contentUri.includes('ipfs')) {
     // Fix malformed IPFS URLs (ipfs:/Qm... -> ipfs://Qm...)
-    let fixedUri = contentUri.replace(/^ipfs:\/(?!\/)/, 'ipfs://')
+    const fixedUri = contentUri.replace(/^ipfs:\/(?!\/)/, 'ipfs://')
     
     // Extract IPFS hash (Qm...)
     const ipfsHashMatch = fixedUri.match(/ipfs:\/\/([a-zA-Z0-9]+)/)

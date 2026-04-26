@@ -109,7 +109,7 @@ export async function fetchNFTMetadata(
   }
 
   try {
-    let url = tokenUri
+    const url = tokenUri
     let response: Response | null = null
 
     // Handle IPFS URLs

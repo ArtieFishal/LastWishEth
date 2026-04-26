@@ -2,8 +2,22 @@ import { defineConfig, devices } from '@playwright/test'
 
 /**
  * Playwright E2E test configuration
- * Run tests with: npx playwright test
+ *
+ * Default usage:
+ *   npx playwright test                # full suite
+ *   npm run test:e2e:smoke             # production-readiness smoke only
+ *
+ * Targeting a remote URL (e.g. a Netlify deploy preview):
+ *   PLAYWRIGHT_TEST_BASE_URL=https://deploy-preview-123--site.netlify.app \
+ *     npm run test:e2e:smoke
+ *
+ * When PLAYWRIGHT_TEST_BASE_URL is set, the local webServer is skipped and
+ * tests run against that URL.
  */
+
+const remoteBaseURL = process.env.PLAYWRIGHT_TEST_BASE_URL?.trim()
+const baseURL = remoteBaseURL && remoteBaseURL.length > 0 ? remoteBaseURL : 'http://localhost:3000'
+const useRemoteTarget = baseURL !== 'http://localhost:3000'
 
 export default defineConfig({
   testDir: './e2e',
@@ -13,7 +27,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -41,10 +55,12 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: useRemoteTarget
+    ? undefined
+    : {
+        command: 'npm run dev',
+        url: 'http://localhost:3000',
+        reuseExistingServer: !process.env.CI,
+      },
 })
 

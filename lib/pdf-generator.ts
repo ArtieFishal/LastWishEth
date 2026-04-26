@@ -1105,7 +1105,7 @@ export async function generatePDF(
       checkNewPage(40)
       
       // Determine asset color (for text only, no boxes)
-      let assetColor = rgb(0.1, 0.1, 0.1)
+      const assetColor = rgb(0.1, 0.1, 0.1)
       const isNFT = asset.type === 'erc721' || asset.type === 'erc1155'
       
       // Show wallet address for this asset
