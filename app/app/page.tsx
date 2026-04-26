@@ -27,17 +27,9 @@ import { clearWalletConnectionsOnLoad, clearWagmiIndexedDB } from '@/lib/wallet-
 import { getAddressLookupKey, isSupportedWalletAddress, looksLikeBlockchainName, normalizeWalletAddress } from '@/lib/address-utils'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-
-type Step = 'connect' | 'assets' | 'allocate' | 'details' | 'payment' | 'download'
-
-const steps: Array<{ id: Step; label: string; number: number }> = [
- { id: 'connect', label: 'Connect', number: 1 },
- { id: 'assets', label: 'Assets', number: 2 },
- { id: 'allocate', label: 'Allocate', number: 3 },
- { id: 'details', label: 'Details', number: 4 },
- { id: 'payment', label: 'Payment', number: 5 },
- { id: 'download', label: 'View', number: 6 },
-]
+import { steps, type Step } from '@/lib/app/steps'
+import { filterSpamTokens as filterSpamTokensImpl } from '@/lib/app/spam-filter'
+import { loadPersistedState, savePersistedState } from '@/lib/app/persistence'
 
 export default function Home() {
  const { address: evmAddress, isConnected, chain } = useAccount()
@@ -119,158 +111,128 @@ export default function Home() {
 
  // Prevent hydration mismatch
  useEffect(() => {
- setMounted(true)
- 
- // DON'T clear wallet connections on every page load - allow wallets to persist
- // Users can manually disconnect if needed, or use "Clear All" button
- // clearWalletConnectionsOnLoad().catch(err => {
- //   console.error('[App] Error clearing wallet connections:', err)
- // })
- 
- // Load persisted state from localStorage
- if (typeof window !== 'undefined') {
- try {
- const saved = localStorage.getItem('lastwish_state')
- if (saved) {
- const parsed = JSON.parse(saved)
- // Restore all state including wallet connections
- if (parsed.assets) setAssets(parsed.assets)
- if (parsed.beneficiaries) setBeneficiaries(parsed.beneficiaries)
- if (parsed.allocations) setAllocations(parsed.allocations)
- if (parsed.selectedAssetIds) setSelectedAssetIds(parsed.selectedAssetIds)
-    if (parsed.ownerName) setOwnerName(parsed.ownerName)
-    if (parsed.ownerFullName) setOwnerFullName(parsed.ownerFullName)
-    if (parsed.ownerEnsName) setOwnerEnsName(parsed.ownerEnsName)
-    if (parsed.ownerAddress) setOwnerAddress(parsed.ownerAddress)
- if (parsed.ownerCity) setOwnerCity(parsed.ownerCity)
- if (parsed.ownerState) setOwnerState(parsed.ownerState)
- if (parsed.ownerZipCode) setOwnerZipCode(parsed.ownerZipCode)
- if (parsed.ownerPhone) setOwnerPhone(parsed.ownerPhone)
- if (parsed.executorName) setExecutorName(parsed.executorName)
- if (parsed.executorAddress) setExecutorAddress(parsed.executorAddress)
- if (parsed.executorPhone) setExecutorPhone(parsed.executorPhone)
- if (parsed.executorEmail) setExecutorEmail(parsed.executorEmail)
- if (parsed.executorTwitter) setExecutorTwitter(parsed.executorTwitter)
- if (parsed.executorLinkedIn) setExecutorLinkedIn(parsed.executorLinkedIn)
- if (parsed.keyInstructions) setKeyInstructions(parsed.keyInstructions)
-              if (parsed.resolvedEnsNames) {
-                setResolvedEnsNames(parsed.resolvedEnsNames)
-                resolvedEnsNamesRef.current = parsed.resolvedEnsNames // Sync ref
-              }
- if (parsed.paymentWalletAddress) setPaymentWalletAddress(parsed.paymentWalletAddress)
- if (parsed.step) setStep(parsed.step)
- if (parsed.invoiceId) setInvoiceId(parsed.invoiceId)
- if (parsed.paymentVerified) setPaymentVerified(parsed.paymentVerified)
- if (parsed.discountCode) setDiscountCode(parsed.discountCode)
- if (parsed.discountApplied) setDiscountApplied(parsed.discountApplied)
- if (parsed.queuedSessions) setQueuedSessions(parsed.queuedSessions)
- if (parsed.selectedTier) setSelectedTier(parsed.selectedTier)
+   setMounted(true)
 
-              // RESTORE wallet connection state
-              if (parsed.connectedEVMAddresses && Array.isArray(parsed.connectedEVMAddresses)) {
-                setConnectedEVMAddresses(new Set(parsed.connectedEVMAddresses))
-              }
-              if (parsed.verifiedAddresses && Array.isArray(parsed.verifiedAddresses)) {
-                setVerifiedAddresses(new Set(parsed.verifiedAddresses))
-              }
-              if (parsed.btcAddress) setBtcAddress(parsed.btcAddress)
-              if (parsed.connectedSolanaAddresses && Array.isArray(parsed.connectedSolanaAddresses)) {
-                setConnectedSolanaAddresses(new Set(parsed.connectedSolanaAddresses))
-              }
-              if (parsed.walletNames) {
-                setWalletNames(parsed.walletNames)
-                walletNamesRef.current = parsed.walletNames // Sync ref
-              }
-              if (parsed.walletProviders) setWalletProviders(parsed.walletProviders)
- }
- } catch (err) {
- console.error('Error loading saved state:', err)
- }
- }
+   // DON'T clear wallet connections on every page load - allow wallets to persist.
+   // Users can manually disconnect if needed, or use "Clear All" button.
+   // The actual hydration logic lives in `lib/app/persistence.ts`.
+   loadPersistedState({
+     setAssets,
+     setBeneficiaries,
+     setAllocations,
+     setSelectedAssetIds,
+     setOwnerName,
+     setOwnerFullName,
+     setOwnerEnsName,
+     setOwnerAddress,
+     setOwnerCity,
+     setOwnerState,
+     setOwnerZipCode,
+     setOwnerPhone,
+     setExecutorName,
+     setExecutorAddress,
+     setExecutorPhone,
+     setExecutorEmail,
+     setExecutorTwitter,
+     setExecutorLinkedIn,
+     setKeyInstructions,
+     setResolvedEnsNames,
+     setPaymentWalletAddress,
+     setStep,
+     setInvoiceId,
+     setPaymentVerified,
+     setDiscountCode,
+     setDiscountApplied,
+     setQueuedSessions,
+     setSelectedTier,
+     setConnectedEVMAddresses,
+     setVerifiedAddresses,
+     setBtcAddress,
+     setConnectedSolanaAddresses,
+     setWalletNames,
+     setWalletProviders,
+     resolvedEnsNamesRef,
+     walletNamesRef,
+   })
  }, [])
 
- // Save state to localStorage whenever it changes
+ // Save state to localStorage whenever it changes.
+ // The serialization shape lives in `lib/app/persistence.ts`.
  useEffect(() => {
- if (typeof window !== 'undefined' && mounted) {
- try {
- const stateToSave = {
- assets,
- beneficiaries,
- allocations,
- selectedAssetIds,
-    ownerName,
-    ownerFullName,
-    ownerEnsName: ownerEnsName || undefined,
-    ownerAddress,
- ownerCity,
- ownerState,
- ownerZipCode,
- ownerPhone,
- executorName,
- executorAddress,
- executorPhone,
- executorEmail,
- executorTwitter,
- executorLinkedIn,
- keyInstructions,
- resolvedEnsNames,
- paymentWalletAddress,
- step,
- invoiceId,
- paymentVerified,
- discountCode,
- discountApplied,
- queuedSessions,
- selectedTier,
- // Persist wallet connection state
- connectedEVMAddresses: Array.from(connectedEVMAddresses),
-              connectedSolanaAddresses: Array.from(connectedSolanaAddresses),
-              verifiedAddresses: Array.from(verifiedAddresses),
-              btcAddress,
- walletNames,
- walletProviders,
- }
- localStorage.setItem('lastwish_state', JSON.stringify(stateToSave))
- } catch (err) {
- console.error('Error saving state:', err)
- }
- }
-  }, [
-    assets,
-    beneficiaries,
-    allocations,
-    selectedAssetIds,
-    ownerName,
-    ownerFullName,
-    ownerEnsName,
-    ownerAddress,
- ownerCity,
- ownerState,
- ownerZipCode,
- ownerPhone,
- executorName,
- executorAddress,
- executorPhone,
- executorEmail,
- executorTwitter,
- executorLinkedIn,
- keyInstructions,
- resolvedEnsNames,
- paymentWalletAddress,
- step,
- invoiceId,
- paymentVerified,
- discountCode,
- discountApplied,
- queuedSessions,
- selectedTier,
- mounted,
- // Add wallet connection state to dependencies
- connectedEVMAddresses,
- verifiedAddresses,
- btcAddress,
- walletNames,
- walletProviders,
+   if (!mounted) return
+   savePersistedState({
+     assets,
+     beneficiaries,
+     allocations,
+     selectedAssetIds,
+     ownerName,
+     ownerFullName,
+     ownerEnsName,
+     ownerAddress,
+     ownerCity,
+     ownerState,
+     ownerZipCode,
+     ownerPhone,
+     executorName,
+     executorAddress,
+     executorPhone,
+     executorEmail,
+     executorTwitter,
+     executorLinkedIn,
+     keyInstructions,
+     resolvedEnsNames,
+     paymentWalletAddress,
+     step,
+     invoiceId,
+     paymentVerified,
+     discountCode,
+     discountApplied,
+     queuedSessions,
+     selectedTier,
+     connectedEVMAddresses,
+     connectedSolanaAddresses,
+     verifiedAddresses,
+     btcAddress,
+     walletNames,
+     walletProviders,
+   })
+ }, [
+   assets,
+   beneficiaries,
+   allocations,
+   selectedAssetIds,
+   ownerName,
+   ownerFullName,
+   ownerEnsName,
+   ownerAddress,
+   ownerCity,
+   ownerState,
+   ownerZipCode,
+   ownerPhone,
+   executorName,
+   executorAddress,
+   executorPhone,
+   executorEmail,
+   executorTwitter,
+   executorLinkedIn,
+   keyInstructions,
+   resolvedEnsNames,
+   paymentWalletAddress,
+   step,
+   invoiceId,
+   paymentVerified,
+   discountCode,
+   discountApplied,
+   queuedSessions,
+   selectedTier,
+   mounted,
+   // Wallet connection state. NOTE: connectedSolanaAddresses is intentionally
+   // omitted here to match the previous inline behavior; it is still persisted.
+   connectedEVMAddresses,
+   verifiedAddresses,
+   btcAddress,
+   walletNames,
+   walletProviders,
  ])
 
  // Track loaded wallet addresses to avoid duplicates
@@ -725,6 +687,7 @@ hasAutoSelectedRef.current = false
  const response = await axios.post('/api/invoice/status', {
  invoiceId,
  fromAddress: evmAddress,
+ tier: selectedTier,
  })
  if (response.data.status === 'paid') {
  console.log('Payment verified via API:', response.data.transactionHash)
@@ -739,42 +702,8 @@ hasAutoSelectedRef.current = false
  }, [isPaymentSent, sendTxHash, evmAddress, invoiceId])
 
  // Optional spam filter. Keep it conservative so discovery stays complete by default.
- const filterSpamTokens = (assets: Asset[]): Asset[] => {
-   if (!hideSpamTokens) return assets
-
-   return assets.filter(asset => {
-     if (asset.type === 'native' || asset.type === 'btc') return true
-     if (asset.type === 'erc721' || asset.type === 'erc1155' || asset.type === 'nft') return true
-     if (asset.type === 'ethscription' || asset.type === 'ordinal') return true
-     if (asset.type !== 'erc20') return true
-
-     const decimals = asset.decimals || 18
-     const balance = parseFloat(asset.balanceFormatted || '0')
-     const possibleSpam = Boolean(asset.metadata?.possibleSpam)
-     const name = (asset.name || '').toLowerCase()
-     const symbol = (asset.symbol || '').toLowerCase()
-     const obviouslySuspicious = [
-       /^test$/i,
-       /^fake$/i,
-       /^scam$/i,
-       /^spam$/i,
-       /^airdrop$/i,
-       /^claim$/i,
-       /^free$/i,
-       /^unknown$/i,
-       /^unnamed$/i,
-     ].some(pattern => pattern.test(name) || pattern.test(symbol))
-
-     const isDust = balance > 0 && balance < (decimals >= 18 ? 0.000001 : 0.0001)
-
-     if ((possibleSpam && isDust) || obviouslySuspicious) {
-       console.log(`[Spam Filter] Filtered ${asset.symbol} (${asset.name})`)
-       return false
-     }
-
-     return true
-   })
- }
+ // Implementation lives in `lib/app/spam-filter.ts`.
+ const filterSpamTokens = (assets: Asset[]): Asset[] => filterSpamTokensImpl(assets, hideSpamTokens)
 
  // Load assets from a specific wallet address
  const loadAssetsFromWallet = async (walletAddress: string, append = false) => {
@@ -2988,7 +2917,7 @@ Verify Wallet Ownership (Sign Message)
 {(() => {
   const assetsForReference = (() => {
     // If no current assets but we have queued sessions, show queued assets
-    let assetsToShow = assets.length > 0 ? assets : queuedSessions.flatMap(s => s.assets)
+    const assetsToShow = assets.length > 0 ? assets : queuedSessions.flatMap(s => s.assets)
 
     const ethscriptionCountBefore = assetsToShow.filter(a => a.type === 'ethscription').length
     console.log(`[Assets Step] Assets to show: ${assetsToShow.length} total, ${ethscriptionCountBefore} ethscriptions`)
@@ -4082,6 +4011,7 @@ className="flex-1 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-w
                   const response = await axios.post('/api/invoice/status', {
                     invoiceId,
                     fromAddress: walletToUse, // Use the payment wallet (first verified wallet)
+                    tier: selectedTier,
                   })
                   if (response.data.status === 'paid') {
                     setPaymentVerified(true)
