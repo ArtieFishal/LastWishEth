@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPublicClient, http, formatUnits, isAddress } from 'viem'
 import { mainnet } from 'viem/chains'
-import { getPaymentAmountETH } from '@/lib/pricing'
+import { getPaymentAmountETH, type PricingTier } from '@/lib/pricing'
 
 // Default to the actual address for lastwish.eth
 // Can be overridden with environment variable (supports both ENS names and addresses)
@@ -48,7 +48,8 @@ async function verifyViaRPC(
   recipientAddress: string,
   requiredAmountWeiMin: bigint,
   requiredAmountWeiMax: bigint,
-  invoiceId: string
+  invoiceId: string,
+  paymentAmount: string
 ): Promise<NextResponse> {
   try {
     // Create public client for Ethereum mainnet
@@ -72,7 +73,7 @@ async function verifyViaRPC(
     return NextResponse.json({
       status: 'pending',
       invoiceId,
-      message: `Payment verification is checking your transaction. If you just sent the payment, please wait 10-30 seconds for it to be confirmed on-chain, then try again. Make sure you sent exactly ${getPaymentAmountETH()} ETH from your connected wallet to the recipient address on Ethereum mainnet.`,
+      message: `Payment verification is checking your transaction. If you just sent the payment, please wait 10-30 seconds for it to be confirmed on-chain, then try again. Make sure you sent exactly ${paymentAmount} ETH from your connected wallet to the recipient address on Ethereum mainnet.`,
     })
   } catch (error: any) {
     console.error('RPC verification error:', error)
@@ -84,9 +85,14 @@ async function verifyViaRPC(
   }
 }
 
+function normalizeTier(value: unknown): PricingTier {
+  return value === 'free' || value === 'standard' || value === 'premium' ? value : 'standard'
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { invoiceId, fromAddress } = await request.json()
+    const { invoiceId, fromAddress, tier } = await request.json()
+    const normalizedTier = normalizeTier(tier)
 
     if (!invoiceId || !fromAddress) {
       return NextResponse.json(
@@ -135,7 +141,18 @@ export async function POST(request: NextRequest) {
     console.log(`[Payment Verification] Checking transactions from ${fromAddress} to ${recipientAddress}`)
 
     // Get current payment amount (dynamic pricing)
-    const paymentAmount = getPaymentAmountETH()
+    const paymentAmount = getPaymentAmountETH(normalizedTier)
+
+    // Free tier requires no payment. Still respond deterministically if this endpoint is called.
+    if (paymentAmount === '0') {
+      return NextResponse.json({
+        status: 'paid',
+        invoiceId,
+        amount: '0',
+        message: 'No payment required for the selected tier.',
+      })
+    }
+
     // Convert payment amount to wei for comparison
     const requiredAmountWei = BigInt(Math.floor(parseFloat(paymentAmount) * 1e18))
     const requiredAmountWeiMin = requiredAmountWei - BigInt(Math.floor(parseFloat(paymentAmount) * 1e15)) // Allow 0.1% tolerance
@@ -161,7 +178,7 @@ export async function POST(request: NextRequest) {
         if (!response.ok) {
           console.error(`Etherscan API HTTP error: ${response.status} ${response.statusText}`)
           // Try alternative: use public RPC to get recent transactions
-          return await verifyViaRPC(fromAddress, recipientAddress, requiredAmountWeiMin, requiredAmountWeiMax, invoiceId)
+          return await verifyViaRPC(fromAddress, recipientAddress, requiredAmountWeiMin, requiredAmountWeiMax, invoiceId, paymentAmount)
         }
 
         data = await response.json()
@@ -179,14 +196,14 @@ export async function POST(request: NextRequest) {
           if (!data.result || !Array.isArray(data.result)) {
             console.error('Etherscan API returned error:', data.message || data)
             // Try RPC fallback
-            return await verifyViaRPC(fromAddress, recipientAddress, requiredAmountWeiMin, requiredAmountWeiMax, invoiceId)
+            return await verifyViaRPC(fromAddress, recipientAddress, requiredAmountWeiMin, requiredAmountWeiMax, invoiceId, paymentAmount)
           }
         }
 
         if (data.status !== '1' && (!data.result || !Array.isArray(data.result))) {
           console.error('Unexpected Etherscan response format:', JSON.stringify(data, null, 2))
           // Try RPC fallback
-          return await verifyViaRPC(fromAddress, recipientAddress, requiredAmountWeiMin, requiredAmountWeiMax, invoiceId)
+          return await verifyViaRPC(fromAddress, recipientAddress, requiredAmountWeiMin, requiredAmountWeiMax, invoiceId, paymentAmount)
         }
 
         // Check recent transactions (last 10)
@@ -254,12 +271,21 @@ export async function POST(request: NextRequest) {
         return false
         }
         
-        // Check transaction is successful
-        // Etherscan uses '1' for success, '0' for failure, or isError field
-        const isSuccess = tx.txreceipt_status === '1' || (tx.isError === '0' || tx.isError === '1' && tx.txreceipt_status !== '0')
-        if (!isSuccess) {
-          return false
-        }
+        // Check transaction is successful.
+        // Etherscan conventions:
+        //   - isError: '0' success, '1' error
+        //   - txreceipt_status: '1' success, '0' failure (may be missing on older txs)
+        // Prefer the most explicit fields and avoid ambiguous operator precedence.
+        const isErrorFlag = String(tx.isError ?? '')
+        const receiptStatus = String(tx.txreceipt_status ?? '')
+
+        // If either field explicitly indicates failure, reject.
+        if (isErrorFlag === '1') return false
+        if (receiptStatus === '0') return false
+
+        // If we have an explicit success indicator, accept.
+        const isSuccess = isErrorFlag === '0' || receiptStatus === '1'
+        if (!isSuccess) return false
         
         return true
       })
@@ -308,7 +334,7 @@ export async function POST(request: NextRequest) {
         // If it's a timeout or network error, try RPC fallback
         if (innerError.name === 'AbortError' || innerError.message?.includes('timeout') || innerError.message?.includes('fetch')) {
           console.log('Etherscan API timeout/network error, trying RPC fallback...')
-          return await verifyViaRPC(fromAddress, recipientAddress, requiredAmountWeiMin, requiredAmountWeiMax, invoiceId)
+          return await verifyViaRPC(fromAddress, recipientAddress, requiredAmountWeiMin, requiredAmountWeiMax, invoiceId, paymentAmount)
         }
         
         return NextResponse.json({
@@ -323,7 +349,7 @@ export async function POST(request: NextRequest) {
       // If it's a timeout or network error, try RPC fallback
       if (error.name === 'AbortError' || error.message?.includes('timeout') || error.message?.includes('fetch')) {
         console.log('Etherscan API timeout/network error, trying RPC fallback...')
-        return await verifyViaRPC(fromAddress, recipientAddress, requiredAmountWeiMin, requiredAmountWeiMax, invoiceId)
+        return await verifyViaRPC(fromAddress, recipientAddress, requiredAmountWeiMin, requiredAmountWeiMax, invoiceId, paymentAmount)
       }
       
       return NextResponse.json({
