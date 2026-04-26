@@ -70,9 +70,19 @@ const buildConnectors = async () => {
       )
     } catch (error) {
       // Silently fail - connectors will be empty
+      // NOTE: This branch is only reachable when projectId is present; failures here are import/init issues.
       if (process.env.NODE_ENV === 'development') {
-        console.warn('WalletConnect not configured. Add NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID to .env.local')
+        console.warn(
+          'WalletConnect failed to initialize (dynamic import or connector setup failed). ' +
+          'Check that dependencies are installed and the environment supports WalletConnect.'
+        )
       }
+    }
+  }
+  else {
+    // No project id; keep the app running, but make the issue obvious in dev.
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('WalletConnect is not configured. Missing NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID.')
     }
   }
   

@@ -7,6 +7,33 @@ export interface RetryFetchOptions extends RequestInit {
   retryOnStatuses?: number[]
 }
 
+function redactSecretsFromUrl(rawUrl: string): string {
+  try {
+    const url = new URL(rawUrl)
+    const secretKeys = new Set([
+      'api-key',
+      'apikey',
+      'api_key',
+      'key',
+      'token',
+      'access_token',
+      'auth',
+      'signature',
+    ])
+
+    for (const [k] of url.searchParams) {
+      if (secretKeys.has(k.toLowerCase())) {
+        url.searchParams.set(k, '[REDACTED]')
+      }
+    }
+
+    return url.toString()
+  } catch {
+    // If URL parsing fails, do a conservative redaction for common patterns.
+    return rawUrl.replace(/(api[-_]?key|access_token|token)=([^&\s]+)/gi, '$1=[REDACTED]')
+  }
+}
+
 export async function fetchJsonWithRetry<T = any>(url: string, options: RetryFetchOptions = {}): Promise<T> {
   const {
     retries = 2,
@@ -37,7 +64,8 @@ export async function fetchJsonWithRetry<T = any>(url: string, options: RetryFet
 
       if (!response.ok) {
         const bodyText = await response.text().catch(() => '')
-        const error = new Error(`HTTP ${response.status} for ${url}${bodyText ? `: ${bodyText.slice(0, 200)}` : ''}`)
+        const safeUrl = redactSecretsFromUrl(url)
+        const error = new Error(`HTTP ${response.status} for ${safeUrl}${bodyText ? `: ${bodyText.slice(0, 200)}` : ''}`)
         ;(error as any).status = response.status
 
         if (attempt < retries && retryOnStatuses.includes(response.status)) {
@@ -67,7 +95,8 @@ export async function fetchJsonWithRetry<T = any>(url: string, options: RetryFet
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error(`Failed to fetch ${url}`)
+  const safeUrl = redactSecretsFromUrl(url)
+  throw lastError instanceof Error ? lastError : new Error(`Failed to fetch ${safeUrl}`)
 }
 
 function wait(ms: number) {

@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimiter'
 import { dedupeAssets, fetchJsonWithRetry, firstDefinedString, formatUnitsSafe, parseJsonIfString } from '@/lib/portfolio-utils'
 import { isEvmAddress } from '@/lib/address-utils'
+import { MissingEnvVarError, requireServerEnv } from '@/lib/env.server'
 import type { Asset } from '@/types'
 
-const MORALIS_API_KEY = process.env.MORALIS_API_KEY
 const MORALIS_BASE_URL = 'https://deep-index.moralis.io/api/v2'
 const CHAINS = ['eth', 'base', 'arbitrum', 'polygon', 'apechain'] as const
 
@@ -17,9 +17,10 @@ const NATIVE_TOKEN_META: Record<string, { symbol: string; name: string; decimals
 }
 
 async function moralisFetch<T = any>(url: string): Promise<T> {
+  const moralisApiKey = requireServerEnv('MORALIS_API_KEY')
   return fetchJsonWithRetry<T>(url, {
     headers: {
-      'X-API-Key': MORALIS_API_KEY || '',
+      'X-API-Key': moralisApiKey,
     },
     retries: 2,
     timeoutMs: 15000,
@@ -200,10 +201,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Addresses array required' }, { status: 400 })
     }
 
-    if (!MORALIS_API_KEY) {
-      return NextResponse.json({ error: 'Moralis API key not configured' }, { status: 500 })
-    }
-
     const validAddresses = addresses
       .map((address: unknown) => String(address || '').trim().toLowerCase())
       .filter(address => isEvmAddress(address))
@@ -227,7 +224,17 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ assets: dedupeAssets(allAssets) })
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof MissingEnvVarError) {
+      return NextResponse.json(
+        {
+          error: `Server configuration error: ${error.message}`,
+          missing: [error.varName],
+        },
+        { status: 500 }
+      )
+    }
+
     console.error('Error in EVM portfolio API:', error)
     return NextResponse.json({ error: 'Failed to fetch portfolio' }, { status: 500 })
   }
