@@ -36,9 +36,14 @@ If you prefer to set them manually:
 netlify link
 
 # Set each variable
-netlify env:set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID "49fef037b7a144df8d09cb34c87686c3"
+netlify env:set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID "your-walletconnect-project-id"
 netlify env:set MORALIS_API_KEY "your-moralis-key-here"
-netlify env:set PAYMENT_RECEIVER_ADDRESS "0x016ae25Ac494B123C40EDb2418d9b1FC2d62279b"
+
+# Optional
+netlify env:set HELIUS_API_KEY "your-helius-key-here"
+netlify env:set NEXT_PUBLIC_SOLANA_RPC_URL "https://api.mainnet-beta.solana.com"
+netlify env:set UNSTOPPABLE_API_KEY "your-unstoppable-key-here"
+netlify env:set PAYMENT_RECEIVER_ADDRESS "lastwish.eth"
 
 # Verify
 netlify env:list
@@ -52,20 +57,42 @@ netlify env:list
 4. Click **"Add a variable"**
 5. Add each variable:
    - **Key**: `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`
-   - **Value**: `49fef037b7a144df8d09cb34c87686c3`
+   - **Value**: your project ID from [Reown Cloud](https://cloud.reown.com)
    - **Scopes**: Select "All scopes" or "Production"
    - Click **"Save"**
-6. Repeat for each variable
+6. Repeat for each variable in `.env.example`
 
-### 📋 Required Environment Variables
+### 📋 Environment Variables
 
-Your LastWish.eth app needs these variables:
+See `.env.example` in the repo for the canonical, commented list. Below is a Netlify-focused summary.
 
-| Variable | Description | Example Value |
-|----------|-------------|---------------|
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect project ID | `49fef037b7a144df8d09cb34c87686c3` |
-| `MORALIS_API_KEY` | Moralis API key for asset fetching | `eyJhbGci...` |
-| `PAYMENT_RECEIVER_ADDRESS` | Payment recipient address | `0x016ae25Ac494B123C40EDb2418d9b1FC2d62279b` |
+#### Required for production-critical flows
+
+These must be set or the EVM portfolio API and WalletConnect QR flow will be broken / degraded:
+
+| Variable | Used by | Notes |
+|----------|---------|-------|
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | `lib/wagmi.ts` | Without this, WalletConnect QR will not initialize. |
+| `MORALIS_API_KEY` | `app/api/portfolio/evm/route.ts` | Without this, the EVM portfolio API returns a clean configuration error (no crash). |
+
+#### Optional (recommended for full feature set)
+
+| Variable | Used by | Notes |
+|----------|---------|-------|
+| `HELIUS_API_KEY` | `app/api/portfolio/solana/route.ts` | Upgrades Solana asset discovery. Falls back to public RPC if absent. |
+| `NEXT_PUBLIC_SOLANA_RPC_URL` / `SOLANA_RPC_URL` | `app/api/portfolio/solana/route.ts` | Override default Solana RPC URL. Defaults to `https://api.mainnet-beta.solana.com`. |
+| `UNSTOPPABLE_API_KEY` | Unstoppable Domains resolution | Optional name resolution. |
+| `PAYMENT_RECEIVER_ADDRESS` | `app/api/invoice/create/route.ts`, `app/api/invoice/status/route.ts` | Accepts `0x...` or ENS. Defaults to the lastwish.eth resolved address. |
+
+#### Readiness check
+
+You can verify which required/optional vars are present (locally or in CI) without leaking values:
+
+```bash
+npm run check:env
+```
+
+The script prints any missing vars and exits non-zero when a required var is missing. It never prints values.
 
 ## Quick Reference
 
