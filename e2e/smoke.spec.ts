@@ -15,6 +15,8 @@ import { test, expect } from '@playwright/test'
  * expected top-of-page content without requiring a connected wallet.
  */
 
+const mockPacketPath = '/mock/lastwish-mock-complete-packet.pdf'
+
 test.describe('Smoke - public routes render', () => {
   test('home page (/) loads with hero heading and primary CTA', async ({ page }) => {
     const response = await page.goto('/')
@@ -61,5 +63,26 @@ test.describe('Smoke - public routes render', () => {
     await expect(
       page.getByRole('heading', { name: /Complete User Guide & Impact Analysis/i }),
     ).toBeVisible()
+  })
+
+  test('/sample-document links open the mock packet PDF', async ({ page, request }) => {
+    const response = await page.goto('/sample-document')
+    expect(response, 'navigation response').not.toBeNull()
+    expect(response!.status(), '/sample-document should respond 200').toBeLessThan(400)
+
+    for (const name of [/View full mock packet/i, /Open the example packet/i]) {
+      const link = page.getByRole('link', { name })
+      await expect(link).toBeVisible()
+      await expect(link).toHaveAttribute('href', mockPacketPath)
+    }
+
+    const headResponse = await request.head(mockPacketPath)
+    const pdfResponse = headResponse.status() === 405
+      ? await request.get(mockPacketPath)
+      : headResponse
+
+    expect(pdfResponse.status(), 'mock packet PDF should not be 404').not.toBe(404)
+    expect(pdfResponse.status(), 'mock packet PDF should respond successfully').toBeLessThan(400)
+    expect(pdfResponse.headers()['content-type']).toContain('application/pdf')
   })
 })

@@ -74,7 +74,8 @@ wallets/
 *.temp
 backups/
 mock-output/
-public/mock/
+/public/mock/*
+!/public/mock/lastwish-mock-complete-packet.pdf
 
 # Playwright/Vitest output
 playwright-report/
