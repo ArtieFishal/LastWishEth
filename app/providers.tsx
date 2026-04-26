@@ -143,26 +143,90 @@ export function Providers({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Run immediately and then periodically check
+      // Run once on mount.
       fixWalletConnectZIndex()
       ensureBodyScrollable()
-      const interval = setInterval(() => {
+
+      // Replace the previous permanent 100ms polling loop with an event-driven
+      // approach: run the z-index/scroll fixes only when the DOM actually changes,
+      // and schedule a small burst of follow-up checks (a few hundred ms) when
+      // a WalletConnect-related node appears, since w3m web components apply
+      // their styles asynchronously after being attached.
+      const burstTimeouts: number[] = []
+      let lastBurstAt = 0
+      const BURST_THROTTLE_MS = 250
+      const BURST_DELAYS_MS = [0, 100, 250, 500, 1000]
+
+      const runFixes = () => {
         fixWalletConnectZIndex()
         ensureBodyScrollable()
-      }, 100)
-      
-      // Also watch for DOM changes (modal might be added dynamically)
-      const observer = new MutationObserver(() => {
-        fixWalletConnectZIndex()
+      }
+
+      const scheduleBurst = () => {
+        const now = Date.now()
+        if (now - lastBurstAt < BURST_THROTTLE_MS) return
+        lastBurstAt = now
+
+        // Cancel any previous burst still pending.
+        while (burstTimeouts.length > 0) {
+          const t = burstTimeouts.pop()
+          if (typeof t === 'number') window.clearTimeout(t)
+        }
+
+        for (const delay of BURST_DELAYS_MS) {
+          const id = window.setTimeout(runFixes, delay)
+          burstTimeouts.push(id)
+        }
+      }
+
+      const isWalletConnectNode = (node: Node): boolean => {
+        if (!(node instanceof Element)) return false
+
+        const tagName = node.tagName?.toLowerCase() || ''
+        const className =
+          typeof (node as HTMLElement).className === 'string'
+            ? ((node as HTMLElement).className as string)
+            : ''
+        const id = (node as HTMLElement).id || ''
+
+        if (tagName.includes('w3m')) return true
+        if (className.includes('w3m') || className.includes('walletconnect')) return true
+        if (id.includes('w3m') || id.includes('walletconnect')) return true
+
+        // Web components/portals can wrap the modal; check shallow descendants too.
+        if (typeof (node as Element).querySelector === 'function') {
+          if ((node as Element).querySelector('[class*="w3m"], [id*="w3m"], [class*="walletconnect"], [id*="walletconnect"], w3m-modal, w3m-backdrop')) {
+            return true
+          }
+        }
+
+        return false
+      }
+
+      const observer = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+          if (mutation.type !== 'childList') continue
+          const added = mutation.addedNodes
+          for (let i = 0; i < added.length; i++) {
+            if (isWalletConnectNode(added[i])) {
+              scheduleBurst()
+              return
+            }
+          }
+        }
       })
+
       observer.observe(document.body, {
         childList: true,
         subtree: true,
       })
-      
+
       return () => {
-        clearInterval(interval)
         observer.disconnect()
+        while (burstTimeouts.length > 0) {
+          const t = burstTimeouts.pop()
+          if (typeof t === 'number') window.clearTimeout(t)
+        }
       }
     }
   }, [])
