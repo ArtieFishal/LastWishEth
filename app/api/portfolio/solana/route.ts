@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Connection, PublicKey } from '@solana/web3.js'
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimiter'
-import { dedupeAssets, fetchJsonWithRetry, firstDefinedString, formatUnitsSafe } from '@/lib/portfolio-utils'
+import {
+  createDeadline,
+  dedupeAssets,
+  DeadlineExceededError,
+  fetchJsonWithRetry,
+  firstDefinedString,
+  formatUnitsSafe,
+  isExternalAbort,
+  withDeadline,
+} from '@/lib/portfolio-utils'
 import type { Asset } from '@/types'
 
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY
@@ -24,7 +33,7 @@ function formatTokenBalance(amount: unknown, decimals = 0): string {
   return numeric.toFixed(Math.min(Math.max(decimals, 0), 9)).replace(/0+$/, '').replace(/\.$/, '')
 }
 
-async function heliusRpc<T = any>(method: string, params: Record<string, any>): Promise<T> {
+async function heliusRpc<T = any>(method: string, params: Record<string, any>, signal: AbortSignal): Promise<T> {
   if (!HELIUS_RPC_URL) {
     throw new Error('Helius RPC not configured')
   }
@@ -40,8 +49,9 @@ async function heliusRpc<T = any>(method: string, params: Record<string, any>): 
       method,
       params,
     }),
-    retries: 2,
-    timeoutMs: 20000,
+    retries: 1,
+    timeoutMs: 8000,
+    signal,
   })
 
   if (response?.error) {
@@ -107,7 +117,7 @@ function normalizeDasNft(address: string, item: any): Asset | null {
   }
 }
 
-async function fetchSolanaCollectibles(address: string): Promise<Asset[]> {
+async function fetchSolanaCollectibles(address: string, signal: AbortSignal): Promise<Asset[]> {
   if (!HELIUS_RPC_URL) return []
 
   const assets: Asset[] = []
@@ -115,15 +125,22 @@ async function fetchSolanaCollectibles(address: string): Promise<Asset[]> {
   const limit = 100
 
   while (page <= 20) {
-    const result = await heliusRpc<any>('getAssetsByOwner', {
-      ownerAddress: address,
-      page,
-      limit,
-      displayOptions: {
-        showCollectionMetadata: true,
-        showFungible: false,
-      },
-    })
+    if (signal.aborted) break
+    let result: any
+    try {
+      result = await heliusRpc<any>('getAssetsByOwner', {
+        ownerAddress: address,
+        page,
+        limit,
+        displayOptions: {
+          showCollectionMetadata: true,
+          showFungible: false,
+        },
+      }, signal)
+    } catch (error) {
+      if (isExternalAbort(error, signal)) break
+      throw error
+    }
 
     const items = Array.isArray(result?.items) ? result.items : []
     if (items.length === 0) break
@@ -150,15 +167,17 @@ async function fetchSolanaCollectibles(address: string): Promise<Asset[]> {
   return assets
 }
 
-async function fetchHeliusBalances(address: string): Promise<any | null> {
+async function fetchHeliusBalances(address: string, signal: AbortSignal): Promise<any | null> {
   if (!HELIUS_API_KEY) return null
 
   try {
     return await fetchJsonWithRetry<any>(`https://api.helius.xyz/v0/addresses/${address}/balances?api-key=${HELIUS_API_KEY}`, {
-      retries: 2,
-      timeoutMs: 15000,
+      retries: 1,
+      timeoutMs: 8000,
+      signal,
     })
   } catch (error: any) {
+    if (isExternalAbort(error, signal)) return null
     console.warn('[Solana API] Helius balances fetch failed:', error?.message || error)
     return null
   }
@@ -207,13 +226,18 @@ function normalizeHeliusFungibles(address: string, balancesData: any, nftIds: Se
   return assets
 }
 
-async function fetchRpcTokenAssets(connection: Connection, publicKey: PublicKey, address: string): Promise<Asset[]> {
+async function fetchRpcTokenAssets(connection: Connection, publicKey: PublicKey, address: string, signal: AbortSignal): Promise<Asset[]> {
   const assets: Asset[] = []
 
   try {
-    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
-      programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
-    })
+    // @solana/web3.js Connection has no native AbortSignal support, so race
+    // it against the route's deadline to guarantee we never hang here.
+    const tokenAccounts = await withDeadline(
+      connection.getParsedTokenAccountsByOwner(publicKey, {
+        programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+      }),
+      signal,
+    )
 
     for (const account of tokenAccounts.value) {
       const parsedInfo = account.account.data.parsed?.info
@@ -241,6 +265,7 @@ async function fetchRpcTokenAssets(connection: Connection, publicKey: PublicKey,
       })
     }
   } catch (error: any) {
+    if (isExternalAbort(error, signal)) return assets
     console.warn('[Solana API] RPC token fallback failed:', error?.message || error)
   }
 
@@ -285,9 +310,16 @@ export async function POST(request: NextRequest) {
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed')
     const normalizedAddress = publicKey.toBase58()
     const assets: Asset[] = []
+    const deadline = createDeadline()
 
     try {
-      const lamports = await connection.getBalance(publicKey)
+      let lamports = 0
+      try {
+        lamports = await withDeadline(connection.getBalance(publicKey), deadline.signal)
+      } catch (error) {
+        if (!isExternalAbort(error, deadline.signal)) throw error
+      }
+
       if (lamports > 0) {
         const solBalance = lamports / 1e9
         assets.push({
@@ -305,11 +337,13 @@ export async function POST(request: NextRequest) {
       }
 
       let collectibleAssets: Asset[] = []
-      if (HELIUS_RPC_URL) {
+      if (HELIUS_RPC_URL && !deadline.isExpired()) {
         try {
-          collectibleAssets = await fetchSolanaCollectibles(normalizedAddress)
+          collectibleAssets = await fetchSolanaCollectibles(normalizedAddress, deadline.signal)
         } catch (error: any) {
-          console.warn('[Solana API] DAS collectible discovery failed:', error?.message || error)
+          if (!isExternalAbort(error, deadline.signal)) {
+            console.warn('[Solana API] DAS collectible discovery failed:', error?.message || error)
+          }
         }
       }
 
@@ -319,28 +353,54 @@ export async function POST(request: NextRequest) {
           .filter((value): value is string => Boolean(value))
       )
 
-      const heliusBalances = await fetchHeliusBalances(normalizedAddress)
-      if (heliusBalances) {
-        assets.push(...normalizeHeliusFungibles(normalizedAddress, heliusBalances, nftIds))
+      if (!deadline.isExpired()) {
+        const heliusBalances = await fetchHeliusBalances(normalizedAddress, deadline.signal)
+        if (heliusBalances) {
+          assets.push(...normalizeHeliusFungibles(normalizedAddress, heliusBalances, nftIds))
+        }
       }
 
       assets.push(...collectibleAssets)
 
-      if (!HELIUS_API_KEY || assets.length <= (lamports > 0 ? 1 : 0)) {
-        const fallbackAssets = await fetchRpcTokenAssets(connection, publicKey, normalizedAddress)
+      if (!deadline.isExpired() && (!HELIUS_API_KEY || assets.length <= (lamports > 0 ? 1 : 0))) {
+        const fallbackAssets = await fetchRpcTokenAssets(connection, publicKey, normalizedAddress, deadline.signal)
         assets.push(...fallbackAssets)
+      }
+
+      const wasPartial = deadline.isExpired()
+
+      if (wasPartial && assets.length === 0) {
+        return NextResponse.json(
+          { error: 'Upstream lookup timed out. Please retry.' },
+          { status: 504 },
+        )
       }
 
       return NextResponse.json({
         assets: dedupeAssets(assets),
         address: normalizedAddress,
         chain: 'solana',
+        partial: wasPartial ? true : undefined,
       })
     } catch (error: any) {
+      if (error instanceof DeadlineExceededError) {
+        return NextResponse.json(
+          { error: 'Upstream lookup timed out. Please retry.' },
+          { status: 504 },
+        )
+      }
       console.error('[Solana API] Error:', error)
       return NextResponse.json({ error: error.message || 'Failed to fetch Solana assets' }, { status: 500 })
+    } finally {
+      deadline.clear()
     }
   } catch (error: any) {
+    if (error instanceof DeadlineExceededError) {
+      return NextResponse.json(
+        { error: 'Upstream lookup timed out. Please retry.' },
+        { status: 504 },
+      )
+    }
     console.error('[Solana API] Error:', error)
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
   }

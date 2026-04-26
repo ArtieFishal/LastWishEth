@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimiter'
-import { dedupeAssets, fetchJsonWithRetry, firstDefinedString, formatUnitsSafe, parseJsonIfString } from '@/lib/portfolio-utils'
+import {
+  createDeadline,
+  dedupeAssets,
+  DeadlineExceededError,
+  fetchJsonWithRetry,
+  firstDefinedString,
+  formatUnitsSafe,
+  isExternalAbort,
+  parseJsonIfString,
+} from '@/lib/portfolio-utils'
 import { isEvmAddress } from '@/lib/address-utils'
 import { MissingEnvVarError, requireServerEnv } from '@/lib/env.server'
 import type { Asset } from '@/types'
@@ -16,20 +25,24 @@ const NATIVE_TOKEN_META: Record<string, { symbol: string; name: string; decimals
   apechain: { symbol: 'APE', name: 'ApeCoin', decimals: 18 },
 }
 
-async function moralisFetch<T = any>(url: string): Promise<T> {
+async function moralisFetch<T = any>(url: string, signal: AbortSignal): Promise<T> {
   const moralisApiKey = requireServerEnv('MORALIS_API_KEY')
   return fetchJsonWithRetry<T>(url, {
     headers: {
       'X-API-Key': moralisApiKey,
     },
-    retries: 2,
-    timeoutMs: 15000,
+    // Conservative time envelope: 1 retry, 8s per attempt, 1.5s max backoff =
+    // worst-case ~17.5s for a single call. The overall route deadline (signal)
+    // is the real safety net — it short-circuits the loop the moment it fires.
+    retries: 1,
+    timeoutMs: 8000,
+    signal,
   })
 }
 
-async function fetchNativeAsset(address: string, chain: string): Promise<Asset[]> {
+async function fetchNativeAsset(address: string, chain: string, signal: AbortSignal): Promise<Asset[]> {
   try {
-    const data = await moralisFetch<any>(`${MORALIS_BASE_URL}/${address}/balance?chain=${chain}`)
+    const data = await moralisFetch<any>(`${MORALIS_BASE_URL}/${address}/balance?chain=${chain}`, signal)
     const rawBalance = String(data?.balance || '0')
 
     if (rawBalance === '0') return []
@@ -48,14 +61,15 @@ async function fetchNativeAsset(address: string, chain: string): Promise<Asset[]
       walletAddress: address,
     }]
   } catch (error: any) {
+    if (isExternalAbort(error, signal)) return []
     console.warn(`[EVM Portfolio API] Failed native balance for ${chain} ${address}:`, error?.message || error)
     return []
   }
 }
 
-async function fetchErc20Assets(address: string, chain: string): Promise<Asset[]> {
+async function fetchErc20Assets(address: string, chain: string, signal: AbortSignal): Promise<Asset[]> {
   try {
-    const data = await moralisFetch<any>(`${MORALIS_BASE_URL}/${address}/erc20?chain=${chain}`)
+    const data = await moralisFetch<any>(`${MORALIS_BASE_URL}/${address}/erc20?chain=${chain}`, signal)
     const tokens = Array.isArray(data)
       ? data
       : Array.isArray(data?.result)
@@ -89,17 +103,19 @@ async function fetchErc20Assets(address: string, chain: string): Promise<Asset[]
         } satisfies Asset
       })
   } catch (error: any) {
+    if (isExternalAbort(error, signal)) return []
     console.warn(`[EVM Portfolio API] Failed ERC-20 discovery for ${chain} ${address}:`, error?.message || error)
     return []
   }
 }
 
-async function fetchNftAssets(address: string, chain: string): Promise<Asset[]> {
+async function fetchNftAssets(address: string, chain: string, signal: AbortSignal): Promise<Asset[]> {
   const assets: Asset[] = []
   let cursor: string | undefined
   let page = 0
 
   while (page < 10) {
+    if (signal.aborted) break
     try {
       const query = new URLSearchParams({
         chain,
@@ -108,7 +124,7 @@ async function fetchNftAssets(address: string, chain: string): Promise<Asset[]> 
       })
       if (cursor) query.set('cursor', cursor)
 
-      const data = await moralisFetch<any>(`${MORALIS_BASE_URL}/${address}/nft?${query.toString()}`)
+      const data = await moralisFetch<any>(`${MORALIS_BASE_URL}/${address}/nft?${query.toString()}`, signal)
       const nfts = Array.isArray(data)
         ? data
         : Array.isArray(data?.result)
@@ -165,6 +181,7 @@ async function fetchNftAssets(address: string, chain: string): Promise<Asset[]> 
       cursor = nextCursor
       page += 1
     } catch (error: any) {
+      if (isExternalAbort(error, signal)) break
       console.warn(`[EVM Portfolio API] Failed NFT discovery for ${chain} ${address}:`, error?.message || error)
       break
     }
@@ -209,21 +226,49 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No valid EVM addresses provided' }, { status: 400 })
     }
 
+    const deadline = createDeadline()
     const allAssets: Asset[] = []
 
-    for (const address of validAddresses) {
-      for (const chain of CHAINS) {
-        const [nativeAssets, erc20Assets, nftAssets] = await Promise.all([
-          fetchNativeAsset(address, chain),
-          fetchErc20Assets(address, chain),
-          fetchNftAssets(address, chain),
-        ])
+    try {
+      for (const address of validAddresses) {
+        if (deadline.isExpired()) break
 
-        allAssets.push(...nativeAssets, ...erc20Assets, ...nftAssets)
+        // Parallelize across chains within a single address. Previously this
+        // was serial-by-chain (5x slower happy path) which made it easy to
+        // blow the route budget even when every upstream call was fast.
+        const chainBuckets = await Promise.all(
+          CHAINS.map(async chain => {
+            const [native, erc20, nft] = await Promise.all([
+              fetchNativeAsset(address, chain, deadline.signal),
+              fetchErc20Assets(address, chain, deadline.signal),
+              fetchNftAssets(address, chain, deadline.signal),
+            ])
+            return [...native, ...erc20, ...nft]
+          }),
+        )
+
+        for (const bucket of chainBuckets) {
+          allAssets.push(...bucket)
+        }
       }
+    } finally {
+      deadline.clear()
     }
 
-    return NextResponse.json({ assets: dedupeAssets(allAssets) })
+    if (deadline.isExpired() && allAssets.length === 0) {
+      return NextResponse.json(
+        { error: 'Upstream lookup timed out. Please retry.' },
+        { status: 504 },
+      )
+    }
+
+    return NextResponse.json({
+      assets: dedupeAssets(allAssets),
+      // Surface partial results when the deadline fired mid-flight so the
+      // client can show a "results may be incomplete" hint without us silently
+      // dropping data we did manage to collect.
+      partial: deadline.isExpired() ? true : undefined,
+    })
   } catch (error: any) {
     if (error instanceof MissingEnvVarError) {
       return NextResponse.json(
@@ -232,6 +277,13 @@ export async function POST(request: NextRequest) {
           missing: [error.varName],
         },
         { status: 500 }
+      )
+    }
+
+    if (error instanceof DeadlineExceededError) {
+      return NextResponse.json(
+        { error: 'Upstream lookup timed out. Please retry.' },
+        { status: 504 },
       )
     }
 
