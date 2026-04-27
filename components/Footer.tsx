@@ -28,6 +28,12 @@ export default function Footer() {
               For Professionals
             </Link>
             <Link
+              href="/contact"
+              className="text-bright-soft hover:text-white transition-colors text-sm"
+            >
+              Contact
+            </Link>
+            <Link
               href="/terms"
               className="text-bright-soft hover:text-white transition-colors text-sm"
             >

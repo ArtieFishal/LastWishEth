@@ -65,6 +65,18 @@ test.describe('Smoke - public routes render', () => {
     ).toBeVisible()
   })
 
+  test('/contact loads with support email and response time', async ({ page }) => {
+    const response = await page.goto('/contact')
+    expect(response, 'navigation response').not.toBeNull()
+    expect(response!.status(), '/contact should respond 200').toBeLessThan(400)
+
+    await expect(
+      page.getByRole('heading', { name: /Contact LastWishCrypto/i, level: 1 }),
+    ).toBeVisible()
+    await expect(page.getByText('support@lastwishcrypto.com')).toBeVisible()
+    await expect(page.getByText(/Response time/i).first()).toBeVisible()
+  })
+
   test('/sample-document links open the mock packet PDF', async ({ page, request }) => {
     const response = await page.goto('/sample-document')
     expect(response, 'navigation response').not.toBeNull()
