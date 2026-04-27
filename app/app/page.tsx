@@ -1952,6 +1952,29 @@ setError('Failed to load Bitcoin assets. Please try again.')
    }
  }, [connectedSolanaAddresses, connectedEVMAddresses.size, queuedSessions.length, selectedWalletForLoading, setConnectedSolanaAddresses, setWalletProviders, setVerifiedAddresses, setError, setSelectedWalletForLoading])
 
+ const renderPaymentHowItWorks = () => (
+   <div className="bg-white/5 backdrop-blur-xl border-2 border-white/20 rounded-lg p-5 mb-6 border-glow-hover">
+     <h3 className="text-lg font-bold text-bright mb-3">How payment works</h3>
+     <ul className="space-y-3 text-sm text-bright-soft">
+       <li>
+         <strong className="text-white">Network:</strong> Paid plans use native ETH on Ethereum Mainnet. Crypto payments only for now.
+       </li>
+       <li>
+         <strong className="text-white">Recipient:</strong> Funds are sent directly to <span className="font-mono">lastwish.eth</span>, resolved in-app before the wallet transaction is sent.
+       </li>
+       <li>
+         <strong className="text-white">After payment:</strong> Once the transaction is confirmed and verified, LastWish unlocks PDF generation for your selected plan.
+       </li>
+       <li>
+         <strong className="text-white">Refunds:</strong> All crypto sales are final once confirmed on-chain because document access unlocks immediately.
+       </li>
+       <li>
+         <strong className="text-white">Non-custodial:</strong> LastWish never stores seed phrases, private keys, or custody credentials.
+       </li>
+     </ul>
+   </div>
+ )
+
 
  return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden flex flex-col">
@@ -1975,7 +1998,6 @@ setError('Failed to load Bitcoin assets. Please try again.')
      <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
        {getAllTiers().map((tier) => {
          const isSelected = selectedTier === tier.tier
-         const tierPricing = getTierPricing(tier.tier)
          
          const tierGradients = {
            free: 'from-green-500/20 to-emerald-500/20',
@@ -2012,12 +2034,6 @@ setError('Failed to load Bitcoin assets. Please try again.')
                  <div className="mb-4">
                    {tier.price === 0 ? (
                      <p className="text-3xl sm:text-4xl font-bold text-bright group-hover:text-white transition-colors">Free</p>
-                   ) : tierPricing.isSpecial && tier.tier === 'standard' ? (
-                     <div>
-                       <p className="text-3xl sm:text-4xl font-bold text-green-400 group-hover:text-green-300 transition-colors">${tierPricing.usdAmount.toFixed(2)}</p>
-                       <p className="text-sm line-through text-gray-400 mt-1">${tierPricing.regularPrice?.toFixed(2)}</p>
-                       <p className="text-xs text-green-400 font-semibold mt-1">✨ 2026 Special ✨</p>
-                     </div>
                    ) : (
                      <p className="text-3xl sm:text-4xl font-bold text-bright group-hover:text-white transition-colors">${tier.price.toFixed(2)}</p>
                    )}
@@ -2063,12 +2079,6 @@ setError('Failed to load Bitcoin assets. Please try again.')
        >
          {selectedTier === 'free' ? (
            'Start Free Plan →'
-         ) : selectedTier === 'standard' && pricing.isSpecial ? (
-           <span className="inline-flex items-center gap-2">
-             <span>Start with 🎉 ${pricing.usdAmount.toFixed(2)}</span>
-             <span className="line-through text-sm">${pricing.regularPrice?.toFixed(2)}</span>
-             <span className="text-xs">✨ 2026 Special ✨</span>
-           </span>
          ) : (
            `Start with $${pricing.usdAmount.toFixed(2)} →`
          )}
@@ -3698,6 +3708,8 @@ Your current setup exceeds the selected tier limits. You can:
 )}
 </p>
 
+{renderPaymentHowItWorks()}
+
 {!canProceedToPayment() && !discountApplied && (
 <div className="bg-red-500/20 backdrop-blur-xl border-2 border-red-500/30 rounded-lg p-4 mb-6 border-glow">
 <p className="text-red-300 font-semibold mb-2">⚠️ Please complete the following:</p>
@@ -3781,11 +3793,6 @@ className="flex-1 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-w
  >
 {selectedTier === 'free' ? (
 'Continue to Download (Free)'
-) : selectedTier === 'standard' && pricing.isSpecial ? (
-<span className="inline-flex items-center gap-2">
-<span>Pay ${pricing.usdAmount.toFixed(2)}</span>
-<span className="line-through text-sm">${pricing.regularPrice?.toFixed(2)}</span>
-</span>
 ) : (
 `Pay $${pricing.usdAmount.toFixed(2)}`
 )}
@@ -3798,40 +3805,16 @@ className="flex-1 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-w
  <div className="max-w-2xl mx-auto">
  <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Payment Required</h2>
  <p className="text-gray-300 mb-8">
-                {pricing.isSpecial ? (
-                  <span className="inline-flex items-center gap-3 text-lg flex-wrap">
-                    <span className="text-green-600 font-bold text-3xl animate-pulse">🎉 $20.26</span>
-                    <span className="line-through text-gray-400 text-2xl">$42.00</span>
-                    <span className="text-green-600 font-bold">✨ New Year 2026 Special! ✨</span>
-                  </span>
-                ) : (
-                  `Pay ${paymentAmountETH} ETH ($${pricing.usdAmount.toFixed(2)}) to unlock PDF generation`
-                )}
+                {`Pay ${paymentAmountETH} ETH ($${pricing.usdAmount.toFixed(2)}) to unlock PDF generation`}
  </p>
+{renderPaymentHowItWorks()}
 <div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 backdrop-blur-xl rounded-lg p-8 border-2 border-blue-500/30 border-glow">
 <div className="space-y-4">
-<div className={`rounded-lg p-6 ${pricing.isSpecial ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-2 border-green-500/50 shadow-lg border-glow' : 'bg-white/5 backdrop-blur-xl border-2 border-white/20'}`}>
+<div className="rounded-lg p-6 bg-white/5 backdrop-blur-xl border-2 border-white/20">
 <p className="text-sm text-bright-soft mb-2 font-semibold">Payment Amount</p>
-                    {pricing.isSpecial ? (
-                      <div className="space-y-3">
-                        <div className="flex items-baseline gap-4">
-                          <p className="text-5xl font-bold text-green-400 animate-pulse text-glow">
-                            🎉 $20.26
-                          </p>
-                          <p className="text-3xl line-through text-gray-400">$42.00</p>
-                        </div>
-                        <p className="text-xl text-green-400 font-bold text-glow">
-                          ✨ New Year 2026 Special - Save $21.74! ✨
-                        </p>
-                        <p className="text-base text-bright-soft font-semibold">
-                          ({paymentAmountETH} ETH) • Regular price $42.00 returns February 1st
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-2xl font-bold text-bright">
-                        ${pricing.usdAmount.toFixed(2)} ({paymentAmountETH} ETH)
-                      </p>
-                    )}
+                    <p className="text-2xl font-bold text-bright">
+                      ${pricing.usdAmount.toFixed(2)} ({paymentAmountETH} ETH)
+                    </p>
                   </div>
 <div className="bg-white/5 backdrop-blur-xl border-2 border-white/20 rounded-lg p-4 border-glow-hover">
 <p className="text-sm text-bright-soft mb-1">Token</p>

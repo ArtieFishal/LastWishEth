@@ -32,6 +32,12 @@ test.describe('Smoke - public routes render', () => {
     const cta = page.getByRole('link', { name: /Get Started Free/i })
     await expect(cta).toBeVisible()
     await expect(cta).toHaveAttribute('href', '/app')
+
+    await expect(page.getByText('$42.00').first()).toBeVisible()
+    await expect(page.getByText('$99.00').first()).toBeVisible()
+    await expect(page.getByText('Free, Standard $42.00, Premium $99.00')).toBeVisible()
+    await expect(page.getByText('$20.26')).toHaveCount(0)
+    await expect(page.getByText(/special pricing/i)).toHaveCount(0)
   })
 
   test('/app loads without requiring wallet connect', async ({ page }) => {

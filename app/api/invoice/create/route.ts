@@ -6,7 +6,7 @@ import { getTierPricing, getPaymentAmountETH, PricingTier } from '@/lib/pricing'
 // If ENS name, it will be resolved automatically
 const PAYMENT_RECEIVER_ADDRESS = process.env.PAYMENT_RECEIVER_ADDRESS || '0x016ae25Ac494B123C40EDb2418d9b1FC2d62279b' // lastwish.eth resolved address
 
-// Payment amount is now dynamic based on tier and date (New Year's special vs regular price)
+// Payment amount is dynamic by selected tier.
 // Using native ETH on Ethereum mainnet
 const PAYMENT_TOKEN = null // Native ETH (no token contract)
 const PAYMENT_CHAIN = 'ethereum'

@@ -246,7 +246,7 @@ Users connect crypto wallets, view holdings, allocate assets to beneficiaries, a
 - Support: Standard
 
 **Standard Tier:**
-- Price: $20.26 (special until Feb 1, 2026) / $42.00 (regular)
+- Price: $42.00
 - Max Wallets: 20
 - Max Beneficiaries: 10
 - Features: Full Color PDF

@@ -45,7 +45,7 @@ Visit: https://lastwishcrypto.com
 
 Perfect for getting started with crypto inheritance planning. No payment required.
 
-Upgrade to Standard ($20.26) or Premium ($99) for more wallets and beneficiaries.
+Upgrade to Standard ($42) or Premium ($99) for more wallets and beneficiaries.
 
 Start planning: https://lastwishcrypto.com
 
@@ -174,7 +174,7 @@ https://lastwishcrypto.com
 💎 LastWishCrypto offers flexible pricing:
 
 🆓 FREE: 1 wallet, 2 beneficiaries
-💰 STANDARD: $20.26 (🎉 2026 Special!) - 20 wallets, 10 beneficiaries
+💰 STANDARD: $42 - 20 wallets, 10 beneficiaries
 💎 PREMIUM: $99 - Unlimited wallets & beneficiaries + 2-year updates
 
 Start free. Upgrade when you need more.
@@ -276,23 +276,23 @@ Try it: https://lastwishcrypto.com
 
 ---
 
-## Post 16: Special Pricing
+## Post 16: Standard Pricing
 
-🎉 2026 Special Pricing!
+Simple, transparent pricing:
 
-Standard tier: $20.26 (regularly $42.00)
+Standard tier: $42
 
-Save $21.74 while celebrating the new year!
+For larger crypto estates that need more than the Free tier:
 
 ✅ 20 wallets
 ✅ 10 beneficiaries
 ✅ Full Color PDF
 
-Limited time offer. Start planning today.
+Start planning today.
 
 https://lastwishcrypto.com
 
-#CryptoInheritance #SpecialOffer #2026
+#CryptoInheritance #EstatePlanning #Web3
 
 ---
 

@@ -121,7 +121,7 @@ Free tier
 - Full PDF generation
 - Good for testing
 
-Standard tier - $20.26 (special pricing until Feb 2026, normally $42)
+Standard tier - $42
 - Up to 20 wallets
 - Up to 10 beneficiaries
 - Full PDF generation

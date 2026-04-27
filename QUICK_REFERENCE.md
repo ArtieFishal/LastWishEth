@@ -8,10 +8,8 @@
 
 - **Max Wallets:** 20
 - **Max Beneficiaries:** 10
-- **Special Price:** $20.26 (until Feb 1, 2026)
-- **Regular Price:** $42.00
-- **ETH Amount (Special):** 0.006753 ETH
-- **ETH Amount (Regular):** 0.014 ETH
+- **Standard Price:** $42.00
+- **ETH Amount (Standard):** 0.014 ETH
 
 ---
 
@@ -19,8 +17,7 @@
 
 ```typescript
 // lib/pricing.ts
-Special: $20.26 (until 2026-02-01)
-Regular: $42.00 (after 2026-02-01)
+Standard: $42.00
 ETH Price: ~$3,000/ETH
 ```
 

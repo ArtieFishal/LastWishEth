@@ -149,7 +149,7 @@ If the goal is profit, not vanity traffic, I would prioritize this order:
 ## Product issues worth fixing
 
 ### Commercial issues in code/content
-- `app/guide/page.tsx` still contains expired "2026 Special" messaging
+- Expired pricing promo language should stay out of public pages
 - Guide content looks long and internal, not optimized as a sales asset
 - `app/layout.tsx` metadata is basic and not SEO-optimized
 - `app/app/page.tsx` contains local debug ingest calls to `http://127.0.0.1:7242/...` which should not ship in production

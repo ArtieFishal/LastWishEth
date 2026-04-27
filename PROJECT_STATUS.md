@@ -26,7 +26,7 @@ LastWish.eth is a stateless web application that allows users to create professi
 - ✅ **Asset allocation system** with validation (percentage or amount, NFT vs fungible differentiation)
 - ✅ **ENS name resolution** for wallet addresses (forward and reverse)
 - ✅ **Wallet ownership verification** via signature (prevents unauthorized access)
-- ✅ **Payment gating** (0.000025 ETH for testing, originally $20.26)
+- ✅ **Payment gating** (tier-based ETH payment; Standard is $42.00)
 - ✅ **Discount code system** ("tryitfree" for 100% discount)
 - ✅ **Client-side PDF generation** with automatic print dialog
 - ✅ **Professional PDF document** with title page, table of contents, page numbers, and all required sections
@@ -122,7 +122,7 @@ LastWish.eth is a stateless web application that allows users to create professi
 
 ## 💰 Payment System
 
-- **Amount:** 0.000025 ETH (testing) / 0.006 ETH (~$20.26 regular)
+- **Amount:** Tier-based ETH payment; Standard is $42.00 at the configured ETH/USD reference
 - **Payment Address:** `0x016ae25Ac494B123C40EDb2418d9b1FC2d62279b` (lastwish.eth)
 - **Discount Code:** "tryitfree" (100% off)
 - **Verification:** On-chain transaction verification via Etherscan API

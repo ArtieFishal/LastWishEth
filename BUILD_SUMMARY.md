@@ -30,7 +30,7 @@ LastWish.eth is a stateless web application that allows users to create professi
 - ✅ **Auto-reallocation** (redistributes allocations when beneficiaries are removed)
 - ✅ **ENS name resolution** for wallet addresses (forward and reverse, supports .eth, .base.eth, .sol, .btc)
 - ✅ **Wallet ownership verification** via signature (prevents unauthorized access)
-- ✅ **Payment gating** with dynamic pricing ($20.26 special, $42.00 regular)
+- ✅ **Payment gating** with tier-based pricing (Standard $42.00)
 - ✅ **Discount code system** (private codes for testing/friends)
 - ✅ **Client-side PDF generation** with automatic print dialog
 - ✅ **Professional PDF document** with title page, table of contents, page numbers
@@ -43,7 +43,7 @@ LastWish.eth is a stateless web application that allows users to create professi
 - ✅ Enhanced container sizing (queued wallets, allocation panels)
 - ✅ Sortable allocation summary (by name, status, chain, type)
 - ✅ Consistent ENS resolution display (green checkmarks for resolved names)
-- ✅ Promotional pricing display with animations and emojis
+- ✅ Clear tier-based pricing display
 
 ### Security
 - ✅ No seed phrases or private keys collected
@@ -57,14 +57,14 @@ LastWish.eth is a stateless web application that allows users to create professi
 
 ## 💰 Pricing System
 
-### Current Pricing (as of January 2026)
-- **New Year 2026 Special:** $20.26 (valid until February 1, 2026)
-- **Regular Price:** $42.00 (after February 1, 2026)
-- **ETH Conversion:** Based on ~$3,000/ETH (0.006753 ETH for special, 0.014 ETH for regular)
+### Current Pricing
+- **Standard Price:** $42.00
+- **Premium Price:** $99.00
+- **ETH Conversion:** Based on ~$3,000/ETH (0.014 ETH for Standard)
 
 ### Payment Features
-- Dynamic pricing based on date
-- Promotional styling with emojis (🎉 ✨) and animations
+- Tier-based pricing
+- Clear pricing display
 - Strikethrough pricing display
 - Savings messaging ("Save $21.74!")
 - Payment state resets after PDF download (requires new payment for additional downloads)
@@ -185,9 +185,9 @@ npm run test:coverage # Coverage report
 ## 📝 Recent Updates (Checkpoint)
 
 ### Pricing Updates
-- ✅ New Year 2026 Special: $20.26 (valid until Feb 1, 2026)
-- ✅ Promotional styling with emojis and animations
-- ✅ Dynamic pricing based on date
+- ✅ Standard tier: $42.00
+- ✅ Clear tier-based pricing display
+- ✅ Tier-aware pricing
 - ✅ Enhanced visual display throughout
 
 ### Text Updates
@@ -200,10 +200,10 @@ npm run test:coverage # Coverage report
 - ✅ Enhanced asset display with more details
 - ✅ Sortable allocation summary
 - ✅ Consistent ENS resolution display (green checkmarks)
-- ✅ Promotional pricing animations
+- ✅ Clear pricing display
 
 ### Bug Fixes
-- ✅ Fixed special pricing date (was 2025, now 2026)
+- ✅ Removed expired special pricing copy
 - ✅ Fixed PAYMENT_AMOUNT reference errors
 - ✅ Fixed allocation merging logic
 - ✅ Fixed fungible token allocation status display
@@ -331,7 +331,7 @@ Ensure all required environment variables are set in Netlify:
 - Track user feedback on pricing and features
 
 ### Updates
-- Pricing dates: Update in `lib/pricing.ts` when special pricing expires
+- Pricing: Update `lib/pricing.ts` when tier prices change
 - ETH price: Update `ETH_PRICE_USD` constant for accurate conversions
 - Feature flags: Can be added for gradual rollouts
 

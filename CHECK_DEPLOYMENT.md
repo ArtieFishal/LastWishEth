@@ -5,7 +5,7 @@
 ### 1. Check Netlify Deploy Status
 - Go to your Netlify Dashboard: https://app.netlify.com
 - Find your site and check the "Deploys" tab
-- Look for the latest deploy (commit `efe0633` - "Update New Year's Special to $26.20...")
+- Look for the latest published deploy in the Netlify Deploys tab.
 - Check if it's:
   - ✅ **Published** (green) - Deploy completed successfully
   - 🟡 **Building** - Still deploying, wait a few minutes
@@ -52,21 +52,19 @@ If you want to trigger a fresh deploy:
 
 ### 6. Verify the Code is on GitHub
 - Check: https://github.com/ArtieFishal/LastWishEth
-- Latest commit should be: "Update New Year's Special to $26.20..."
-- Commit hash: `efe0633`
+- Latest commit should match the commit you just pushed.
 
 ## What to Look For
 
 Once deployed, you should see:
-- 🎉 **$26.20** (in green/yellow) with strikethrough **$42.00**
-- "Limited Time!" messaging
-- "New Year's Special" text
-- Prominent display on the "Unlock & Generate" button
-- Special styling in the payment step
+- Free tier at `$0`
+- Standard tier at `$42.00`
+- Premium tier at `$99.00`
+- No expired special pricing language
 
 ## Quick Test
 1. Open your site in an incognito/private window
-2. Look at the header - should show "🎉 $26.20" with strikethrough "$42.00"
-3. Go to Details step - "Unlock & Generate" button should show the special price
-4. Go to Payment step - should show large "$26.20" with savings message
+2. Check the homepage pricing section for Free, Standard `$42.00`, and Premium `$99.00`
+3. Open `/app` and confirm the same tier prices
+4. Go to Payment step and confirm the selected paid tier price matches the app tier card
 

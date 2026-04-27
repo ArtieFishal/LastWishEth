@@ -29,6 +29,11 @@ export default function LandingPage() {
   }
 
   const tiers = getAllTiers()
+  const standardPricing = getTierPricing('standard')
+  const premiumPricing = getTierPricing('premium')
+  const standardPrice = `$${standardPricing.usdAmount.toFixed(2)}`
+  const premiumPrice = `$${premiumPricing.usdAmount.toFixed(2)}`
+  const pricingSummary = `Free, Standard ${standardPrice}, Premium ${premiumPrice}`
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
@@ -463,7 +468,7 @@ export default function LandingPage() {
               { title: 'Client-Side & Secure', desc: 'No accounts, no stored private keys, everything is client-side, PDF generated locally', icon: '🔒', gradient: 'from-purple-500/20 to-blue-500/20' },
               { title: 'Multi-Chain Support', desc: 'Ethereum, Base, Arbitrum, Polygon, Bitcoin - handles NFTs, tokens, ethscriptions, and native coins', icon: '🌐', gradient: 'from-blue-500/20 to-cyan-500/20' },
               { title: 'Professional Documentation', desc: 'Notarizable PDF format, clear structure, legal disclaimer included', icon: '📄', gradient: 'from-green-500/20 to-emerald-500/20' },
-              { title: 'Affordable', desc: 'One-time fee starting at $20.26 (special pricing) or free tier available', icon: '💰', gradient: 'from-yellow-500/20 to-orange-500/20' },
+              { title: 'Affordable', desc: `Free tier available, with paid plans at ${standardPrice} and ${premiumPrice}`, icon: '💰', gradient: 'from-yellow-500/20 to-orange-500/20' },
               { title: 'Smart Filtering', desc: 'Automatic spam/dust token filtering keeps your asset list clean and manageable', icon: '🧹', gradient: 'from-pink-500/20 to-rose-500/20' },
               { title: 'Advanced Allocation', desc: 'Prevent over-allocation, edit from anywhere, auto-reallocate when beneficiaries change', icon: '⚖️', gradient: 'from-indigo-500/20 to-purple-500/20' },
               { title: 'Multi-Chain Name Resolution', desc: 'Automatically resolves wallet names from ENS, Solana, Unstoppable Domains, and more', icon: '🏷️', gradient: 'from-cyan-500/20 to-blue-500/20' },
@@ -628,7 +633,7 @@ export default function LandingPage() {
                 </thead>
                 <tbody className="divide-y divide-white/10">
                   {[
-                    { feature: 'Cost', lastwish: '$20.26-$99', others: ['$500-$5,000', '$100-$1,000/year', 'Free but risky'] },
+                    { feature: 'Cost', lastwish: pricingSummary, others: ['$500-$5,000', '$100-$1,000/year', 'Free but risky'] },
                     { feature: 'Setup Time', lastwish: '30-60 minutes', others: ['Weeks', 'Days', 'Hours'] },
                     { feature: 'Security', lastwish: '✓ No keys stored', others: ['⚠️ Paper-based', '⚠️ Keys held by third party', '⚠️ Varies'] },
                     { feature: 'Multi-chain', lastwish: '✓ Yes', others: ['✗ No', '⚠️ Limited', '⚠️ Manual'] },

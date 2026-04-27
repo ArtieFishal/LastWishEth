@@ -2,15 +2,12 @@
  * Pricing configuration for LastWishCrypto
  * Tiered pricing system:
  * - Free: $0 (1 wallet, 2 beneficiaries)
- * - Standard: $20.26 special / $42.00 regular (20 wallets, 10 beneficiaries)
+ * - Standard: $42.00 (20 wallets, 10 beneficiaries)
  * - Premium: $99 (Unlimited wallets, Unlimited beneficiaries, 2-year updates)
  */
 
 // Approximate ETH price for conversion (can be updated or fetched dynamically)
 const ETH_PRICE_USD = 3000 // Approximate ETH price in USD
-
-// Special pricing end date (February 1, 2026)
-const SPECIAL_END_DATE = new Date('2026-02-01T00:00:00Z')
 
 export type PricingTier = 'free' | 'standard' | 'premium'
 
@@ -103,9 +100,6 @@ export function getAllTiers(): TierInfo[] {
  * Get pricing for a specific tier
  */
 export function getTierPricing(tier: PricingTier): PricingInfo {
-  const now = new Date()
-  const isSpecial = now < SPECIAL_END_DATE
-  
   if (tier === 'free') {
     return {
       usdAmount: 0,
@@ -138,15 +132,14 @@ export function getTierPricing(tier: PricingTier): PricingInfo {
   }
   
   // Standard tier
-  const usdAmount = isSpecial ? 20.26 : 42.00
+  const usdAmount = 42.00
   const ethAmount = (usdAmount / ETH_PRICE_USD).toFixed(6)
   
   return {
     usdAmount,
     ethAmount,
-    isSpecial,
-    label: isSpecial ? 'New Year\'s Special' : 'Regular Price',
-    regularPrice: isSpecial ? 42.00 : undefined,
+    isSpecial: false,
+    label: 'Standard',
     tier: 'standard',
     maxWallets: 20,
     maxBeneficiaries: 10,
@@ -156,8 +149,7 @@ export function getTierPricing(tier: PricingTier): PricingInfo {
 }
 
 /**
- * Get current pricing based on date (for Standard tier)
- * Returns special price ($20.26 - celebrating 2026!) before February 1, 2026, regular price ($42.00) after
+ * Get current Standard tier pricing.
  * @deprecated Use getTierPricing('standard') instead
  */
 export function getCurrentPricing(): PricingInfo {

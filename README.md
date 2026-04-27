@@ -119,7 +119,7 @@ Pricing is defined in [`lib/pricing.ts`](./lib/pricing.ts) and surfaced via `get
 | Tier | Price | Wallets | Beneficiaries | Notes |
 | --- | --- | --- | --- | --- |
 | Free | $0 | 1 | 2 | No payment step. |
-| Standard | $42.00 (or $20.26 New Year's special until 2026-02-01) | 20 | 10 | Charged in ETH at the configured ETH/USD reference. |
+| Standard | $42.00 | 20 | 10 | Charged in ETH at the configured ETH/USD reference. |
 | Premium | $99.00 | Unlimited | Unlimited | Includes priority support and 2-year PDF updates. |
 
 The on-chain ETH amount is computed from the current tier and an internal ETH/USD reference; a small tolerance is applied during verification so wallet rounding does not cause false negatives.
