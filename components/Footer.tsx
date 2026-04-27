@@ -27,8 +27,27 @@ export default function Footer() {
             >
               For Professionals
             </Link>
+            <Link
+              href="/terms"
+              className="text-bright-soft hover:text-white transition-colors text-sm"
+            >
+              Terms
+            </Link>
+            <Link
+              href="/privacy"
+              className="text-bright-soft hover:text-white transition-colors text-sm"
+            >
+              Privacy
+            </Link>
+            <Link
+              href="/disclaimer"
+              className="text-bright-soft hover:text-white transition-colors text-sm"
+            >
+              Disclaimer
+            </Link>
+
             <div className="flex items-center gap-2 text-bright-soft text-xs">
-              <span className="font-semibold">Donation:</span>
+              <span className="font-semibold">Donation (optional):</span>
               <span className="font-mono">0x016ae25Ac494B123C40EDb2418d9b1FC2d62279b</span>
             </div>
           </div>
